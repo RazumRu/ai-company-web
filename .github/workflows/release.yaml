@@ -1,0 +1,128 @@
+name: Release
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+env:
+  APP_NAME: lusora-web-admin
+  NODE_VERSION: 22
+  ECR_REGISTRY_NAME: 471112772597.dkr.ecr.me-central-1.amazonaws.com/lusora-web-admin
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-22.04
+    name: Version packages
+    outputs:
+      release_created: ${{ steps.semantic.outputs.release_created }}
+    steps:
+      - uses: tibdex/github-app-token@v2
+        id: generate_token
+        with:
+          app_id: ${{ secrets.BOT_APPLICATION_ID }}
+          private_key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: 0
+
+      - name: Prepare repository
+        run: |
+          git config user.email "ci@lusora.store"
+          git config user.name "Lusora Bot"
+
+      - name: up version
+        id: semantic
+        run: |
+          export TAG_PREFIX="@${{ env.APP_NAME }}"
+          OUTPUT=$(pnpm run up-versions)
+
+          echo $OUTPUT
+
+          if echo "$OUTPUT" | grep -q "no new version is released"; then
+            echo "release_created=false" >> $GITHUB_OUTPUT
+          else
+            echo "release_created=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+  build-and-push:
+    runs-on: ubuntu-22.04
+    name: Build And Push
+    needs: [version]
+    if: (!contains(needs.version.result, 'failure') && needs.version.outputs.release_created == 'true' && always())
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: "0"
+
+      - name: Get version
+        id: version
+        run: |
+          git fetch --all --tags
+
+          TAG=$(git tag --list "@${{ env.APP_NAME }}/${{ env.APP_NAME }}@*" | sort -V | tail -n 1 | awk -F'@' '{print $3}')
+
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            VERSION_POSTFIX="latest"
+          else
+            VERSION_POSTFIX="develop"
+          fi
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version_postfix=$VERSION_POSTFIX" >> $GITHUB_OUTPUT
+          echo "final_tag=$TAG-$VERSION_POSTFIX" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Docker Build and Push
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: "./Dockerfile"
+          push: true
+          provenance: false
+          tags: |
+            ${{env.ECR_REGISTRY_NAME}}:${{ steps.version.outputs.version_postfix }}
+            ${{env.ECR_REGISTRY_NAME}}:${{ steps.version.outputs.final_tag }}
+          build-args: |
+            "TF_IMAGE_TAG=${{ steps.version.outputs.final_tag }}"
