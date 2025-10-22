@@ -8,12 +8,13 @@ on:
   push:
     branches:
       - 'main'
+      - 'develop'
   workflow_dispatch:
 
 env:
-  APP_NAME: lusora-web-admin
+  APP_NAME: ai-company-web
   NODE_VERSION: 22
-  ECR_REGISTRY_NAME: 471112772597.dkr.ecr.me-central-1.amazonaws.com/lusora-web-admin
+  #ECR_REGISTRY_NAME: 471112772597.dkr.ecr.me-central-1.amazonaws.com/lusora-web-admin
 
 permissions:
   contents: write
@@ -54,75 +55,75 @@ jobs:
 
       - name: Prepare repository
         run: |
-          git config user.email "ci@lusora.store"
-          git config user.name "Lusora Bot"
+          git config user.email "ci@company.ai"
+          git config user.name "AI Company Bot"
 
       - name: up version
         id: semantic
         run: |
-          export TAG_PREFIX="@${{ env.APP_NAME }}"
           OUTPUT=$(pnpm run up-versions)
 
           echo $OUTPUT
 
           if echo "$OUTPUT" | grep -q "no new version is released"; then
-            echo "release_created=false" >> $GITHUB_OUTPUT
+           echo "release_created=false" >> $GITHUB_OUTPUT
           else
-            echo "release_created=true" >> $GITHUB_OUTPUT
+           echo "release_created=true" >> $GITHUB_OUTPUT
           fi
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
-  build-and-push:
-    runs-on: ubuntu-22.04
-    name: Build And Push
-    needs: [version]
-    if: (!contains(needs.version.result, 'failure') && needs.version.outputs.release_created == 'true' && always())
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.1.6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: "0"
 
-      - name: Get version
-        id: version
-        run: |
-          git fetch --all --tags
-
-          TAG=$(git tag --list "@${{ env.APP_NAME }}/${{ env.APP_NAME }}@*" | sort -V | tail -n 1 | awk -F'@' '{print $3}')
-
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION_POSTFIX="latest"
-          else
-            VERSION_POSTFIX="develop"
-          fi
-
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "version_postfix=$VERSION_POSTFIX" >> $GITHUB_OUTPUT
-          echo "final_tag=$TAG-$VERSION_POSTFIX" >> $GITHUB_OUTPUT
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Docker Build and Push
-        id: push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: "./Dockerfile"
-          push: true
-          provenance: false
-          tags: |
-            ${{env.ECR_REGISTRY_NAME}}:${{ steps.version.outputs.version_postfix }}
-            ${{env.ECR_REGISTRY_NAME}}:${{ steps.version.outputs.final_tag }}
-          build-args: |
-            "TF_IMAGE_TAG=${{ steps.version.outputs.final_tag }}"
+#  build-and-push:
+#    runs-on: ubuntu-22.04
+#    name: Build And Push
+#    needs: [version]
+#    if: (!contains(needs.version.result, 'failure') && needs.version.outputs.release_created == 'true' && always())
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4.1.6
+#        with:
+#          ref: ${{ github.event.pull_request.head.sha }}
+#          fetch-depth: "0"
+#
+#      - name: Get version
+#        id: version
+#        run: |
+#          git fetch --all --tags
+#
+#          TAG=$(git tag --list "@${{ env.APP_NAME }}/${{ env.APP_NAME }}@*" | sort -V | tail -n 1 | awk -F'@' '{print $3}')
+#
+#          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+#            VERSION_POSTFIX="latest"
+#          else
+#            VERSION_POSTFIX="develop"
+#          fi
+#
+#          echo "tag=$TAG" >> $GITHUB_OUTPUT
+#          echo "version_postfix=$VERSION_POSTFIX" >> $GITHUB_OUTPUT
+#          echo "final_tag=$TAG-$VERSION_POSTFIX" >> $GITHUB_OUTPUT
+#
+#      - name: Configure AWS credentials
+#        uses: aws-actions/configure-aws-credentials@v4
+#        with:
+#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#          aws-region: ${{ secrets.AWS_REGION }}
+#
+#      - name: Login to Amazon ECR
+#        id: login-ecr
+#        uses: aws-actions/amazon-ecr-login@v2
+#
+#      - name: Docker Build and Push
+#        id: push
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: .
+#          file: "./Dockerfile"
+#          push: true
+#          provenance: false
+#          tags: |
+#            ${{env.ECR_REGISTRY_NAME}}:${{ steps.version.outputs.version_postfix }}
+#            ${{env.ECR_REGISTRY_NAME}}:${{ steps.version.outputs.final_tag }}
+#          build-args: |
+#            "TF_IMAGE_TAG=${{ steps.version.outputs.final_tag }}"

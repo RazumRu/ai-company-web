@@ -1,16 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="1080" height="1080" viewBox="0 0 1080 1080" xml:space="preserve">
-<desc>Created with Fabric.js 5.2.4</desc>
-<defs>
-</defs>
-<rect x="0" y="0" width="100%" height="100%" fill="transparent"></rect>
-<g transform="matrix(1 0 0 1 540 540)" id="f71cde78-5632-4bf5-b01d-eeacf302b3e4"  >
-<rect style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1; visibility: hidden;" vector-effect="non-scaling-stroke"  x="-540" y="-540" rx="0" ry="0" width="1080" height="1080" />
-</g>
-<g transform="matrix(1 0 0 1 540 540)" id="bc645f2f-7916-4fda-97c5-6930641a65cb"  >
-</g>
-<g transform="matrix(6.85 0 0 6.85 524.27 522.76)"  >
-<path style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(0,0,0); fill-rule: nonzero; opacity: 1;"  transform=" translate(-275, -186.73)" d="M 247.74338 115 L 259.93713 115 L 259.93713 247.40979 L 309.71632 247.40979 L 309.71632 258.45589 L 247.74337 258.45589 z M 246.45228 229.19089 L 237.84493 229.19089 L 237.84493 133.50581 L 225.93809000000002 133.50581 L 225.93809000000002 239.95008 L 246.45228000000003 239.95008 z M 261.37169 229.19089 L 261.37169 239.95007999999999 L 324.06191 239.95007999999999 L 324.06191 229.19089 z" stroke-linecap="round" />
-</g>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="128" cy="128" r="120" fill="#2563EB"/>
+    <g stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M80 168 L112 72 L144 168"/>
+        <path d="M94 124 H130"/>
+        <path d="M176 72 V168"/>
+    </g>
 </svg>

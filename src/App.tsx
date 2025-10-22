@@ -20,20 +20,12 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router';
 import { Header } from './components/header';
 import { API_URL, PROJECT_ID } from './config';
 import { MainPage } from './pages/main/page';
-import { ProductsPage } from './pages/products/list';
-import { ProductCodesPage } from './pages/products/product-codes';
-import { OrdersPage } from './pages/orders/list';
-import { DeliveriesPage } from './pages/deliveries/list';
+import { GraphPage } from './pages/graphs/details';
+import { GraphsListPage } from './pages/graphs/list';
 import { createAuthProvider, useAuth } from './auth';
 import { useKeycloak } from '@react-keycloak/web';
 import { useEffect } from 'react';
-import {
-  HomeOutlined,
-  QrcodeOutlined,
-  ShoppingCartOutlined,
-  ShoppingOutlined,
-  CarOutlined,
-} from '@ant-design/icons';
+import { HomeOutlined, NodeIndexOutlined } from '@ant-design/icons';
 
 // Login page component that redirects to Keycloak
 const LoginPage = ({ authProvider }: { authProvider: AuthProvider }) => {
@@ -85,37 +77,12 @@ function App() {
               },
             },
             {
-              name: 'products',
-              list: '/products',
-              create: '/products/create',
-              edit: '/products/:id',
+              name: 'Graphs',
+              list: '/graphs',
+              edit: '/graphs/:id',
               meta: {
-                label: 'Products',
-                icon: <ShoppingOutlined />,
-              },
-            },
-            {
-              name: 'product-codes',
-              list: '/product-codes',
-              meta: {
-                label: 'Product Codes',
-                icon: <QrcodeOutlined />,
-              },
-            },
-            {
-              name: 'orders',
-              list: '/orders',
-              meta: {
-                label: 'Orders',
-                icon: <ShoppingCartOutlined />,
-              },
-            },
-            {
-              name: 'deliveries',
-              list: '/deliveries',
-              meta: {
-                label: 'Deliveries',
-                icon: <CarOutlined />,
+                label: 'Graphs',
+                icon: <NodeIndexOutlined />,
               },
             },
           ]}
@@ -152,7 +119,7 @@ function App() {
                             }}
                           />
                         }
-                        text="Lusora LLC"
+                        text="AI Company"
                       />
                     )}
                     Sider={(props) => <ThemedSiderV2 {...props} fixed />}>
@@ -161,18 +128,8 @@ function App() {
                 </Authenticated>
               }>
               <Route index element={<MainPage />} />
-              <Route path="/products" element={<ProductsPage />} />
-              <Route
-                path="/products/create"
-                element={<CatchAllNavigate to="/products" />}
-              />
-              <Route
-                path="/products/:id"
-                element={<CatchAllNavigate to="/products" />}
-              />
-              <Route path="/product-codes" element={<ProductCodesPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/deliveries" element={<DeliveriesPage />} />
+              <Route path="/graphs" element={<GraphsListPage />} />
+              <Route path="/graphs/:id" element={<GraphPage />} />
               <Route path="*" element={<ErrorComponent />} />
             </Route>
             <Route

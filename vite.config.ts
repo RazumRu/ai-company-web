@@ -4,11 +4,11 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   preview: {
-    allowedHosts: ['.lusora.store'],
+    //allowedHosts: [],
     host: '0.0.0.0',
   },
   server: {
-    allowedHosts: ['.lusora.store'],
+   // allowedHosts: [],
     host: '0.0.0.0',
   },
 });
