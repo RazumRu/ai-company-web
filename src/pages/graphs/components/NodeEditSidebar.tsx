@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import type {
   GraphNode,
+  GraphNodeData,
   FormField,
   KeyValuePair,
   SchemaProperty,
@@ -382,7 +383,7 @@ export const NodeEditSidebar = ({
 
   if (!visible || !node) return null;
 
-  const nodeData = node.data as any;
+  const nodeData = node.data as unknown as GraphNodeData;
   const templateSchema = nodeData.templateSchema;
 
   return (

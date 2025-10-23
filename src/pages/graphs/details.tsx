@@ -21,13 +21,18 @@ import type {
 import { TemplateSidebar } from './components/TemplateSidebar';
 import { TemplateModal } from './components/TemplateModal';
 import { NodeEditSidebar } from './components/NodeEditSidebar';
-import { GraphCanvas } from './components/GraphCanvas';
+import {
+  GraphCanvas,
+  resolveHandlesForNodes,
+  createEdge,
+} from './components/GraphCanvas';
 import { GraphStorageService } from '../../services/GraphStorageService';
 import type {
   GraphNode,
   GraphEdge,
   GraphMetadata,
   NodeMetadata,
+  GraphNodeData,
 } from './types';
 
 const { Header, Sider, Content } = Layout;
@@ -74,7 +79,8 @@ export const GraphPage = () => {
         // Fetch templates first
         const templatesRes = await templatesApi.getAllTemplates();
         if (!mounted) return;
-        setTemplates(templatesRes.data || []);
+        const templatesList = templatesRes.data || [];
+        setTemplates(templatesList);
 
         const res = await graphsApi.findGraphById(id);
         if (!mounted) return;
@@ -115,7 +121,7 @@ export const GraphPage = () => {
         const apiNodes = graphData.schema?.nodes || [];
         const reactFlowNodes: GraphNode[] = apiNodes.map((node, index) => {
           const nodeMeta = nodeMetadataMap[node.id];
-          const template = templates.find((t) => t.name === node.template);
+          const template = templatesList.find((t) => t.name === node.template);
           return {
             id: node.id,
             type: 'custom',
@@ -137,14 +143,28 @@ export const GraphPage = () => {
         setNodes(reactFlowNodes);
         nodesRef.current = reactFlowNodes;
 
+        const nodeById: Record<string, GraphNode> = Object.fromEntries(
+          reactFlowNodes.map((n) => [n.id, n]),
+        );
+
         // Convert API edges to React Flow edges
         const apiEdges = graphData.schema?.edges || [];
-        const reactFlowEdges: GraphEdge[] = apiEdges.map((edge, index) => ({
-          id: `edge-${index}`,
-          source: edge.from,
-          target: edge.to,
-          label: edge.label,
-        }));
+        const reactFlowEdges: GraphEdge[] = apiEdges.map((edge) => {
+          const src = nodeById[edge.from];
+          const dst = nodeById[edge.to];
+          const { sourceHandle, targetHandle } = resolveHandlesForNodes(
+            src,
+            dst,
+            templatesList,
+          );
+          return createEdge(
+            edge.from,
+            edge.to,
+            sourceHandle,
+            targetHandle,
+            typeof edge.label === 'string' ? edge.label : undefined,
+          );
+        });
         setEdges(reactFlowEdges);
         edgesRef.current = reactFlowEdges;
 
@@ -152,9 +172,13 @@ export const GraphPage = () => {
         const savedState = GraphStorageService.loadGraphState(id);
         if (savedState) {
           // Ensure all nodes have template information
-          const nodesWithTemplates = savedState.nodes.map(node => {
+          const nodesWithTemplates = savedState.nodes.map((node) => {
             if (!node.data.templateKind || !node.data.templateSchema) {
-              const template = templates.find(t => t.name === node.data.template);
+                const template = templatesList.find(
+                  (t) =>
+                    t.name === (node.data as unknown as GraphNodeData).template,
+                );
+
               if (template) {
                 return {
                   ...node,
@@ -162,20 +186,38 @@ export const GraphPage = () => {
                     ...node.data,
                     templateKind: template.kind,
                     templateSchema: template.schema,
-                  }
+                  },
                 };
               }
             }
             return node;
           });
-          
+
           // Restore from localStorage
           setNodes(nodesWithTemplates);
-          setEdges(savedState.edges);
+          const nodeByIdRestored: Record<string, GraphNode> =
+            Object.fromEntries(nodesWithTemplates.map((n) => [n.id, n]));
+          const restoredEdges: GraphEdge[] = savedState.edges.map((e) => {
+            const src = nodeByIdRestored[e.source];
+            const dst = nodeByIdRestored[e.target];
+            const { sourceHandle, targetHandle } = resolveHandlesForNodes(
+              src,
+              dst,
+              templatesList,
+            );
+            return createEdge(
+              e.source,
+              e.target,
+              sourceHandle ?? e.sourceHandle ?? undefined,
+              targetHandle ?? e.targetHandle ?? undefined,
+              typeof e.label === 'string' ? e.label : undefined,
+            );
+          });
+          setEdges(restoredEdges);
           setViewport(savedState.viewport);
           // Update refs with restored state
           nodesRef.current = nodesWithTemplates;
-          edgesRef.current = savedState.edges;
+          edgesRef.current = restoredEdges;
           viewportRef.current = savedState.viewport;
           setHasUnsavedChanges(!!savedState.dirty);
         } else {

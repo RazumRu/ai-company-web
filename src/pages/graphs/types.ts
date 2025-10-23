@@ -3,7 +3,7 @@ import type { Node, Edge } from '@xyflow/react';
 export interface GraphNodeData {
   label: string;
   template: string;
-  templateKind: string;
+  templateKind?: string;
   templateSchema?: TemplateSchema;
   config: Record<string, unknown>;
   onEdit?: () => void;
