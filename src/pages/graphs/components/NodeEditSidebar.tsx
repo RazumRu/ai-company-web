@@ -18,6 +18,7 @@ import {
   CloseOutlined,
   DeleteOutlined,
   EditOutlined,
+  ExpandOutlined,
   PlusOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
@@ -148,6 +149,13 @@ export const NodeEditSidebar = ({
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [expandedTextarea, setExpandedTextarea] = useState<{
+    fieldKey: string;
+    value: string;
+  } | null>(null);
+  const [initialFormValues, setInitialFormValues] = useState<
+    Record<string, unknown>
+  >({});
 
   useEffect(() => {
     if (node) {
@@ -167,6 +175,7 @@ export const NodeEditSidebar = ({
             typedProp.type === 'object' && typedProp.additionalProperties;
 
           fields.push({
+            ...typedProp,
             key,
             name: typedProp.title || key,
             description: typedProp.description,
@@ -200,15 +209,31 @@ export const NodeEditSidebar = ({
       } else {
         setFormFields([]);
       }
-      
+
+      // Store initial form values for comparison
+      const initialValues = form.getFieldsValue(true);
+      setInitialFormValues(initialValues);
+
       // Reset unsaved changes when node changes
       setHasUnsavedChanges(false);
     }
   }, [node, form, templates]);
 
   // Track form changes to detect unsaved changes
-  const handleFormChange = () => {
-    setHasUnsavedChanges(true);
+  const handleFormChange = (
+    changedValues: Record<string, unknown>,
+    allValues: Record<string, unknown>,
+  ) => {
+    // Compare current values with initial values to detect real changes
+    const hasRealChanges = Object.keys(changedValues).some((key) => {
+      const currentValue = allValues[key];
+      const initialValue = initialFormValues[key];
+      return JSON.stringify(currentValue) !== JSON.stringify(initialValue);
+    });
+
+    if (hasRealChanges) {
+      setHasUnsavedChanges(true);
+    }
   };
 
   const handleSave = async () => {
@@ -229,6 +254,10 @@ export const NodeEditSidebar = ({
           name: nodeName,
           config: configValues,
         });
+
+        // Update initial values to current values after successful save
+        const currentValues = form.getFieldsValue(true);
+        setInitialFormValues(currentValues);
         setHasUnsavedChanges(false);
         message.success('Node updated successfully');
       }
@@ -328,8 +357,49 @@ export const NodeEditSidebar = ({
       );
     }
 
+    const shouldUseTextarea =
+      (field as SchemaProperty)['x-ui:textarea'] === true;
+
     switch (type) {
       case 'string':
+        if (shouldUseTextarea) {
+          return (
+            <Form.Item
+              key={key}
+              label={name}
+              required={required}
+              rules={rules}
+              extra={descriptionNode}
+              style={{ marginBottom: '20px' }}>
+              <div style={{ position: 'relative' }}>
+                <Form.Item name={key} noStyle>
+                  <Input.TextArea
+                    placeholder={`Enter ${name.toLowerCase()}`}
+                    rows={4}
+                    size="middle"
+                    style={{ paddingRight: '32px' }}
+                  />
+                </Form.Item>
+                <Button
+                  type="text"
+                  icon={<ExpandOutlined />}
+                  size="small"
+                  style={{
+                    position: 'absolute',
+                    right: '4px',
+                    top: '4px',
+                    zIndex: 1,
+                  }}
+                  onClick={() => {
+                    const currentValue = form.getFieldValue(key) || '';
+                    setExpandedTextarea({ fieldKey: key, value: currentValue });
+                  }}
+                />
+              </div>
+            </Form.Item>
+          );
+        }
+
         return (
           <Form.Item key={key} {...commonProps}>
             <Input placeholder={`Enter ${name.toLowerCase()}`} size="middle" />
@@ -534,6 +604,48 @@ export const NodeEditSidebar = ({
           </Button>,
         ]}>
         <p>You have unsaved changes. What would you like to do?</p>
+      </Modal>
+
+      {/* Expanded Textarea Modal */}
+      <Modal
+        title="Edit Text"
+        open={!!expandedTextarea}
+        onCancel={() => setExpandedTextarea(null)}
+        width={800}
+        footer={[
+          <Button key="cancel" onClick={() => setExpandedTextarea(null)}>
+            Cancel
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            onClick={() => {
+              if (expandedTextarea) {
+                form.setFieldValue(
+                  expandedTextarea.fieldKey,
+                  expandedTextarea.value,
+                );
+                setExpandedTextarea(null);
+                setHasUnsavedChanges(true);
+              }
+            }}>
+            Save
+          </Button>,
+        ]}>
+        {expandedTextarea && (
+          <Input.TextArea
+            value={expandedTextarea.value}
+            onChange={(e) =>
+              setExpandedTextarea({
+                ...expandedTextarea,
+                value: e.target.value,
+              })
+            }
+            rows={20}
+            style={{ fontFamily: 'monospace' }}
+            placeholder="Enter your text here..."
+          />
+        )}
       </Modal>
     </Sider>
   );

@@ -40,6 +40,7 @@ export interface SchemaProperty {
   const?: unknown;
   additionalProperties?: boolean;
   'x-ui:show-on-node'?: boolean;
+  'x-ui:textarea'?: boolean;
 }
 
 export interface TemplateSchema {
