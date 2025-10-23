@@ -73,7 +73,7 @@ export const GraphCanvas = ({
           type: 'add',
           item: newEdge,
         },
-      ] as any);
+      ]);
     },
     [onEdgesChange],
   );
@@ -108,8 +108,9 @@ export const GraphCanvas = ({
         data: {
           label: template.name,
           template: template.name,
+          templateKind: template.kind,
+          templateSchema: template.schema,
           config: {},
-          templateSchema: template,
         },
       };
 

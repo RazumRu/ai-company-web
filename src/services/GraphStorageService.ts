@@ -97,4 +97,18 @@ export class GraphStorageService {
       return [];
     }
   }
+
+  /**
+   * Clear all graph states from localStorage
+   */
+  static clearAllGraphStates(): void {
+    try {
+      const keys = Object.keys(localStorage);
+      keys
+        .filter((key) => key.startsWith(this.STORAGE_KEY_PREFIX))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch (error) {
+      console.warn('Failed to clear all graph states:', error);
+    }
+  }
 }

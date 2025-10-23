@@ -65,10 +65,9 @@ export const GraphsListPage = () => {
       const graphId = res.data.id;
       message.success('Graph created successfully');
       navigate(`/graphs/${graphId}`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error creating graph:', e);
-      const errorMessage =
-        e.response?.data?.message || e.message || 'Failed to create graph';
+      const errorMessage = e instanceof Error ? e.message : 'Failed to create graph';
       message.error(errorMessage);
     }
   };
@@ -79,10 +78,9 @@ export const GraphsListPage = () => {
       await graphsApi.deleteGraph(graphId);
       setGraphs((prev) => prev.filter((graph) => graph.id !== graphId));
       message.success('Graph deleted successfully');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error deleting graph:', e);
-      const errorMessage =
-        e.response?.data?.message || e.message || 'Failed to delete graph';
+      const errorMessage = e instanceof Error ? e.message : 'Failed to delete graph';
       message.error(errorMessage);
     } finally {
       setDeleting(null);

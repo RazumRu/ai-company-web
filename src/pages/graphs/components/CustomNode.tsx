@@ -7,13 +7,48 @@ const { Text } = Typography;
 
 export const CustomNode = ({ data, selected }: NodeProps) => {
   const nodeData = data as unknown as GraphNodeData;
-  const templateKind = nodeData.templateSchema?.kind;
+
+  // Get node kind color based on template kind
+  const getKindColor = (kind?: string) => {
+    const colorMap: Record<string, string> = {
+      'runtime': 'blue',
+      'tool': 'green',
+      'simpleagent': 'orange',
+      'trigger': 'red',
+      'resource': 'purple',
+      'default': 'gray',
+    };
+    return colorMap[kind?.toLowerCase() || 'default'] || 'gray';
+  };
+
+  // Get metadata properties that should be shown on node
+  const getMetadataProperties = () => {
+    if (!nodeData.templateSchema?.properties) return [];
+
+    return Object.entries(nodeData.templateSchema.properties)
+      .filter(([_, prop]) => {
+        const typedProp = prop as any;
+        return typedProp['x-ui:show-on-node'] === true;
+      })
+      .map(([key, prop]) => {
+        const typedProp = prop as any;
+        return {
+          key,
+          value:
+            nodeData.config[key] || typedProp.const || typedProp.default || '',
+          title: typedProp.title || key,
+        };
+      })
+      .filter((item) => !!item.value);
+  };
+
+  const metadataProperties = getMetadataProperties();
 
   return (
     <Card
       size="small"
       style={{
-        minWidth: 200,
+        minWidth: 250,
         border: selected ? '1px solid #1890ff' : '1px solid #d9d9d9',
         borderRadius: 8,
         boxShadow: selected
@@ -33,10 +68,31 @@ export const CustomNode = ({ data, selected }: NodeProps) => {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            gap: 20,
           }}>
-          <Text strong style={{ fontSize: 14 }}>
-            {nodeData.label}
-          </Text>
+          <Space size="small">
+            <Text
+              strong
+              style={{
+                fontSize: 14,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: 250,
+                display: 'block',
+              }}>
+              {nodeData.label}
+            </Text>
+            <Tag
+              color={getKindColor(nodeData.templateKind)}
+              style={{ margin: 0, fontSize: 10 }}>
+              {nodeData.templateKind}
+            </Tag>
+            <Tag color="geekblue" style={{ margin: 0, fontSize: 10 }}>
+              {nodeData.template}
+            </Tag>
+          </Space>
+
           <Space size="small">
             {nodeData.onDelete && (
               <Button
@@ -53,15 +109,18 @@ export const CustomNode = ({ data, selected }: NodeProps) => {
           </Space>
         </div>
 
-        {/* Template name in smaller gray text */}
-        <Text type="secondary" style={{ fontSize: 11, color: '#8c8c8c' }}>
-          {nodeData.template}
-        </Text>
-
-        {templateKind && (
-          <Tag color="blue" style={{ margin: 0 }}>
-            {templateKind}
-          </Tag>
+        {/* Metadata properties */}
+        {metadataProperties.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {metadataProperties.map(({ key, value, title }) => (
+              <Tag
+                key={key}
+                color="default"
+                style={{ fontSize: 10, margin: 0 }}>
+                {title}: {String(value)}
+              </Tag>
+            ))}
+          </div>
         )}
 
         {Object.keys(nodeData.config).length > 0 && (

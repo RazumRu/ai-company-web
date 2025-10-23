@@ -3,6 +3,7 @@ import { useKeycloak } from '@react-keycloak/web';
 import axios from 'axios';
 import Keycloak from 'keycloak-js';
 import { KEYCLOAK_CLIENT_ID, KEYCLOAK_REALM, KEYCLOAK_URL } from './config';
+import { GraphStorageService } from './services/GraphStorageService';
 
 // Initialize Keycloak
 export const keycloak = new Keycloak({
@@ -32,6 +33,9 @@ export const createAuthProvider = (keycloak: Keycloak): AuthProvider => {
     },
     logout: async () => {
       try {
+        // Clear all graph states from localStorage on logout
+        GraphStorageService.clearAllGraphStates();
+
         await keycloak.logout({
           redirectUri: window.location.origin,
         });
