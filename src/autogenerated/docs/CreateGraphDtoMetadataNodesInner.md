@@ -6,8 +6,8 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **string** |  | [default to undefined]
-**x** | **number** | X coordinate of the node | [default to undefined]
-**y** | **number** | Y coordinate of the node | [default to undefined]
+**x** | **number** | X coordinate of the node | [optional] [default to undefined]
+**y** | **number** | Y coordinate of the node | [optional] [default to undefined]
 **name** | **string** | Optional display name for the node | [optional] [default to undefined]
 
 ## Example

@@ -586,6 +586,8 @@ export const GraphPage = () => {
           <TemplateSidebar
             onTemplateClick={handleTemplateClick}
             templates={templates}
+            selectedNode={selectedNode}
+            allNodes={nodes}
           />
         </Sider>
 
@@ -615,6 +617,10 @@ export const GraphPage = () => {
               onNodeSelect={handleNodeSelect}
               onViewportChange={handleViewportChange}
               initialViewport={viewport}
+              templates={templates}
+              onValidationError={(error) => {
+                message.error(`Connection validation failed: ${error}`);
+              }}
             />
           </div>
         </Content>
@@ -632,6 +638,7 @@ export const GraphPage = () => {
         template={selectedTemplate}
         visible={templateModalVisible}
         onClose={() => setTemplateModalVisible(false)}
+        allTemplates={templates}
       />
     </Layout>
   );

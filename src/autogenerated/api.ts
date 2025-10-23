@@ -116,13 +116,13 @@ export interface CreateGraphDtoMetadataNodesInner {
      * @type {number}
      * @memberof CreateGraphDtoMetadataNodesInner
      */
-    'x': number;
+    'x'?: number;
     /**
      * Y coordinate of the node
      * @type {number}
      * @memberof CreateGraphDtoMetadataNodesInner
      */
-    'y': number;
+    'y'?: number;
     /**
      * Optional display name for the node
      * @type {string}
@@ -713,6 +713,18 @@ export interface TemplateDto {
      * @memberof TemplateDto
      */
     'schema': { [key: string]: any; };
+    /**
+     * 
+     * @type {Array<TemplateDtoInputsInner>}
+     * @memberof TemplateDto
+     */
+    'inputs'?: Array<TemplateDtoInputsInner>;
+    /**
+     * 
+     * @type {Array<TemplateDtoInputsInner>}
+     * @memberof TemplateDto
+     */
+    'outputs'?: Array<TemplateDtoInputsInner>;
 }
 
 export const TemplateDtoKindEnum = {
@@ -724,6 +736,130 @@ export const TemplateDtoKindEnum = {
 } as const;
 
 export type TemplateDtoKindEnum = typeof TemplateDtoKindEnum[keyof typeof TemplateDtoKindEnum];
+
+/**
+ * 
+ * @export
+ * @interface TemplateDtoInputsInner
+ */
+export interface TemplateDtoInputsInner {
+    /**
+     * 
+     * @type {string}
+     * @memberof TemplateDtoInputsInner
+     */
+    'type': TemplateDtoInputsInnerTypeEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof TemplateDtoInputsInner
+     */
+    'value': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TemplateDtoInputsInner
+     */
+    'required'?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TemplateDtoInputsInner
+     */
+    'multiple': boolean;
+}
+
+export const TemplateDtoInputsInnerTypeEnum = {
+    Kind: 'kind',
+    Template: 'template'
+} as const;
+
+export type TemplateDtoInputsInnerTypeEnum = typeof TemplateDtoInputsInnerTypeEnum[keyof typeof TemplateDtoInputsInnerTypeEnum];
+
+/**
+ * 
+ * @export
+ * @interface TemplateDtoInputsInnerAnyOf
+ */
+export interface TemplateDtoInputsInnerAnyOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof TemplateDtoInputsInnerAnyOf
+     */
+    'type': TemplateDtoInputsInnerAnyOfTypeEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof TemplateDtoInputsInnerAnyOf
+     */
+    'value': TemplateDtoInputsInnerAnyOfValueEnum;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TemplateDtoInputsInnerAnyOf
+     */
+    'required'?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TemplateDtoInputsInnerAnyOf
+     */
+    'multiple': boolean;
+}
+
+export const TemplateDtoInputsInnerAnyOfTypeEnum = {
+    Kind: 'kind'
+} as const;
+
+export type TemplateDtoInputsInnerAnyOfTypeEnum = typeof TemplateDtoInputsInnerAnyOfTypeEnum[keyof typeof TemplateDtoInputsInnerAnyOfTypeEnum];
+export const TemplateDtoInputsInnerAnyOfValueEnum = {
+    Runtime: 'runtime',
+    Tool: 'tool',
+    SimpleAgent: 'simpleAgent',
+    Trigger: 'trigger',
+    Resource: 'resource'
+} as const;
+
+export type TemplateDtoInputsInnerAnyOfValueEnum = typeof TemplateDtoInputsInnerAnyOfValueEnum[keyof typeof TemplateDtoInputsInnerAnyOfValueEnum];
+
+/**
+ * 
+ * @export
+ * @interface TemplateDtoInputsInnerAnyOf1
+ */
+export interface TemplateDtoInputsInnerAnyOf1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof TemplateDtoInputsInnerAnyOf1
+     */
+    'type': TemplateDtoInputsInnerAnyOf1TypeEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof TemplateDtoInputsInnerAnyOf1
+     */
+    'value': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TemplateDtoInputsInnerAnyOf1
+     */
+    'required'?: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TemplateDtoInputsInnerAnyOf1
+     */
+    'multiple': boolean;
+}
+
+export const TemplateDtoInputsInnerAnyOf1TypeEnum = {
+    Template: 'template'
+} as const;
+
+export type TemplateDtoInputsInnerAnyOf1TypeEnum = typeof TemplateDtoInputsInnerAnyOf1TypeEnum[keyof typeof TemplateDtoInputsInnerAnyOf1TypeEnum];
 
 /**
  * 

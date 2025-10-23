@@ -25,6 +25,9 @@ docs/GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content.md
 docs/GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4.md
 docs/GraphsApi.md
 docs/TemplateDto.md
+docs/TemplateDtoInputsInner.md
+docs/TemplateDtoInputsInnerAnyOf.md
+docs/TemplateDtoInputsInnerAnyOf1.md
 docs/TemplatesApi.md
 docs/UpdateGraphDto.md
 git_push.sh

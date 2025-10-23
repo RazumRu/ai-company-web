@@ -9,6 +9,8 @@ Name | Type | Description | Notes
 **description** | **string** |  | [default to undefined]
 **kind** | **string** |  | [default to undefined]
 **schema** | **{ [key: string]: any; }** |  | [default to undefined]
+**inputs** | [**Array&lt;TemplateDtoInputsInner&gt;**](TemplateDtoInputsInner.md) |  | [optional] [default to undefined]
+**outputs** | [**Array&lt;TemplateDtoInputsInner&gt;**](TemplateDtoInputsInner.md) |  | [optional] [default to undefined]
 
 ## Example
 
@@ -20,6 +22,8 @@ const instance: TemplateDto = {
     description,
     kind,
     schema,
+    inputs,
+    outputs,
 };
 ```
 
