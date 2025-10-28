@@ -323,369 +323,6 @@ export type GraphDtoStatusEnum = typeof GraphDtoStatusEnum[keyof typeof GraphDto
 /**
  * 
  * @export
- * @interface GraphMessagesResponseDto
- */
-export interface GraphMessagesResponseDto {
-    /**
-     * Node ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDto
-     */
-    'nodeId': string;
-    /**
-     * Array of threads with their messages
-     * @type {Array<GraphMessagesResponseDtoThreadsInner>}
-     * @memberof GraphMessagesResponseDto
-     */
-    'threads': Array<GraphMessagesResponseDtoThreadsInner>;
-}
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInner
- */
-export interface GraphMessagesResponseDtoThreadsInner {
-    /**
-     * Thread ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInner
-     */
-    'id': string;
-    /**
-     * Array of messages in this thread
-     * @type {Array<GraphMessagesResponseDtoThreadsInnerMessagesInner>}
-     * @memberof GraphMessagesResponseDtoThreadsInner
-     */
-    'messages': Array<GraphMessagesResponseDtoThreadsInnerMessagesInner>;
-}
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInner
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInner {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'role': GraphMessagesResponseDtoThreadsInnerMessagesInnerRoleEnum;
-    /**
-     * Parsed tool result as JSON
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'content': { [key: string]: any; };
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-    /**
-     * Message ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'id'?: string;
-    /**
-     * Tool calls in the message
-     * @type {Array<GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner>}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'toolCalls'?: Array<GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner>;
-    /**
-     * Tool name
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'name': string;
-    /**
-     * Tool call ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInner
-     */
-    'toolCallId': string;
-}
-
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerRoleEnum = {
-    Tool: 'tool'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerRoleEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerRoleEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerRoleEnum];
-
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf
-     */
-    'role': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOfRoleEnum;
-    /**
-     * Message content
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf
-     */
-    'content': string;
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-}
-
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOfRoleEnum = {
-    Human: 'human'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOfRoleEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOfRoleEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOfRoleEnum];
-
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1 {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1
-     */
-    'role': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1RoleEnum;
-    /**
-     * Message content
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1
-     */
-    'content': string;
-    /**
-     * Message ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1
-     */
-    'id'?: string;
-    /**
-     * Tool calls in the message
-     * @type {Array<GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner>}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1
-     */
-    'toolCalls'?: Array<GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner>;
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-}
-
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1RoleEnum = {
-    Ai: 'ai'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1RoleEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1RoleEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1RoleEnum];
-
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner {
-    /**
-     * Tool name
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner
-     */
-    'name': string;
-    /**
-     * Tool arguments
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner
-     */
-    'args': { [key: string]: any; };
-    /**
-     * Tool call type
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner
-     */
-    'type': string;
-    /**
-     * Tool call ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf1ToolCallsInner
-     */
-    'id': string;
-}
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2 {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2
-     */
-    'role': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2RoleEnum;
-    /**
-     * Message content
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2
-     */
-    'content': string;
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-}
-
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2RoleEnum = {
-    System: 'system'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2RoleEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2RoleEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf2RoleEnum];
-
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3 {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3
-     */
-    'role': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3RoleEnum;
-    /**
-     * Tool name - shell
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3
-     */
-    'name': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3NameEnum;
-    /**
-     * 
-     * @type {GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3
-     */
-    'content': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content;
-    /**
-     * Tool call ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3
-     */
-    'toolCallId': string;
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-}
-
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3RoleEnum = {
-    ToolShell: 'tool-shell'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3RoleEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3RoleEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3RoleEnum];
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3NameEnum = {
-    Shell: 'shell'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3NameEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3NameEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3NameEnum];
-
-/**
- * Parsed shell execution result
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content {
-    /**
-     * Exit code of the shell command
-     * @type {number}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content
-     */
-    'exitCode': number;
-    /**
-     * Standard output from the command
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content
-     */
-    'stdout': string;
-    /**
-     * Standard error from the command
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content
-     */
-    'stderr': string;
-    /**
-     * The command that was executed
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content
-     */
-    'cmd': string;
-    /**
-     * Whether the command failed
-     * @type {boolean}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf3Content
-     */
-    'fail'?: boolean;
-}
-/**
- * 
- * @export
- * @interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4
- */
-export interface GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4 {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4
-     */
-    'role': GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4RoleEnum;
-    /**
-     * Tool name
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4
-     */
-    'name': string;
-    /**
-     * Parsed tool result as JSON
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4
-     */
-    'content': { [key: string]: any; };
-    /**
-     * Tool call ID
-     * @type {string}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4
-     */
-    'toolCallId': string;
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-}
-
-export const GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4RoleEnum = {
-    Tool: 'tool'
-} as const;
-
-export type GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4RoleEnum = typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4RoleEnum[keyof typeof GraphMessagesResponseDtoThreadsInnerMessagesInnerAnyOf4RoleEnum];
-
-/**
- * 
- * @export
  * @interface TemplateDto
  */
 export interface TemplateDto {
@@ -860,6 +497,429 @@ export const TemplateDtoInputsInnerAnyOf1TypeEnum = {
 } as const;
 
 export type TemplateDtoInputsInnerAnyOf1TypeEnum = typeof TemplateDtoInputsInnerAnyOf1TypeEnum[keyof typeof TemplateDtoInputsInnerAnyOf1TypeEnum];
+
+/**
+ * 
+ * @export
+ * @interface ThreadDto
+ */
+export interface ThreadDto {
+    /**
+     * Thread ID
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'id': string;
+    /**
+     * Graph ID
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'graphId': string;
+    /**
+     * External thread ID from LangChain
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'externalThreadId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'createdAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'updatedAt': string;
+    /**
+     * 
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadDto
+     */
+    'metadata'?: { [key: string]: any; } | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'source'?: string | null;
+}
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDto
+ */
+export interface ThreadMessageDto {
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadMessageDto
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadMessageDto
+     */
+    'threadId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadMessageDto
+     */
+    'nodeId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadMessageDto
+     */
+    'externalThreadId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadMessageDto
+     */
+    'createdAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadMessageDto
+     */
+    'updatedAt': string;
+    /**
+     * 
+     * @type {ThreadMessageDtoMessage}
+     * @memberof ThreadMessageDto
+     */
+    'message': ThreadMessageDtoMessage;
+}
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessage
+ */
+export interface ThreadMessageDtoMessage {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'role': ThreadMessageDtoMessageRoleEnum;
+    /**
+     * Parsed tool result as JSON
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'content': { [key: string]: any; };
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+    /**
+     * Message ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'id'?: string;
+    /**
+     * Tool calls in the message
+     * @type {Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'toolCalls'?: Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>;
+    /**
+     * Tool name
+     * @type {string}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'name': string;
+    /**
+     * Tool call ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessage
+     */
+    'toolCallId': string;
+}
+
+export const ThreadMessageDtoMessageRoleEnum = {
+    Tool: 'tool'
+} as const;
+
+export type ThreadMessageDtoMessageRoleEnum = typeof ThreadMessageDtoMessageRoleEnum[keyof typeof ThreadMessageDtoMessageRoleEnum];
+
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf
+ */
+export interface ThreadMessageDtoMessageAnyOf {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf
+     */
+    'role': ThreadMessageDtoMessageAnyOfRoleEnum;
+    /**
+     * Message content
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf
+     */
+    'content': string;
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+}
+
+export const ThreadMessageDtoMessageAnyOfRoleEnum = {
+    Human: 'human'
+} as const;
+
+export type ThreadMessageDtoMessageAnyOfRoleEnum = typeof ThreadMessageDtoMessageAnyOfRoleEnum[keyof typeof ThreadMessageDtoMessageAnyOfRoleEnum];
+
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf1
+ */
+export interface ThreadMessageDtoMessageAnyOf1 {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf1
+     */
+    'role': ThreadMessageDtoMessageAnyOf1RoleEnum;
+    /**
+     * Message content
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf1
+     */
+    'content': string;
+    /**
+     * Message ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf1
+     */
+    'id'?: string;
+    /**
+     * Tool calls in the message
+     * @type {Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>}
+     * @memberof ThreadMessageDtoMessageAnyOf1
+     */
+    'toolCalls'?: Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>;
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf1
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+}
+
+export const ThreadMessageDtoMessageAnyOf1RoleEnum = {
+    Ai: 'ai'
+} as const;
+
+export type ThreadMessageDtoMessageAnyOf1RoleEnum = typeof ThreadMessageDtoMessageAnyOf1RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf1RoleEnum];
+
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf1ToolCallsInner
+ */
+export interface ThreadMessageDtoMessageAnyOf1ToolCallsInner {
+    /**
+     * Tool name
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     */
+    'name': string;
+    /**
+     * Tool arguments
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     */
+    'args': { [key: string]: any; };
+    /**
+     * Tool call type
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     */
+    'type': string;
+    /**
+     * Tool call ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     */
+    'id': string;
+}
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf2
+ */
+export interface ThreadMessageDtoMessageAnyOf2 {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf2
+     */
+    'role': ThreadMessageDtoMessageAnyOf2RoleEnum;
+    /**
+     * Message content
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf2
+     */
+    'content': string;
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf2
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+}
+
+export const ThreadMessageDtoMessageAnyOf2RoleEnum = {
+    System: 'system'
+} as const;
+
+export type ThreadMessageDtoMessageAnyOf2RoleEnum = typeof ThreadMessageDtoMessageAnyOf2RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf2RoleEnum];
+
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf3
+ */
+export interface ThreadMessageDtoMessageAnyOf3 {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf3
+     */
+    'role': ThreadMessageDtoMessageAnyOf3RoleEnum;
+    /**
+     * Tool name - shell
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf3
+     */
+    'name': ThreadMessageDtoMessageAnyOf3NameEnum;
+    /**
+     * 
+     * @type {ThreadMessageDtoMessageAnyOf3Content}
+     * @memberof ThreadMessageDtoMessageAnyOf3
+     */
+    'content': ThreadMessageDtoMessageAnyOf3Content;
+    /**
+     * Tool call ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf3
+     */
+    'toolCallId': string;
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf3
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+}
+
+export const ThreadMessageDtoMessageAnyOf3RoleEnum = {
+    ToolShell: 'tool-shell'
+} as const;
+
+export type ThreadMessageDtoMessageAnyOf3RoleEnum = typeof ThreadMessageDtoMessageAnyOf3RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf3RoleEnum];
+export const ThreadMessageDtoMessageAnyOf3NameEnum = {
+    Shell: 'shell'
+} as const;
+
+export type ThreadMessageDtoMessageAnyOf3NameEnum = typeof ThreadMessageDtoMessageAnyOf3NameEnum[keyof typeof ThreadMessageDtoMessageAnyOf3NameEnum];
+
+/**
+ * Parsed shell execution result
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf3Content
+ */
+export interface ThreadMessageDtoMessageAnyOf3Content {
+    /**
+     * Exit code of the shell command
+     * @type {number}
+     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     */
+    'exitCode': number;
+    /**
+     * Standard output from the command
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     */
+    'stdout': string;
+    /**
+     * Standard error from the command
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     */
+    'stderr': string;
+    /**
+     * The command that was executed
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     */
+    'cmd': string;
+    /**
+     * Whether the command failed
+     * @type {boolean}
+     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     */
+    'fail'?: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageAnyOf4
+ */
+export interface ThreadMessageDtoMessageAnyOf4 {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf4
+     */
+    'role': ThreadMessageDtoMessageAnyOf4RoleEnum;
+    /**
+     * Tool name
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf4
+     */
+    'name': string;
+    /**
+     * Parsed tool result as JSON
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf4
+     */
+    'content': { [key: string]: any; };
+    /**
+     * Tool call ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageAnyOf4
+     */
+    'toolCallId': string;
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageAnyOf4
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+}
+
+export const ThreadMessageDtoMessageAnyOf4RoleEnum = {
+    Tool: 'tool'
+} as const;
+
+export type ThreadMessageDtoMessageAnyOf4RoleEnum = typeof ThreadMessageDtoMessageAnyOf4RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf4RoleEnum];
 
 /**
  * 
@@ -1143,59 +1203,6 @@ export const GraphsApiAxiosParamCreator = function (configuration?: Configuratio
         },
         /**
          * 
-         * @param {string} graphId 
-         * @param {string} nodeId 
-         * @param {string} threadId Full thread ID (e.g., \&quot;graphId:threadComponent\&quot;)
-         * @param {number} [limit] Maximum number of messages to return
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getNodeMessages: async (graphId: string, nodeId: string, threadId: string, limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'graphId' is not null or undefined
-            assertParamExists('getNodeMessages', 'graphId', graphId)
-            // verify required parameter 'nodeId' is not null or undefined
-            assertParamExists('getNodeMessages', 'nodeId', nodeId)
-            // verify required parameter 'threadId' is not null or undefined
-            assertParamExists('getNodeMessages', 'threadId', threadId)
-            const localVarPath = `/api/v1/graphs/{graphId}/nodes/{nodeId}/messages`
-                .replace(`{${"graphId"}}`, encodeURIComponent(String(graphId)))
-                .replace(`{${"nodeId"}}`, encodeURIComponent(String(nodeId)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-            // authentication bearer required
-            // http bearer authentication required
-            await setBearerAuthToObject(localVarHeaderParameter, configuration)
-
-            if (threadId !== undefined) {
-                localVarQueryParameter['threadId'] = threadId;
-            }
-
-            if (limit !== undefined) {
-                localVarQueryParameter['limit'] = limit;
-            }
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
          * @param {string} id 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1359,21 +1366,6 @@ export const GraphsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @param {string} graphId 
-         * @param {string} nodeId 
-         * @param {string} threadId Full thread ID (e.g., \&quot;graphId:threadComponent\&quot;)
-         * @param {number} [limit] Maximum number of messages to return
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getNodeMessages(graphId: string, nodeId: string, threadId: string, limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GraphMessagesResponseDto>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getNodeMessages(graphId, nodeId, threadId, limit, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['GraphsApi.getNodeMessages']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
          * @param {string} id 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -1461,18 +1453,6 @@ export const GraphsApiFactory = function (configuration?: Configuration, basePat
          */
         getAllGraphs(options?: RawAxiosRequestConfig): AxiosPromise<Array<GraphDto>> {
             return localVarFp.getAllGraphs(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {string} graphId 
-         * @param {string} nodeId 
-         * @param {string} threadId Full thread ID (e.g., \&quot;graphId:threadComponent\&quot;)
-         * @param {number} [limit] Maximum number of messages to return
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getNodeMessages(graphId: string, nodeId: string, threadId: string, limit?: number, options?: RawAxiosRequestConfig): AxiosPromise<GraphMessagesResponseDto> {
-            return localVarFp.getNodeMessages(graphId, nodeId, threadId, limit, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1568,20 +1548,6 @@ export class GraphsApi extends BaseAPI {
      */
     public getAllGraphs(options?: RawAxiosRequestConfig) {
         return GraphsApiFp(this.configuration).getAllGraphs(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {string} graphId 
-     * @param {string} nodeId 
-     * @param {string} threadId Full thread ID (e.g., \&quot;graphId:threadComponent\&quot;)
-     * @param {number} [limit] Maximum number of messages to return
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof GraphsApi
-     */
-    public getNodeMessages(graphId: string, nodeId: string, threadId: string, limit?: number, options?: RawAxiosRequestConfig) {
-        return GraphsApiFp(this.configuration).getNodeMessages(graphId, nodeId, threadId, limit, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1706,6 +1672,433 @@ export class TemplatesApi extends BaseAPI {
      */
     public getAllTemplates(options?: RawAxiosRequestConfig) {
         return TemplatesApiFp(this.configuration).getAllTemplates(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * ThreadsApi - axios parameter creator
+ * @export
+ */
+export const ThreadsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteThread: async (threadId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'threadId' is not null or undefined
+            assertParamExists('deleteThread', 'threadId', threadId)
+            const localVarPath = `/api/v1/threads/{threadId}`
+                .replace(`{${"threadId"}}`, encodeURIComponent(String(threadId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} externalThreadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreadByExternalId: async (externalThreadId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'externalThreadId' is not null or undefined
+            assertParamExists('getThreadByExternalId', 'externalThreadId', externalThreadId)
+            const localVarPath = `/api/v1/threads/external/{externalThreadId}`
+                .replace(`{${"externalThreadId"}}`, encodeURIComponent(String(externalThreadId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreadById: async (threadId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'threadId' is not null or undefined
+            assertParamExists('getThreadById', 'threadId', threadId)
+            const localVarPath = `/api/v1/threads/{threadId}`
+                .replace(`{${"threadId"}}`, encodeURIComponent(String(threadId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {string} [nodeId] Filter messages by node ID (agent node)
+         * @param {number} [limit] Maximum number of messages to return
+         * @param {number} [offset] Number of messages to skip
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreadMessages: async (threadId: string, nodeId?: string, limit?: number, offset?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'threadId' is not null or undefined
+            assertParamExists('getThreadMessages', 'threadId', threadId)
+            const localVarPath = `/api/v1/threads/{threadId}/messages`
+                .replace(`{${"threadId"}}`, encodeURIComponent(String(threadId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (nodeId !== undefined) {
+                localVarQueryParameter['nodeId'] = nodeId;
+            }
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+            if (offset !== undefined) {
+                localVarQueryParameter['offset'] = offset;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} graphId Filter by graph ID
+         * @param {number} [limit] Maximum number of threads to return
+         * @param {number} [offset] Number of threads to skip
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreads: async (graphId: string, limit?: number, offset?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'graphId' is not null or undefined
+            assertParamExists('getThreads', 'graphId', graphId)
+            const localVarPath = `/api/v1/threads`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (graphId !== undefined) {
+                localVarQueryParameter['graphId'] = graphId;
+            }
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+            if (offset !== undefined) {
+                localVarQueryParameter['offset'] = offset;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * ThreadsApi - functional programming interface
+ * @export
+ */
+export const ThreadsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = ThreadsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async deleteThread(threadId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.deleteThread(threadId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ThreadsApi.deleteThread']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} externalThreadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getThreadByExternalId(externalThreadId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ThreadDto>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getThreadByExternalId(externalThreadId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ThreadsApi.getThreadByExternalId']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getThreadById(threadId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ThreadDto>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getThreadById(threadId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ThreadsApi.getThreadById']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {string} [nodeId] Filter messages by node ID (agent node)
+         * @param {number} [limit] Maximum number of messages to return
+         * @param {number} [offset] Number of messages to skip
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getThreadMessages(threadId: string, nodeId?: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ThreadMessageDto>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getThreadMessages(threadId, nodeId, limit, offset, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ThreadsApi.getThreadMessages']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} graphId Filter by graph ID
+         * @param {number} [limit] Maximum number of threads to return
+         * @param {number} [offset] Number of threads to skip
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getThreads(graphId: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ThreadDto>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getThreads(graphId, limit, offset, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['ThreadsApi.getThreads']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * ThreadsApi - factory interface
+ * @export
+ */
+export const ThreadsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = ThreadsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteThread(threadId: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.deleteThread(threadId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} externalThreadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreadByExternalId(externalThreadId: string, options?: RawAxiosRequestConfig): AxiosPromise<ThreadDto> {
+            return localVarFp.getThreadByExternalId(externalThreadId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreadById(threadId: string, options?: RawAxiosRequestConfig): AxiosPromise<ThreadDto> {
+            return localVarFp.getThreadById(threadId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} threadId 
+         * @param {string} [nodeId] Filter messages by node ID (agent node)
+         * @param {number} [limit] Maximum number of messages to return
+         * @param {number} [offset] Number of messages to skip
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreadMessages(threadId: string, nodeId?: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): AxiosPromise<Array<ThreadMessageDto>> {
+            return localVarFp.getThreadMessages(threadId, nodeId, limit, offset, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} graphId Filter by graph ID
+         * @param {number} [limit] Maximum number of threads to return
+         * @param {number} [offset] Number of threads to skip
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getThreads(graphId: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): AxiosPromise<Array<ThreadDto>> {
+            return localVarFp.getThreads(graphId, limit, offset, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * ThreadsApi - object-oriented interface
+ * @export
+ * @class ThreadsApi
+ * @extends {BaseAPI}
+ */
+export class ThreadsApi extends BaseAPI {
+    /**
+     * 
+     * @param {string} threadId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ThreadsApi
+     */
+    public deleteThread(threadId: string, options?: RawAxiosRequestConfig) {
+        return ThreadsApiFp(this.configuration).deleteThread(threadId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} externalThreadId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ThreadsApi
+     */
+    public getThreadByExternalId(externalThreadId: string, options?: RawAxiosRequestConfig) {
+        return ThreadsApiFp(this.configuration).getThreadByExternalId(externalThreadId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} threadId 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ThreadsApi
+     */
+    public getThreadById(threadId: string, options?: RawAxiosRequestConfig) {
+        return ThreadsApiFp(this.configuration).getThreadById(threadId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} threadId 
+     * @param {string} [nodeId] Filter messages by node ID (agent node)
+     * @param {number} [limit] Maximum number of messages to return
+     * @param {number} [offset] Number of messages to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ThreadsApi
+     */
+    public getThreadMessages(threadId: string, nodeId?: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig) {
+        return ThreadsApiFp(this.configuration).getThreadMessages(threadId, nodeId, limit, offset, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} graphId Filter by graph ID
+     * @param {number} [limit] Maximum number of threads to return
+     * @param {number} [offset] Number of threads to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ThreadsApi
+     */
+    public getThreads(graphId: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig) {
+        return ThreadsApiFp(this.configuration).getThreads(graphId, limit, offset, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

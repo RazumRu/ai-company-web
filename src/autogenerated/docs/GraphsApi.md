@@ -10,7 +10,6 @@ All URIs are relative to *http://localhost*
 |[**executeTrigger**](#executetrigger) | **POST** /api/v1/graphs/{graphId}/triggers/{triggerId}/execute | |
 |[**findGraphById**](#findgraphbyid) | **GET** /api/v1/graphs/{id} | |
 |[**getAllGraphs**](#getallgraphs) | **GET** /api/v1/graphs | |
-|[**getNodeMessages**](#getnodemessages) | **GET** /api/v1/graphs/{graphId}/nodes/{nodeId}/messages | |
 |[**runGraph**](#rungraph) | **POST** /api/v1/graphs/{id}/run | |
 |[**updateGraph**](#updategraph) | **PUT** /api/v1/graphs/{id} | |
 
@@ -297,65 +296,6 @@ This endpoint does not have any parameters.
 ### Return type
 
 **Array<GraphDto>**
-
-### Authorization
-
-[bearer](../README.md#bearer)
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **getNodeMessages**
-> GraphMessagesResponseDto getNodeMessages()
-
-
-### Example
-
-```typescript
-import {
-    GraphsApi,
-    Configuration
-} from './api';
-
-const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
-
-let graphId: string; // (default to undefined)
-let nodeId: string; // (default to undefined)
-let threadId: string; //Full thread ID (e.g., \"graphId:threadComponent\") (default to undefined)
-let limit: number; //Maximum number of messages to return (optional) (default to undefined)
-
-const { status, data } = await apiInstance.getNodeMessages(
-    graphId,
-    nodeId,
-    threadId,
-    limit
-);
-```
-
-### Parameters
-
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **graphId** | [**string**] |  | defaults to undefined|
-| **nodeId** | [**string**] |  | defaults to undefined|
-| **threadId** | [**string**] | Full thread ID (e.g., \&quot;graphId:threadComponent\&quot;) | defaults to undefined|
-| **limit** | [**number**] | Maximum number of messages to return | (optional) defaults to undefined|
-
-
-### Return type
-
-**GraphMessagesResponseDto**
 
 ### Authorization
 

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button, Modal, Input, Typography } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Modal, Input, Typography } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
@@ -12,6 +12,8 @@ interface TriggerModalProps {
   nodeId?: string;
   nodeName?: string;
   loading?: boolean;
+  selectedThreadId?: string;
+  selectedThreadSource?: string | null;
 }
 
 export const TriggerModal = ({
@@ -21,20 +23,54 @@ export const TriggerModal = ({
   nodeId,
   nodeName,
   loading = false,
+  selectedThreadId,
+  selectedThreadSource,
 }: TriggerModalProps) => {
   const [triggerMessage, setTriggerMessage] = useState('');
-  const [threadSubId, setThreadSubId] = useState('');
+  const [showLongRunningHint, setShowLongRunningHint] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Start a 10s timer when loading becomes true and modal is visible
+    if (visible && loading) {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      timerRef.current = window.setTimeout(() => {
+        setShowLongRunningHint(true);
+      }, 10000);
+    } else {
+      // Reset when not loading or modal hidden
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setShowLongRunningHint(false);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [visible, loading]);
 
   const handleTrigger = async () => {
     if (triggerMessage.trim()) {
-      await onTrigger(triggerMessage, threadSubId.trim() || undefined);
+      await onTrigger(triggerMessage, selectedThreadId);
       setTriggerMessage('');
     }
   };
 
   const handleCancel = () => {
     setTriggerMessage('');
-    setThreadSubId('');
+    setShowLongRunningHint(false);
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
     onCancel();
   };
 
@@ -60,6 +96,28 @@ export const TriggerModal = ({
       <div style={{ marginBottom: 16 }}>
         <Text strong>Node: {nodeName || nodeId}</Text>
       </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <Text strong>Thread:</Text>
+        <div style={{ marginTop: 4 }}>
+          {!selectedThreadId ? (
+            <Text type="secondary">
+              No thread selected. A new thread will be created automatically on
+              first execution.
+            </Text>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Text type="success">Using selected thread: {selectedThreadId}</Text>
+              {selectedThreadSource ? (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Source: {selectedThreadSource}
+                </Text>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div style={{ marginBottom: 16 }}>
         <Text strong>Enter message for trigger:</Text>
       </div>
@@ -71,15 +129,14 @@ export const TriggerModal = ({
         style={{ marginBottom: 16 }}
       />
 
-      <div style={{ marginBottom: 16 }}>
-        <Text strong>Thread Sub-ID (optional):</Text>
-      </div>
-      <Input
-        value={threadSubId}
-        onChange={(e) => setThreadSubId(e.target.value)}
-        placeholder="Enter thread sub-ID (optional)..."
-        style={{ marginBottom: 16 }}
-      />
+      {showLongRunningHint ? (
+        <Alert
+          type="info"
+          showIcon
+          message="Trigger is running"
+          description="You can close this window; it will continue in background. After closing, the threads list will be refreshed."
+        />
+      ) : null}
     </Modal>
   );
 };

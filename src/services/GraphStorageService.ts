@@ -6,6 +6,9 @@ export interface GraphState {
   edges: GraphEdge[];
   viewport: Viewport;
   dirty?: boolean;
+  hasStructuralChanges?: boolean; // Changes to nodes/edges structure
+  hasPositionChanges?: boolean; // Changes to node positions or viewport
+  selectedThreadId?: string; // Currently selected thread
 }
 
 export class GraphStorageService {
@@ -47,6 +50,15 @@ export class GraphStorageService {
       ) {
         if (typeof state.dirty === 'undefined') {
           state.dirty = true;
+        }
+        if (typeof state.hasStructuralChanges === 'undefined') {
+          state.hasStructuralChanges = true;
+        }
+        if (typeof state.hasPositionChanges === 'undefined') {
+          state.hasPositionChanges = true;
+        }
+        if (typeof state.selectedThreadId === 'undefined') {
+          state.selectedThreadId = undefined;
         }
         return state as GraphState;
       }
