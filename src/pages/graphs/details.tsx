@@ -475,6 +475,7 @@ export const GraphPage = () => {
         const executeTriggerDto: ExecuteTriggerDto = {
           messages: [triggerMessage],
           threadSubId: finalThreadSubId,
+          async: true,
         };
 
         await graphsApi.executeTrigger(id, triggerNodeId, executeTriggerDto);
@@ -994,7 +995,9 @@ export const GraphPage = () => {
                     <Typography.Text
                       style={{ fontSize: '12px', lineHeight: 1.2 }}>
                       {(() => {
-                        const t = threads.find((thr) => thr.id === selectedThreadId);
+                        const t = threads.find(
+                          (thr) => thr.id === selectedThreadId,
+                        );
                         return t?.name || selectedThreadId;
                       })()}
                     </Typography.Text>
@@ -1208,7 +1211,9 @@ export const GraphPage = () => {
         nodeName={triggerNodeName || undefined}
         loading={triggerLoading}
         selectedThreadId={selectedThreadId}
-        selectedThreadName={threads.find((t) => t.id === selectedThreadId)?.name ?? null}
+        selectedThreadName={
+          threads.find((t) => t.id === selectedThreadId)?.name ?? null
+        }
         selectedThreadSource={
           threads.find((t) => t.id === selectedThreadId)?.source ?? null
         }

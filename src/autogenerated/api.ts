@@ -217,6 +217,12 @@ export interface ExecuteTriggerDto {
      * @memberof ExecuteTriggerDto
      */
     'threadSubId'?: string;
+    /**
+     * If true, do not wait for execution to finish (fire-and-forget).
+     * @type {boolean}
+     * @memberof ExecuteTriggerDto
+     */
+    'async'?: boolean;
 }
 /**
  * 
