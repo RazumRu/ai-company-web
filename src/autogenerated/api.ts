@@ -546,6 +546,12 @@ export interface ThreadDto {
      * @memberof ThreadDto
      */
     'source'?: string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'name'?: string | null;
 }
 /**
  * 
@@ -864,18 +870,6 @@ export interface ThreadMessageDtoMessageAnyOf3Content {
      * @memberof ThreadMessageDtoMessageAnyOf3Content
      */
     'stderr': string;
-    /**
-     * The command that was executed
-     * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf3Content
-     */
-    'cmd': string;
-    /**
-     * Whether the command failed
-     * @type {boolean}
-     * @memberof ThreadMessageDtoMessageAnyOf3Content
-     */
-    'fail'?: boolean;
 }
 /**
  * 

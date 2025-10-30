@@ -381,7 +381,7 @@ export const CustomNode = ({
             </Tooltip>
           );
         })}
-        {(!nodeTemplate?.outputs || nodeTemplate.outputs.length === 0) && (
+        {nodeTemplate?.outputs === undefined && (
           <Tooltip title="output" placement="left" mouseEnterDelay={0.1}>
             <Handle
               type="source"

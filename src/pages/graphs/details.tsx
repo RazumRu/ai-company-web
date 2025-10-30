@@ -828,63 +828,6 @@ export const GraphPage = () => {
               alignItems: 'center',
               gap: 8,
             }}>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-              }}>
-              {(() => {
-                const t = threads.find((thr) => thr.id === selectedThreadId);
-                const source = t?.source;
-                const label = (
-                  <Typography.Text
-                    strong
-                    style={{ fontSize: '14px', lineHeight: 1 }}>
-                    Thread
-                  </Typography.Text>
-                );
-                return source ? (
-                  <Tooltip title={`Source: ${source}`}>{label}</Tooltip>
-                ) : (
-                  label
-                );
-              })()}
-              {selectedThreadId ? (
-                <>
-                  <Typography.Text
-                    style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                    {selectedThreadId}
-                  </Typography.Text>
-                  <Typography.Text
-                    type="secondary"
-                    style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                    {(() => {
-                      const t = threads.find(
-                        (thr) => thr.id === selectedThreadId,
-                      );
-                      return t
-                        ? `${new Date(t.createdAt).toLocaleString()} | ${t.source || 'unknown source'}`
-                        : '';
-                    })()}
-                  </Typography.Text>
-                </>
-              ) : (
-                <>
-                  <Typography.Text
-                    type="secondary"
-                    style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                    No active thread.
-                  </Typography.Text>
-                  <Typography.Text
-                    type="secondary"
-                    style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                    It will be created automatically after first execution.
-                  </Typography.Text>
-                </>
-              )}
-            </div>
-
             <Popover
               open={threadPopoverVisible}
               placement="bottomLeft"
@@ -970,7 +913,7 @@ export const GraphPage = () => {
                           <Typography.Text
                             strong
                             style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                            {thread.id}
+                            {thread.name || thread.id}
                           </Typography.Text>
                           <Typography.Text
                             type="secondary"
@@ -1011,12 +954,78 @@ export const GraphPage = () => {
                     ))
                   )}
                 </div>
-              }>
-              <Button
-                size="small"
-                onClick={() => setThreadPopoverVisible((v) => !v)}>
-                Choose thread
-              </Button>
+              }
+              trigger="click"
+              onOpenChange={setThreadPopoverVisible}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}>
+                {(() => {
+                  const t = threads.find((thr) => thr.id === selectedThreadId);
+                  const source = t?.source;
+                  const label = (
+                    <Typography.Text
+                      strong
+                      style={{ fontSize: '14px', lineHeight: 1 }}>
+                      Thread
+                    </Typography.Text>
+                  );
+                  return source ? (
+                    <Tooltip title={`Source: ${source}`}>{label}</Tooltip>
+                  ) : (
+                    label
+                  );
+                })()}
+                {selectedThreadId ? (
+                  <>
+                    <Typography.Text
+                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                      {(() => {
+                        const t = threads.find((thr) => thr.id === selectedThreadId);
+                        return t?.name || selectedThreadId;
+                      })()}
+                    </Typography.Text>
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                      {(() => {
+                        const t = threads.find(
+                          (thr) => thr.id === selectedThreadId,
+                        );
+                        return t
+                          ? `${new Date(t.createdAt).toLocaleString()} | ${t.source || 'unknown source'}`
+                          : '';
+                      })()}
+                    </Typography.Text>
+                  </>
+                ) : (
+                  <>
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                      No active thread.
+                    </Typography.Text>
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                      It will be created automatically after first execution.
+                    </Typography.Text>
+                  </>
+                )}
+              </div>
             </Popover>
 
             {selectedThreadId && (
@@ -1199,6 +1208,7 @@ export const GraphPage = () => {
         nodeName={triggerNodeName || undefined}
         loading={triggerLoading}
         selectedThreadId={selectedThreadId}
+        selectedThreadName={threads.find((t) => t.id === selectedThreadId)?.name ?? null}
         selectedThreadSource={
           threads.find((t) => t.id === selectedThreadId)?.source ?? null
         }

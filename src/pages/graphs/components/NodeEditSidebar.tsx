@@ -544,7 +544,7 @@ export const NodeEditSidebar = ({
       rules,
       extra: descriptionNode,
       style: {
-        marginBottom: '20px',
+        marginBottom: '10px',
       },
     } as const;
 
@@ -569,7 +569,7 @@ export const NodeEditSidebar = ({
               required={required}
               rules={rules}
               extra={descriptionNode}
-              style={{ marginBottom: '20px' }}>
+              style={{ marginBottom: '10px' }}>
               <div style={{ position: 'relative' }}>
                 <Form.Item name={key} noStyle>
                   <Input.TextArea
