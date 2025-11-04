@@ -558,7 +558,23 @@ export interface ThreadDto {
      * @memberof ThreadDto
      */
     'name'?: string | null;
+    /**
+     * Thread execution status
+     * @type {string}
+     * @memberof ThreadDto
+     */
+    'status': ThreadDtoStatusEnum;
 }
+
+export const ThreadDtoStatusEnum = {
+    Running: 'running',
+    Done: 'done',
+    NeedMoreInfo: 'need_more_info',
+    Stopped: 'stopped'
+} as const;
+
+export type ThreadDtoStatusEnum = typeof ThreadDtoStatusEnum[keyof typeof ThreadDtoStatusEnum];
+
 /**
  * 
  * @export

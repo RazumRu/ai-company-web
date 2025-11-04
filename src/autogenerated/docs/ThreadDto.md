@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **metadata** | **{ [key: string]: any; }** |  | [optional] [default to undefined]
 **source** | **string** |  | [optional] [default to undefined]
 **name** | **string** |  | [optional] [default to undefined]
+**status** | **string** | Thread execution status | [default to undefined]
 
 ## Example
 
@@ -28,6 +29,7 @@ const instance: ThreadDto = {
     metadata,
     source,
     name,
+    status,
 };
 ```
 
