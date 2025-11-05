@@ -32,6 +32,8 @@ import {
   CreateGraphDtoSchemaNodesInner,
   ExecuteTriggerDto,
   GraphDto,
+  GraphDtoStatusEnum,
+  GraphNodeWithStatusDto,
   TemplateDto,
   ThreadDto,
   ThreadDtoStatusEnum,
@@ -57,19 +59,27 @@ import type {
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
 
-const THREAD_STATUS_STYLES: Record<ThreadDto['status'], { label: string; color: string }> = {
+const THREAD_STATUS_STYLES: Record<
+  ThreadDto['status'],
+  { label: string; color: string }
+> = {
   [ThreadDtoStatusEnum.Running]: { label: 'Running', color: '#1890ff' },
   [ThreadDtoStatusEnum.Done]: { label: 'Done', color: '#52c41a' },
-  [ThreadDtoStatusEnum.NeedMoreInfo]: { label: 'Need More Info', color: '#faad14' },
+  [ThreadDtoStatusEnum.NeedMoreInfo]: {
+    label: 'Need More Info',
+    color: '#faad14',
+  },
   [ThreadDtoStatusEnum.Stopped]: { label: 'Stopped', color: '#ff4d4f' },
 } as const;
 
 const getThreadStatusDisplay = (status?: ThreadDto['status']) => {
   if (!status) return null;
-  return THREAD_STATUS_STYLES[status] ?? {
-    label: status.replace(/_/g, ' '),
-    color: '#d9d9d9',
-  };
+  return (
+    THREAD_STATUS_STYLES[status] ?? {
+      label: status.replace(/_/g, ' '),
+      color: '#d9d9d9',
+    }
+  );
 };
 
 export const GraphPage = () => {
@@ -120,6 +130,10 @@ export const GraphPage = () => {
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [threadPopoverVisible, setThreadPopoverVisible] = useState(false);
   const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null);
+  const [compiledNodesMap, setCompiledNodesMap] = useState<
+    Record<string, GraphNodeWithStatusDto>
+  >({});
+  const [compiledNodesLoading, setCompiledNodesLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -303,9 +317,62 @@ export const GraphPage = () => {
     }
   }, [id]);
 
+  const fetchCompiledNodes = useCallback(
+    async (options?: {
+      threadId?: string;
+      graphStatusOverride?: GraphDtoStatusEnum | null;
+    }) => {
+      if (!id) return;
+
+      const currentGraphStatus =
+        options &&
+        Object.prototype.hasOwnProperty.call(options, 'graphStatusOverride')
+          ? options.graphStatusOverride
+          : (graph?.status ?? null);
+
+      if (currentGraphStatus !== GraphDtoStatusEnum.Running) {
+        setCompiledNodesMap({});
+        setCompiledNodesLoading(false);
+        return;
+      }
+
+      const threadIdToUse =
+        options && Object.prototype.hasOwnProperty.call(options, 'threadId')
+          ? options.threadId
+          : selectedThreadId;
+
+      try {
+        setCompiledNodesLoading(true);
+        const response = await graphsApi.getCompiledNodes(
+          id,
+          threadIdToUse || undefined,
+        );
+        const nodesWithStatus = response.data || [];
+        setCompiledNodesMap(() => {
+          const next = nodesWithStatus.reduce<
+            Record<string, GraphNodeWithStatusDto>
+          >((acc, node) => {
+            acc[node.id] = node;
+            return acc;
+          }, {});
+          return next;
+        });
+      } catch (error) {
+        console.error('Error loading compiled nodes:', error);
+      } finally {
+        setCompiledNodesLoading(false);
+      }
+    },
+    [graph?.status, id, selectedThreadId],
+  );
+
   useEffect(() => {
     loadThreads();
   }, [loadThreads]);
+
+  useEffect(() => {
+    fetchCompiledNodes();
+  }, [fetchCompiledNodes]);
 
   useEffect(() => {
     if (!loading) {
@@ -463,8 +530,16 @@ export const GraphPage = () => {
           selectedThreadId: newThreadId,
         });
       }
+
+      void fetchCompiledNodes({ threadId: newThreadId });
     },
-    [id, hasUnsavedChanges, hasStructuralChanges, hasPositionChanges],
+    [
+      id,
+      hasUnsavedChanges,
+      hasStructuralChanges,
+      hasPositionChanges,
+      fetchCompiledNodes,
+    ],
   );
 
   const handleThreadSelect = useCallback(
@@ -497,6 +572,7 @@ export const GraphPage = () => {
 
         await graphsApi.executeTrigger(id, triggerNodeId, executeTriggerDto);
         message.success('Trigger sent successfully');
+        void fetchCompiledNodes();
         setTriggerModalVisible(false);
         setTriggerNodeId(null);
         setTriggerNodeName(null);
@@ -524,7 +600,7 @@ export const GraphPage = () => {
         setTriggerLoading(false);
       }
     },
-    [triggerNodeId, id, threads, selectedThreadId],
+    [triggerNodeId, id, threads, selectedThreadId, fetchCompiledNodes],
   );
 
   const handleViewportChange = useCallback(
@@ -742,11 +818,19 @@ export const GraphPage = () => {
         message.success('Graph stopped successfully');
         const response = await graphsApi.findGraphById(id);
         setGraph(response.data);
+        void fetchCompiledNodes({
+          graphStatusOverride: response.data.status,
+          threadId: selectedThreadId,
+        });
       } else {
         await handleSave();
         const response = await graphsApi.runGraph(id);
         const updatedGraph = response.data;
         setGraph(updatedGraph);
+        void fetchCompiledNodes({
+          graphStatusOverride: updatedGraph.status,
+          threadId: selectedThreadId,
+        });
 
         // Check if the graph run returned an error status
         if (updatedGraph.status === 'error') {
@@ -1229,6 +1313,8 @@ export const GraphPage = () => {
               onValidationError={(error) => {
                 message.error(`Connection validation failed: ${error}`);
               }}
+              compiledNodes={compiledNodesMap}
+              compiledNodesLoading={compiledNodesLoading}
             />
           </div>
         </Content>
@@ -1243,6 +1329,10 @@ export const GraphPage = () => {
           onTriggerClick={handleTriggerClick}
           selectedThreadId={selectedThreadId}
           graphId={id}
+          compiledNode={
+            selectedNode ? compiledNodesMap[selectedNode.id] : undefined
+          }
+          compiledNodesLoading={compiledNodesLoading}
         />
       </Layout>
 

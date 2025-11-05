@@ -13,6 +13,8 @@ docs/CreateGraphDtoSchemaNodesInner.md
 docs/ExecuteTriggerDto.md
 docs/ExecuteTriggerResponseDto.md
 docs/GraphDto.md
+docs/GraphNodeWithStatusDto.md
+docs/GraphNodeWithStatusDtoMetadata.md
 docs/GraphsApi.md
 docs/TemplateDto.md
 docs/TemplateDtoInputsInner.md

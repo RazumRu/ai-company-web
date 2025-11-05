@@ -329,6 +329,105 @@ export type GraphDtoStatusEnum = typeof GraphDtoStatusEnum[keyof typeof GraphDto
 /**
  * 
  * @export
+ * @interface GraphNodeWithStatusDto
+ */
+export interface GraphNodeWithStatusDto {
+    /**
+     * Node ID
+     * @type {string}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'id': string;
+    /**
+     * Display name for node
+     * @type {string}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'name': string;
+    /**
+     * Template identifier
+     * @type {string}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'template': string;
+    /**
+     * Node kind
+     * @type {string}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'type': GraphNodeWithStatusDtoTypeEnum;
+    /**
+     * Current node status
+     * @type {string}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'status': GraphNodeWithStatusDtoStatusEnum;
+    /**
+     * 
+     * @type {any}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'config': any;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'error'?: string | null;
+    /**
+     * 
+     * @type {GraphNodeWithStatusDtoMetadata}
+     * @memberof GraphNodeWithStatusDto
+     */
+    'metadata'?: GraphNodeWithStatusDtoMetadata;
+}
+
+export const GraphNodeWithStatusDtoTypeEnum = {
+    Runtime: 'runtime',
+    Tool: 'tool',
+    SimpleAgent: 'simpleAgent',
+    Trigger: 'trigger',
+    Resource: 'resource'
+} as const;
+
+export type GraphNodeWithStatusDtoTypeEnum = typeof GraphNodeWithStatusDtoTypeEnum[keyof typeof GraphNodeWithStatusDtoTypeEnum];
+export const GraphNodeWithStatusDtoStatusEnum = {
+    Stopped: 'stopped',
+    Starting: 'starting',
+    Running: 'running',
+    Idle: 'idle'
+} as const;
+
+export type GraphNodeWithStatusDtoStatusEnum = typeof GraphNodeWithStatusDtoStatusEnum[keyof typeof GraphNodeWithStatusDtoStatusEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphNodeWithStatusDtoMetadata
+ */
+export interface GraphNodeWithStatusDtoMetadata {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphNodeWithStatusDtoMetadata
+     */
+    'threadId'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphNodeWithStatusDtoMetadata
+     */
+    'runId'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphNodeWithStatusDtoMetadata
+     */
+    'parentThreadId'?: string;
+}
+/**
+ * 
+ * @export
  * @interface TemplateDto
  */
 export interface TemplateDto {
@@ -1220,6 +1319,53 @@ export const GraphsApiAxiosParamCreator = function (configuration?: Configuratio
         /**
          * 
          * @param {string} id 
+         * @param {string} [threadId] 
+         * @param {string} [runId] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getCompiledNodes: async (id: string, threadId?: string, runId?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('getCompiledNodes', 'id', id)
+            const localVarPath = `/api/v1/graphs/{id}/nodes`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (threadId !== undefined) {
+                localVarQueryParameter['threadId'] = threadId;
+            }
+
+            if (runId !== undefined) {
+                localVarQueryParameter['runId'] = runId;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} id 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -1383,6 +1529,20 @@ export const GraphsApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {string} id 
+         * @param {string} [threadId] 
+         * @param {string} [runId] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getCompiledNodes(id: string, threadId?: string, runId?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<GraphNodeWithStatusDto>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getCompiledNodes(id, threadId, runId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['GraphsApi.getCompiledNodes']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} id 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -1469,6 +1629,17 @@ export const GraphsApiFactory = function (configuration?: Configuration, basePat
          */
         getAllGraphs(options?: RawAxiosRequestConfig): AxiosPromise<Array<GraphDto>> {
             return localVarFp.getAllGraphs(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} id 
+         * @param {string} [threadId] 
+         * @param {string} [runId] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getCompiledNodes(id: string, threadId?: string, runId?: string, options?: RawAxiosRequestConfig): AxiosPromise<Array<GraphNodeWithStatusDto>> {
+            return localVarFp.getCompiledNodes(id, threadId, runId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1564,6 +1735,19 @@ export class GraphsApi extends BaseAPI {
      */
     public getAllGraphs(options?: RawAxiosRequestConfig) {
         return GraphsApiFp(this.configuration).getAllGraphs(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {string} [threadId] 
+     * @param {string} [runId] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof GraphsApi
+     */
+    public getCompiledNodes(id: string, threadId?: string, runId?: string, options?: RawAxiosRequestConfig) {
+        return GraphsApiFp(this.configuration).getCompiledNodes(id, threadId, runId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
