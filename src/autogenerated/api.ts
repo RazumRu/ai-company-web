@@ -319,6 +319,7 @@ export interface GraphDto {
 
 export const GraphDtoStatusEnum = {
     Created: 'created',
+    Compiling: 'compiling',
     Running: 'running',
     Stopped: 'stopped',
     Error: 'error'

@@ -27,6 +27,15 @@ import {
 } from '@ant-design/icons';
 import { useEdgesState, useNodesState, Viewport } from '@xyflow/react';
 import { graphsApi, templatesApi, threadsApi } from '../../api';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import type {
+  GraphUpdateNotification,
+  AgentMessageNotification,
+  ThreadCreateNotification,
+  ThreadUpdateNotification,
+  ThreadDeleteNotification,
+  GraphNodeUpdateNotification,
+} from '../../services/WebSocketTypes';
 import {
   CreateGraphDtoSchemaEdgesInner,
   CreateGraphDtoSchemaNodesInner,
@@ -72,6 +81,28 @@ const THREAD_STATUS_STYLES: Record<
   [ThreadDtoStatusEnum.Stopped]: { label: 'Stopped', color: '#ff4d4f' },
 } as const;
 
+const ensureThreadStatusPulseStyle = (() => {
+  let injected = false;
+  return () => {
+    if (injected || typeof document === 'undefined') return;
+    if (document.getElementById('thread-status-pulse-style')) {
+      injected = true;
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = 'thread-status-pulse-style';
+    style.textContent = `
+      @keyframes thread-status-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.45); }
+        70% { box-shadow: 0 0 0 8px rgba(24, 144, 255, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(24, 144, 255, 0); }
+      }
+    `;
+    document.head.appendChild(style);
+    injected = true;
+  };
+})();
+
 const getThreadStatusDisplay = (status?: ThreadDto['status']) => {
   if (!status) return null;
   return (
@@ -85,6 +116,10 @@ const getThreadStatusDisplay = (status?: ThreadDto['status']) => {
 export const GraphPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    ensureThreadStatusPulseStyle();
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,12 +151,17 @@ export const GraphPage = () => {
   const [triggerNodeName, setTriggerNodeName] = useState<string | null>(null);
   const [triggerLoading, setTriggerLoading] = useState(false);
   const triggerStartedRef = useRef(false);
+  // Stores externalThreadId to match against thread.update socket event
+  const pendingThreadSelectionRef = useRef<string | null>(null);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState('');
 
   const [actionLoading, setActionLoading] = useState(false);
   const [graphError, setGraphError] = useState<string | null>(null);
+
+  const isGraphRunning = graph?.status === GraphDtoStatusEnum.Running;
+  const isGraphCompiling = graph?.status === GraphDtoStatusEnum.Compiling;
 
   const [threads, setThreads] = useState<ThreadDto[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<
@@ -330,6 +370,11 @@ export const GraphPage = () => {
           ? options.graphStatusOverride
           : (graph?.status ?? null);
 
+      if (currentGraphStatus === GraphDtoStatusEnum.Compiling) {
+        setCompiledNodesLoading(false);
+        return;
+      }
+
       if (currentGraphStatus !== GraphDtoStatusEnum.Running) {
         setCompiledNodesMap({});
         setCompiledNodesLoading(false);
@@ -373,6 +418,213 @@ export const GraphPage = () => {
   useEffect(() => {
     fetchCompiledNodes();
   }, [fetchCompiledNodes]);
+
+  // WebSocket integration for real-time updates
+  const { isConnected } = useWebSocket({
+    autoConnect: true,
+    graphId: id,
+    handlers: {
+      // Handle graph state changes
+      'graph.update': (notification) => {
+        const data = notification as GraphUpdateNotification;
+        if (data.graphId !== id) return;
+
+        const newStatus = data.data.status;
+
+        if (
+          newStatus === GraphDtoStatusEnum.Compiling ||
+          newStatus === GraphDtoStatusEnum.Stopped
+        ) {
+          setCompiledNodesMap({});
+        }
+
+        setGraph((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            status: newStatus,
+          };
+        });
+      },
+
+      // Handle agent messages
+      'agent.message': (notification) => {
+        const data = notification as AgentMessageNotification;
+        if (data.graphId !== id) return;
+      },
+
+      // Handle thread creation
+      'thread.create': (notification) => {
+        const data = notification as ThreadCreateNotification;
+        if (data.graphId !== id) return;
+
+        const externalThreadId = data.threadId;
+        if (!externalThreadId) {
+          triggerStartedRef.current = false;
+          return;
+        }
+
+        void (async () => {
+          try {
+            const response =
+              await threadsApi.getThreadByExternalId(externalThreadId);
+            const fetchedThread = response.data;
+            if (!fetchedThread) {
+              return;
+            }
+
+            setThreads((prevThreads) => {
+              const exists = prevThreads.some((t) => t.id === fetchedThread.id);
+              if (exists) {
+                return prevThreads;
+              }
+              return [fetchedThread, ...prevThreads];
+            });
+
+            if (
+              pendingThreadSelectionRef.current &&
+              pendingThreadSelectionRef.current === externalThreadId
+            ) {
+              handleThreadChange(fetchedThread.id);
+              pendingThreadSelectionRef.current = null;
+            }
+          } catch (error) {
+            console.error('Error fetching thread by external ID:', error);
+          } finally {
+            triggerStartedRef.current = false;
+          }
+        })();
+      },
+
+      // Handle thread updates
+      'thread.update': (notification) => {
+        const data = notification as ThreadUpdateNotification;
+        if (data.graphId !== id) return;
+
+        const updatedThread = data.data;
+        const externalThreadId = updatedThread.externalThreadId;
+
+        setThreads((prevThreads) => {
+          const existingIndex = prevThreads.findIndex(
+            (thread) => thread.id === updatedThread.id,
+          );
+
+          if (existingIndex === -1) {
+            return prevThreads;
+          }
+
+          const updatedThreads = [...prevThreads];
+          updatedThreads[existingIndex] = updatedThread;
+          return updatedThreads;
+        });
+
+        if (
+          externalThreadId &&
+          pendingThreadSelectionRef.current &&
+          pendingThreadSelectionRef.current === externalThreadId
+        ) {
+          handleThreadChange(updatedThread.id);
+          pendingThreadSelectionRef.current = null;
+        }
+
+        triggerStartedRef.current = false;
+      },
+
+      // Handle thread deletions
+      'thread.delete': (notification) => {
+        const data = notification as ThreadDeleteNotification;
+        if (data.graphId !== id) return;
+
+        const deletedThread = data.data;
+
+        setThreads((prevThreads) =>
+          prevThreads.filter((thread) => thread.id !== deletedThread.id),
+        );
+
+        if (deletedThread.externalThreadId === pendingThreadSelectionRef.current) {
+          pendingThreadSelectionRef.current = null;
+        }
+
+        if (selectedThreadId === deletedThread.id) {
+          handleThreadChange(undefined);
+        }
+
+        triggerStartedRef.current = false;
+      },
+
+      // Handle node status updates
+      'graph.node.update': (notification) => {
+        const data = notification as GraphNodeUpdateNotification;
+        if (data.graphId !== id) return;
+
+        // Update compiled nodes map with new status
+        setCompiledNodesMap((prev) => {
+          const existing = prev[data.nodeId];
+          const nextStatus = data.data.status;
+          const nextError = data.data.error ?? existing?.error ?? null;
+          const nextMetadata = data.data.metadata ?? existing?.metadata;
+
+          if (!existing) {
+            const graphNode = nodesRef.current.find(
+              (n) => n.id === data.nodeId,
+            );
+            if (!graphNode) {
+              return prev;
+            }
+
+            const nodeData = graphNode.data as unknown as GraphNodeData;
+            const rawKind = (nodeData.templateKind as string | undefined) ?? '';
+            const normalizedKind = rawKind.toLowerCase();
+            let inferredType: GraphNodeWithStatusDto['type'] = 'runtime';
+            if (normalizedKind === 'tool') {
+              inferredType = 'tool';
+            } else if (normalizedKind === 'simpleagent') {
+              inferredType = 'simpleAgent';
+            } else if (normalizedKind === 'trigger') {
+              inferredType = 'trigger';
+            } else if (normalizedKind === 'resource') {
+              inferredType = 'resource';
+            }
+
+            return {
+              ...prev,
+              [data.nodeId]: {
+                id: data.nodeId,
+                name:
+                  (nodeData.label as string) ||
+                  (nodeData.template as string) ||
+                  data.nodeId,
+                template: (nodeData.template as string) || '',
+                type: inferredType,
+                status: nextStatus,
+                config: nodeData.config ?? {},
+                error: nextError,
+                metadata: nextMetadata,
+              },
+            };
+          }
+
+          return {
+            ...prev,
+            [data.nodeId]: {
+              ...existing,
+              status: nextStatus,
+              error: nextError,
+              metadata: nextMetadata,
+            },
+          };
+        });
+      },
+    },
+  });
+
+  // Show connection status feedback
+  useEffect(() => {
+    // Connection status is tracked but not logged
+  }, [isConnected, id]);
 
   useEffect(() => {
     if (!loading) {
@@ -551,56 +803,63 @@ export const GraphPage = () => {
   );
 
   const handleTriggerNode = useCallback(
-    async (triggerMessage: string, selectedThreadId?: string) => {
+    async (triggerMessage: string, targetThreadId?: string) => {
       if (!triggerNodeId || !id) return;
 
       try {
-        triggerStartedRef.current = true;
         setTriggerLoading(true);
 
         await handleSave();
 
-        const selectedThread = threads.find((t) => t.id === selectedThreadId);
-        const parts = selectedThread?.externalThreadId.split(':') || [];
+        const threadForExecution = threads.find((t) => t.id === targetThreadId);
+        const parts = threadForExecution?.externalThreadId.split(':') || [];
         const finalThreadSubId = parts[parts.length - 1];
 
         const executeTriggerDto: ExecuteTriggerDto = {
           messages: [triggerMessage],
-          threadSubId: finalThreadSubId,
           async: true,
+          ...(finalThreadSubId ? { threadSubId: finalThreadSubId } : {}),
         };
 
-        await graphsApi.executeTrigger(id, triggerNodeId, executeTriggerDto);
+        const response = await graphsApi.executeTrigger(
+          id,
+          triggerNodeId,
+          executeTriggerDto,
+        );
+
+        // response.data.threadId is the externalThreadId from LangChain
+        const returnedExternalThreadId = response.data?.threadId;
+        const currentExternalThreadId = threadForExecution?.externalThreadId;
+        const shouldSelectNewThread =
+          returnedExternalThreadId &&
+          returnedExternalThreadId !== currentExternalThreadId;
+
+        // Store externalThreadId to match against thread.update socket event
+        triggerStartedRef.current = Boolean(shouldSelectNewThread);
+        pendingThreadSelectionRef.current = shouldSelectNewThread
+          ? returnedExternalThreadId
+          : null;
+
         message.success('Trigger sent successfully');
-        void fetchCompiledNodes();
         setTriggerModalVisible(false);
         setTriggerNodeId(null);
         setTriggerNodeName(null);
-
-        if (selectedThreadId === undefined) {
-          try {
-            const response = await threadsApi.getThreads(id, 100, 0);
-            const updatedThreads = response.data || [];
-            setThreads(updatedThreads);
-
-            if (updatedThreads.length > 0) {
-              setSelectedThreadId(updatedThreads[0].id);
-            }
-          } catch (error) {
-            console.error('Error refreshing threads:', error);
-          }
-        }
       } catch (error) {
+        triggerStartedRef.current = false;
+        pendingThreadSelectionRef.current = null;
         console.error('Error triggering node:', error);
         const errorMessage =
           error instanceof Error ? error.message : 'Failed to trigger node';
         message.error(errorMessage);
         throw error;
       } finally {
+        if (!pendingThreadSelectionRef.current) {
+          triggerStartedRef.current = false;
+        }
         setTriggerLoading(false);
       }
     },
-    [triggerNodeId, id, threads, selectedThreadId, fetchCompiledNodes],
+    [triggerNodeId, id, threads],
   );
 
   const handleViewportChange = useCallback(
@@ -808,12 +1067,15 @@ export const GraphPage = () => {
 
   const handleGraphAction = async () => {
     if (!graph || !id) return;
+    if (graph.status === GraphDtoStatusEnum.Compiling) {
+      return;
+    }
 
     try {
       setActionLoading(true);
       setGraphError(null);
 
-      if (graph.status === 'running') {
+      if (graph.status === GraphDtoStatusEnum.Running) {
         await graphsApi.destroyGraph(id);
         message.success('Graph stopped successfully');
         const response = await graphsApi.findGraphById(id);
@@ -833,7 +1095,7 @@ export const GraphPage = () => {
         });
 
         // Check if the graph run returned an error status
-        if (updatedGraph.status === 'error') {
+        if (updatedGraph.status === GraphDtoStatusEnum.Error) {
           message.error('Graph execution failed');
           setGraphError('Graph execution failed');
         } else {
@@ -987,6 +1249,8 @@ export const GraphPage = () => {
                   ) : (
                     threads.map((thread) => {
                       const statusMeta = getThreadStatusDisplay(thread.status);
+                      const isThreadRunning =
+                        thread.status === ThreadDtoStatusEnum.Running;
                       return (
                         <div
                           key={thread.id}
@@ -1036,6 +1300,12 @@ export const GraphPage = () => {
                                     fontSize: '11px',
                                     lineHeight: '18px',
                                     padding: '0 8px',
+                                    boxShadow: isThreadRunning
+                                      ? '0 0 0 0 rgba(24, 144, 255, 0.45)'
+                                      : 'none',
+                                    animation: isThreadRunning
+                                      ? 'thread-status-pulse 1.5s ease-out infinite'
+                                      : undefined,
                                   }}>
                                   {statusMeta.label}
                                 </Tag>
@@ -1144,6 +1414,14 @@ export const GraphPage = () => {
                                 fontSize: '11px',
                                 lineHeight: '18px',
                                 padding: '0 8px',
+                                boxShadow:
+                                  t?.status === ThreadDtoStatusEnum.Running
+                                    ? '0 0 0 0 rgba(24, 144, 255, 0.45)'
+                                    : 'none',
+                                animation:
+                                  t?.status === ThreadDtoStatusEnum.Running
+                                    ? 'thread-status-pulse 1.5s ease-out infinite'
+                                    : undefined,
                               }}>
                               {statusMeta.label}
                             </Tag>
@@ -1248,17 +1526,15 @@ export const GraphPage = () => {
           </div>
           {graph && (
             <Button
-              type={graph.status === 'running' ? 'default' : 'primary'}
-              icon={
-                graph.status === 'running' ? (
-                  <StopOutlined />
-                ) : (
-                  <PlayCircleOutlined />
-                )
-              }
-              loading={actionLoading}
+              type={isGraphRunning ? 'default' : 'primary'}
+              icon={isGraphRunning ? <StopOutlined /> : <PlayCircleOutlined />}
+              loading={actionLoading || isGraphCompiling}
               onClick={handleGraphAction}>
-              {graph.status === 'running' ? 'Stop Graph' : 'Run Graph'}
+              {isGraphRunning
+                ? 'Stop Graph'
+                : isGraphCompiling
+                  ? 'Compiling...'
+                  : 'Run Graph'}
             </Button>
           )}
         </div>
@@ -1345,17 +1621,12 @@ export const GraphPage = () => {
 
       <TriggerModal
         visible={triggerModalVisible}
-        onCancel={async () => {
+        onCancel={() => {
           setTriggerModalVisible(false);
           setTriggerNodeId(null);
           setTriggerNodeName(null);
-          if (triggerStartedRef.current) {
-            try {
-              await loadThreads();
-            } finally {
-              triggerStartedRef.current = false;
-            }
-          }
+          triggerStartedRef.current = false;
+          pendingThreadSelectionRef.current = null;
         }}
         onTrigger={handleTriggerNode}
         nodeId={triggerNodeId || undefined}
