@@ -827,7 +827,6 @@ export const NodeEditSidebar = ({
               size="small"
               style={{ marginTop: 0 }}
               labelCol={{ style: { paddingBottom: 4 } }}
-              preserve={false}
               onValuesChange={handleFormChange}>
               {formFields.map(renderFormField)}
             </Form>
@@ -887,6 +886,12 @@ export const NodeEditSidebar = ({
             onLoadMoreMessages={loadMoreMessages}
             hasMoreMessages={hasMoreMessages}
             loadingMore={loadingMoreMessages}
+            isNodeRunning={
+              isGraphRunning &&
+              (typeof compiledNode?.status === 'string'
+                ? compiledNode.status.toLowerCase() === 'running'
+                : true)
+            }
           />
         </div>
       </div>

@@ -6,6 +6,7 @@
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../config';
 import type {
+  GraphRevisionEventType,
   SocketNotification,
   ServerErrorNotification,
   SubscribeGraphPayload,
@@ -128,6 +129,20 @@ class WebSocketService {
     this.socket.on('graph.node.update', (data: SocketNotification) => {
       console.log('[WebSocket] Graph node update:', data);
       this.emitToHandlers('graph.node.update', data);
+    });
+
+    const revisionEvents: GraphRevisionEventType[] = [
+      'graph.revision.create',
+      'graph.revision.applying',
+      'graph.revision.applied',
+      'graph.revision.failed',
+    ];
+
+    revisionEvents.forEach((eventType) => {
+      this.socket?.on(eventType, (data: SocketNotification) => {
+        console.log(`[WebSocket] ${eventType}:`, data);
+        this.emitToHandlers(eventType, data);
+      });
     });
 
     // Server error events

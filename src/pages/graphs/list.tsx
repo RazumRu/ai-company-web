@@ -204,6 +204,9 @@ export const GraphsListPage = () => {
                     {graph.name}
                   </Text>
                   <Space size="small">
+                    <Tag color="geekblue" style={{ margin: 0 }}>
+                      v{graph.version}
+                    </Tag>
                     {getStatusTag(graph)}
                     {graph.temporary && <Tag color="orange">Temporary</Tag>}
                   </Space>

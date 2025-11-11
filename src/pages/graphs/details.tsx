@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   Button,
   Input,
   Layout,
   message,
+  Modal,
   Popover,
   Popconfirm,
   Space,
@@ -17,6 +18,7 @@ import {
   ArrowLeftOutlined,
   CheckOutlined,
   CloseOutlined,
+  DownOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
   PlayCircleOutlined,
@@ -26,7 +28,13 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import { useEdgesState, useNodesState, Viewport } from '@xyflow/react';
-import { graphsApi, templatesApi, threadsApi } from '../../api';
+import { isAxiosError } from 'axios';
+import {
+  graphRevisionsApi,
+  graphsApi,
+  templatesApi,
+  threadsApi,
+} from '../../api';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import type {
   GraphUpdateNotification,
@@ -35,6 +43,7 @@ import type {
   ThreadUpdateNotification,
   ThreadDeleteNotification,
   GraphNodeUpdateNotification,
+  GraphRevisionNotification,
 } from '../../services/WebSocketTypes';
 import {
   CreateGraphDtoSchemaEdgesInner,
@@ -43,6 +52,8 @@ import {
   GraphDto,
   GraphDtoStatusEnum,
   GraphNodeWithStatusDto,
+  GraphRevisionDto,
+  GraphRevisionDtoStatusEnum,
   TemplateDto,
   ThreadDto,
   ThreadDtoStatusEnum,
@@ -81,6 +92,8 @@ const THREAD_STATUS_STYLES: Record<
   [ThreadDtoStatusEnum.Stopped]: { label: 'Stopped', color: '#ff4d4f' },
 } as const;
 
+const REVISION_FETCH_LIMIT = 50;
+
 const ensureThreadStatusPulseStyle = (() => {
   let injected = false;
   return () => {
@@ -113,12 +126,131 @@ const getThreadStatusDisplay = (status?: ThreadDto['status']) => {
   );
 };
 
+const REVISION_STATUS_STYLES: Record<
+  GraphRevisionDtoStatusEnum,
+  { label: string; color: string; pulse?: boolean }
+> = {
+  [GraphRevisionDtoStatusEnum.Pending]: {
+    label: 'Pending',
+    color: '#d9d9d9',
+  },
+  [GraphRevisionDtoStatusEnum.Applying]: {
+    label: 'Applying',
+    color: '#faad14',
+    pulse: true,
+  },
+  [GraphRevisionDtoStatusEnum.Applied]: {
+    label: 'Applied',
+    color: '#52c41a',
+  },
+  [GraphRevisionDtoStatusEnum.Failed]: {
+    label: 'Failed',
+    color: '#ff4d4f',
+  },
+} as const;
+
+const REVISION_DIFF_OP_META: Record<string, { label: string; color: string }> =
+  {
+    add: { label: 'Add', color: '#52c41a' },
+    remove: { label: 'Remove', color: '#ff4d4f' },
+    replace: { label: 'Replace', color: '#1890ff' },
+    move: { label: 'Move', color: '#722ed1' },
+    copy: { label: 'Copy', color: '#13c2c2' },
+    test: { label: 'Test', color: '#595959' },
+  };
+
+const ensureRevisionStatusPulseStyle = (() => {
+  let injected = false;
+  return () => {
+    if (injected || typeof document === 'undefined') return;
+    if (document.getElementById('revision-status-pulse-style')) {
+      injected = true;
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = 'revision-status-pulse-style';
+    style.textContent = `
+      @keyframes revision-status-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0.45); }
+        70% { box-shadow: 0 0 0 8px rgba(250, 173, 20, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(250, 173, 20, 0); }
+      }
+    `;
+    document.head.appendChild(style);
+    injected = true;
+  };
+})();
+
+const sortRevisions = (list: GraphRevisionDto[]): GraphRevisionDto[] => {
+  return [...list].sort((a, b) => {
+    const aTime = new Date(a.updatedAt || a.createdAt).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt).getTime();
+    if (bTime === aTime) {
+      return b.toVersion.localeCompare(a.toVersion);
+    }
+    return bTime - aTime;
+  });
+};
+
+const extractMessageFromUnknown = (value: unknown): string | null => {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const extracted = extractMessageFromUnknown(item);
+      if (extracted) {
+        return extracted;
+      }
+    }
+    return null;
+  }
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const keysToCheck = ['message', 'error', 'detail', 'details'];
+    for (const key of keysToCheck) {
+      if (key in obj) {
+        const extracted = extractMessageFromUnknown(obj[key]);
+        if (extracted) {
+          return extracted;
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const extractApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (isAxiosError(error)) {
+    const data = error.response?.data;
+    if (typeof data === 'string') {
+      return data;
+    }
+    if (data && typeof data === 'object') {
+      const extracted = extractMessageFromUnknown(data);
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 export const GraphPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   useEffect(() => {
     ensureThreadStatusPulseStyle();
+    ensureRevisionStatusPulseStyle();
   }, []);
 
   const [loading, setLoading] = useState(true);
@@ -174,6 +306,14 @@ export const GraphPage = () => {
     Record<string, GraphNodeWithStatusDto>
   >({});
   const [compiledNodesLoading, setCompiledNodesLoading] = useState(false);
+  const [revisions, setRevisions] = useState<GraphRevisionDto[]>([]);
+  const [revisionsLoading, setRevisionsLoading] = useState(false);
+  const [revisionPopoverVisible, setRevisionPopoverVisible] = useState(false);
+  const [revisionDiffRevision, setRevisionDiffRevision] =
+    useState<GraphRevisionDto | null>(null);
+  const [hoveredRevisionId, setHoveredRevisionId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -411,6 +551,36 @@ export const GraphPage = () => {
     [graph?.status, id, selectedThreadId],
   );
 
+  const loadRevisions = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!id) return;
+      try {
+        setRevisionsLoading(true);
+        const response = await graphRevisionsApi.getGraphRevisions(
+          id,
+          undefined,
+          REVISION_FETCH_LIMIT,
+        );
+        const revisionList = response.data || [];
+        setRevisions(
+          sortRevisions(revisionList).slice(0, REVISION_FETCH_LIMIT),
+        );
+      } catch (error) {
+        console.error('Error loading graph revisions:', error);
+        if (!options?.silent) {
+          const errorMessage = extractApiErrorMessage(
+            error,
+            'Failed to load graph revisions',
+          );
+          message.error(errorMessage);
+        }
+      } finally {
+        setRevisionsLoading(false);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     loadThreads();
   }, [loadThreads]);
@@ -418,6 +588,291 @@ export const GraphPage = () => {
   useEffect(() => {
     fetchCompiledNodes();
   }, [fetchCompiledNodes]);
+
+  useEffect(() => {
+    void loadRevisions({ silent: true });
+  }, [loadRevisions]);
+
+  const upsertRevision = useCallback((revision: GraphRevisionDto) => {
+    setRevisions((prev) => {
+      const next = prev.slice();
+      const index = next.findIndex((item) => item.id === revision.id);
+      if (index === -1) {
+        next.push(revision);
+      } else {
+        next[index] = revision;
+      }
+      return sortRevisions(next).slice(0, REVISION_FETCH_LIMIT);
+    });
+  }, []);
+
+  const activeRevision = useMemo(() => {
+    if (!revisions.length) {
+      return null;
+    }
+
+    const applyingRevision = revisions.find(
+      (revision) => revision.status === GraphRevisionDtoStatusEnum.Applying,
+    );
+    if (applyingRevision) {
+      return applyingRevision;
+    }
+
+    const pendingRevision = revisions.find(
+      (revision) => revision.status === GraphRevisionDtoStatusEnum.Pending,
+    );
+    if (pendingRevision) {
+      return pendingRevision;
+    }
+
+    if (graph?.version) {
+      const matchingApplied = revisions.find(
+        (revision) =>
+          revision.toVersion === graph.version &&
+          revision.status === GraphRevisionDtoStatusEnum.Applied,
+      );
+      if (matchingApplied) {
+        return matchingApplied;
+      }
+    }
+
+    const appliedRevision = revisions.find(
+      (revision) => revision.status === GraphRevisionDtoStatusEnum.Applied,
+    );
+    if (appliedRevision) {
+      return appliedRevision;
+    }
+
+    return revisions[0];
+  }, [revisions, graph?.version]);
+
+  const activeRevisionMeta = activeRevision
+    ? REVISION_STATUS_STYLES[
+        activeRevision.status as GraphRevisionDtoStatusEnum
+      ]
+    : null;
+
+  const displayedRevisionMeta: {
+    label: string;
+    color: string;
+    pulse?: boolean;
+  } | null = useMemo(() => {
+    if (activeRevision) {
+      const meta =
+        REVISION_STATUS_STYLES[
+          activeRevision.status as GraphRevisionDtoStatusEnum
+        ] ?? null;
+
+      if (
+        activeRevision.status === GraphRevisionDtoStatusEnum.Applying &&
+        meta
+      ) {
+        return { ...meta, label: `Applying` };
+      }
+      if (meta) {
+        return meta;
+      }
+    }
+    if (graph) {
+      return {
+        label: 'Applied',
+        color: '#52c41a',
+      };
+    }
+    return null;
+  }, [activeRevision, graph]);
+
+  const displayedVersion = useMemo(() => {
+    if (activeRevision) {
+      const isAppliedActive =
+        activeRevision.status === GraphRevisionDtoStatusEnum.Applied;
+      if (!isAppliedActive || activeRevision.toVersion !== graph?.version) {
+        return activeRevision.toVersion;
+      }
+    }
+    return graph?.version ?? '—';
+  }, [activeRevision, graph?.version]);
+
+  const formatRevisionDiffValue = useCallback((value: unknown) => {
+    if (value === undefined) {
+      return null;
+    }
+    if (value === null) {
+      return (
+        <Typography.Text code style={{ fontSize: 12 }}>
+          null
+        </Typography.Text>
+      );
+    }
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return (
+        <Typography.Text code style={{ fontSize: 12 }}>
+          {JSON.stringify(value)}
+        </Typography.Text>
+      );
+    }
+    return (
+      <pre
+        style={{
+          background: '#f5f5f5',
+          borderRadius: 6,
+          padding: '8px 10px',
+          margin: 0,
+          fontSize: 12,
+          whiteSpace: 'pre-wrap',
+        }}>
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }, []);
+
+  const handleOpenRevisionDiff = useCallback((revision: GraphRevisionDto) => {
+    setRevisionDiffRevision(revision);
+    setRevisionPopoverVisible(false);
+  }, []);
+
+  const handleCloseRevisionDiff = useCallback(() => {
+    setRevisionDiffRevision(null);
+  }, []);
+
+  const revisionDiffModalVisible = useMemo(
+    () => revisionDiffRevision !== null,
+    [revisionDiffRevision],
+  );
+
+  const revisionPopoverContent = useMemo(() => {
+    if (revisionsLoading) {
+      return (
+        <div
+          style={{
+            minWidth: 280,
+            minHeight: 80,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <Spin size="small" />
+        </div>
+      );
+    }
+
+    if (revisions.length === 0) {
+      return (
+        <div style={{ minWidth: 280 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            No revisions available yet.
+          </Typography.Text>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ minWidth: 320, maxHeight: 320, overflowY: 'auto' }}>
+        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+          {revisions.map((revision) => {
+            const meta = REVISION_STATUS_STYLES[
+              revision.status as GraphRevisionDtoStatusEnum
+            ] ?? {
+              label: revision.status,
+              color: '#d9d9d9',
+            };
+            const isActive = activeRevision?.id === revision.id;
+            const isHovered = hoveredRevisionId === revision.id;
+            const timestamp = new Date(
+              revision.updatedAt || revision.createdAt,
+            ).toLocaleString();
+
+            return (
+              <div
+                key={revision.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleOpenRevisionDiff(revision)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleOpenRevisionDiff(revision);
+                  }
+                }}
+                onMouseEnter={() => setHoveredRevisionId(revision.id)}
+                onMouseLeave={() =>
+                  setHoveredRevisionId((prev) =>
+                    prev === revision.id ? null : prev,
+                  )
+                }
+                style={{
+                  border: '1px solid #f0f0f0',
+                  borderRadius: 6,
+                  padding: '8px 12px',
+                  background: isActive
+                    ? '#fffbe6'
+                    : isHovered
+                      ? '#f0f5ff'
+                      : '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition:
+                    'background-color 0.2s ease, border-color 0.2s ease',
+                }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}>
+                  <Typography.Text strong style={{ fontSize: 13 }}>
+                    v{revision.toVersion}
+                  </Typography.Text>
+                  <Tag
+                    color={meta.color}
+                    style={{
+                      margin: 0,
+                      borderRadius: 999,
+                      fontSize: 11,
+                      lineHeight: '18px',
+                      padding: '0 8px',
+                    }}>
+                    {meta.label}
+                  </Tag>
+                </div>
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 12, display: 'block' }}>
+                  From v{revision.fromVersion}
+                </Typography.Text>
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: 12, display: 'block' }}>
+                  Updated {timestamp}
+                </Typography.Text>
+                {revision.error && (
+                  <Typography.Text
+                    type="danger"
+                    style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+                    {revision.error}
+                  </Typography.Text>
+                )}
+              </div>
+            );
+          })}
+        </Space>
+      </div>
+    );
+  }, [
+    revisionsLoading,
+    revisions,
+    activeRevision?.id,
+    hoveredRevisionId,
+    handleOpenRevisionDiff,
+  ]);
 
   // WebSocket integration for real-time updates
   const { isConnected } = useWebSocket({
@@ -544,7 +999,9 @@ export const GraphPage = () => {
           prevThreads.filter((thread) => thread.id !== deletedThread.id),
         );
 
-        if (deletedThread.externalThreadId === pendingThreadSelectionRef.current) {
+        if (
+          deletedThread.externalThreadId === pendingThreadSelectionRef.current
+        ) {
           pendingThreadSelectionRef.current = null;
         }
 
@@ -616,6 +1073,61 @@ export const GraphPage = () => {
               metadata: nextMetadata,
             },
           };
+        });
+      },
+
+      'graph.revision.create': (notification) => {
+        const data = notification as GraphRevisionNotification;
+        if (data.graphId !== id) return;
+
+        upsertRevision(data.data);
+      },
+
+      'graph.revision.applying': (notification) => {
+        const data = notification as GraphRevisionNotification;
+        if (data.graphId !== id) return;
+
+        const revision = data.data;
+        upsertRevision(revision);
+
+        message.open({
+          key: `graph-revision-${revision.id}`,
+          type: 'loading',
+          content: `Applying revision ${revision.toVersion}`,
+          duration: 0,
+        });
+      },
+
+      'graph.revision.applied': (notification) => {
+        const data = notification as GraphRevisionNotification;
+        if (data.graphId !== id) return;
+
+        const revision = data.data;
+        upsertRevision(revision);
+        setGraph((prev) =>
+          prev ? { ...prev, version: revision.toVersion } : prev,
+        );
+        message.open({
+          key: `graph-revision-${revision.id}`,
+          type: 'success',
+          content: `Revision ${revision.toVersion} applied`,
+          duration: 3,
+        });
+      },
+
+      'graph.revision.failed': (notification) => {
+        const data = notification as GraphRevisionNotification;
+        if (data.graphId !== id) return;
+
+        const revision = data.data;
+        upsertRevision(revision);
+        message.open({
+          key: `graph-revision-${revision.id}`,
+          type: 'error',
+          content: revision.error
+            ? `Revision ${revision.toVersion} failed: ${revision.error}`
+            : `Revision ${revision.toVersion} failed`,
+          duration: 5,
         });
       },
     },
@@ -802,14 +1314,81 @@ export const GraphPage = () => {
     [handleThreadChange],
   );
 
+  const handleSave = async () => {
+    if (!graph || !id) return;
+
+    setSaving(true);
+    try {
+      const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => ({
+        id: node.id,
+        template: node.data.template as string,
+        config: node.data.config as Record<string, unknown>,
+      }));
+
+      const apiEdges: CreateGraphDtoSchemaEdgesInner[] = edges.map((edge) => ({
+        from: edge.source,
+        to: edge.target,
+        label: typeof edge.label === 'string' ? edge.label : undefined,
+      }));
+
+      const nodeMetadata: NodeMetadata[] = nodes.map((node) => ({
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
+        name: node.data.label as string,
+      }));
+
+      const metadata: GraphMetadata = {
+        ...((graph.metadata as GraphMetadata) || {}),
+        nodes: nodeMetadata,
+        x: viewport.x,
+        y: viewport.y,
+        zoom: viewport.zoom,
+      };
+
+      const response = await graphsApi.updateGraph(id, {
+        name: graph.name,
+        description: graph.description,
+        schema: {
+          nodes: apiNodes,
+          edges: apiEdges,
+        },
+        metadata: metadata,
+        currentVersion: graph.version,
+      });
+      const updatedGraph = response.data;
+
+      message.success('Graph saved successfully');
+      setHasUnsavedChanges(false);
+      setHasStructuralChanges(false);
+      setHasPositionChanges(false);
+      if (id) {
+        GraphStorageService.clearGraphState(id);
+      }
+      setNodes(nodes);
+      setEdges(edges);
+      setViewport(viewport);
+      setGraph(updatedGraph);
+      setEditingName(updatedGraph.name);
+      userInteractedRef.current = false;
+    } catch (e: unknown) {
+      console.error('Error saving graph:', e);
+      const errorMessage = extractApiErrorMessage(e, 'Failed to save graph');
+      message.error(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleTriggerNode = useCallback(
     async (triggerMessage: string, targetThreadId?: string) => {
       if (!triggerNodeId || !id) return;
 
       try {
         setTriggerLoading(true);
-
-        await handleSave();
+        if (hasUnsavedChanges) {
+          await handleSave();
+        }
 
         const threadForExecution = threads.find((t) => t.id === targetThreadId);
         const parts = threadForExecution?.externalThreadId.split(':') || [];
@@ -859,7 +1438,7 @@ export const GraphPage = () => {
         setTriggerLoading(false);
       }
     },
-    [triggerNodeId, id, threads],
+    [triggerNodeId, id, threads, hasUnsavedChanges, handleSave],
   );
 
   const handleViewportChange = useCallback(
@@ -968,70 +1547,6 @@ export const GraphPage = () => {
     [onEdgesChange, id, hasPositionChanges, selectedThreadId],
   );
 
-  const handleSave = async () => {
-    if (!graph || !id) return;
-
-    setSaving(true);
-    try {
-      const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => ({
-        id: node.id,
-        template: node.data.template as string,
-        config: node.data.config as Record<string, unknown>,
-      }));
-
-      const apiEdges: CreateGraphDtoSchemaEdgesInner[] = edges.map((edge) => ({
-        from: edge.source,
-        to: edge.target,
-        label: typeof edge.label === 'string' ? edge.label : undefined,
-      }));
-
-      const nodeMetadata: NodeMetadata[] = nodes.map((node) => ({
-        id: node.id,
-        x: node.position.x,
-        y: node.position.y,
-        name: node.data.label as string,
-      }));
-
-      const metadata: GraphMetadata = {
-        ...((graph.metadata as GraphMetadata) || {}),
-        nodes: nodeMetadata,
-        x: viewport.x,
-        y: viewport.y,
-        zoom: viewport.zoom,
-      };
-
-      await graphsApi.updateGraph(id, {
-        name: graph.name,
-        description: graph.description,
-        version: graph.version,
-        schema: {
-          nodes: apiNodes,
-          edges: apiEdges,
-        },
-        metadata: metadata,
-      });
-
-      message.success('Graph saved successfully');
-      setHasUnsavedChanges(false);
-      setHasStructuralChanges(false);
-      setHasPositionChanges(false);
-      if (id) {
-        GraphStorageService.clearGraphState(id);
-      }
-      setNodes(nodes);
-      setEdges(edges);
-      setViewport(viewport);
-      userInteractedRef.current = false;
-    } catch (e: unknown) {
-      console.error('Error saving graph:', e);
-      const errorMessage =
-        e instanceof Error ? e.message : 'Failed to save graph';
-      message.error(errorMessage);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleNameEdit = () => {
     setIsEditingName(true);
   };
@@ -1040,21 +1555,26 @@ export const GraphPage = () => {
     if (!graph || !id) return;
 
     try {
-      await graphsApi.updateGraph(id, {
+      const response = await graphsApi.updateGraph(id, {
         name: editingName,
         description: graph.description,
-        version: graph.version,
         schema: graph.schema,
         metadata: graph.metadata,
+        currentVersion: graph.version,
       });
 
-      setGraph({ ...graph, name: editingName });
+      const updatedGraph = response.data;
+
+      setGraph(updatedGraph);
+      setEditingName(updatedGraph.name);
       setIsEditingName(false);
       message.success('Graph name updated');
     } catch (e: unknown) {
       console.error('Error updating graph name:', e);
-      const errorMessage =
-        e instanceof Error ? e.message : 'Failed to update graph name';
+      const errorMessage = extractApiErrorMessage(
+        e,
+        'Failed to update graph name',
+      );
       message.error(errorMessage);
       setEditingName(graph.name);
     }
@@ -1085,7 +1605,9 @@ export const GraphPage = () => {
           threadId: selectedThreadId,
         });
       } else {
-        await handleSave();
+        if (hasUnsavedChanges) {
+          await handleSave();
+        }
         const response = await graphsApi.runGraph(id);
         const updatedGraph = response.data;
         setGraph(updatedGraph);
@@ -1141,49 +1663,115 @@ export const GraphPage = () => {
           borderBottom: '1px solid #f0f0f0',
           flexShrink: 0,
         }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}>
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
             onClick={() => navigate('/')}>
             Back
           </Button>
-          {isEditingName ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Input
-                value={editingName}
-                onChange={(e) => setEditingName(e.target.value)}
-                onPressEnter={handleNameSave}
-                onBlur={handleNameSave}
-                autoFocus
-                style={{ width: 300 }}
-              />
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                onClick={handleNameSave}
-                size="small"
-              />
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                onClick={handleNameCancel}
-                size="small"
-              />
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Title level={4} style={{ margin: 0 }}>
-                {graph?.name || 'Graph Editor'}
-              </Title>
-              <Button
-                type="text"
-                icon={<EditOutlined />}
-                onClick={handleNameEdit}
-                size="small"
-              />
-            </div>
-          )}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}>
+            {isEditingName ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Input
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onPressEnter={handleNameSave}
+                  onBlur={handleNameSave}
+                  autoFocus
+                  style={{ width: 300 }}
+                />
+                <Button
+                  type="text"
+                  icon={<CheckOutlined />}
+                  onClick={handleNameSave}
+                  size="small"
+                />
+                <Button
+                  type="text"
+                  icon={<CloseOutlined />}
+                  onClick={handleNameCancel}
+                  size="small"
+                />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Title level={4} style={{ margin: 0 }}>
+                  {graph?.name || 'Graph Editor'}
+                </Title>
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={handleNameEdit}
+                  size="small"
+                />
+              </div>
+            )}
+            {graph && (
+              <Popover
+                open={revisionPopoverVisible}
+                onOpenChange={(open) => {
+                  setRevisionPopoverVisible(open);
+                  if (open) {
+                    void loadRevisions();
+                  }
+                }}
+                trigger="click"
+                placement="bottomLeft"
+                content={revisionPopoverContent}>
+                <Button
+                  type="text"
+                  size="small"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 8px',
+                    height: 'auto',
+                    borderRadius: 6,
+                    backgroundColor: revisionPopoverVisible
+                      ? '#f5f5f5'
+                      : 'transparent',
+                  }}>
+                  <Typography.Text style={{ fontSize: 12, color: '#595959' }}>
+                    Version {displayedVersion}
+                  </Typography.Text>
+                  {displayedRevisionMeta && (
+                    <Tag
+                      color={displayedRevisionMeta.color}
+                      style={{
+                        margin: 0,
+                        borderRadius: 999,
+                        fontSize: 11,
+                        lineHeight: '18px',
+                        padding: '0 8px',
+                        boxShadow: displayedRevisionMeta.pulse
+                          ? '0 0 0 0 rgba(250, 173, 20, 0.45)'
+                          : 'none',
+                        animation: displayedRevisionMeta.pulse
+                          ? 'revision-status-pulse 1.5s ease-out infinite'
+                          : undefined,
+                      }}>
+                      {displayedRevisionMeta.label}
+                    </Tag>
+                  )}
+                  <DownOutlined style={{ fontSize: 10, color: '#8c8c8c' }} />
+                </Button>
+              </Popover>
+            )}
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
@@ -1640,6 +2228,88 @@ export const GraphPage = () => {
           threads.find((t) => t.id === selectedThreadId)?.source ?? null
         }
       />
+
+      <Modal
+        open={revisionDiffModalVisible}
+        onCancel={handleCloseRevisionDiff}
+        footer={null}
+        title={
+          revisionDiffRevision
+            ? `Revision v${revisionDiffRevision.toVersion} diff`
+            : 'Revision diff'
+        }
+        width={640}
+        destroyOnClose>
+        {revisionDiffRevision ? (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {revisionDiffRevision.configurationDiff.length === 0 ? (
+              <Typography.Text type="secondary">
+                No configuration changes.
+              </Typography.Text>
+            ) : (
+              revisionDiffRevision.configurationDiff.map((operation, index) => {
+                const meta = REVISION_DIFF_OP_META[operation.op] ?? {
+                  label: operation.op,
+                  color: '#d9d9d9',
+                };
+                const key = `${operation.op}-${operation.path}-${index}`;
+                const value =
+                  (operation as { value?: unknown }).value ?? undefined;
+                const fromPath =
+                  (operation as { from?: string }).from ?? undefined;
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      border: '1px solid #f0f0f0',
+                      borderLeft: `4px solid ${meta.color}`,
+                      borderRadius: 6,
+                      padding: '12px 14px',
+                      background: '#fafafa',
+                    }}>
+                    <Space
+                      direction="vertical"
+                      size={6}
+                      style={{ width: '100%' }}>
+                      <Space
+                        align="center"
+                        wrap
+                        style={{ justifyContent: 'space-between' }}>
+                        <Tag
+                          color={meta.color}
+                          style={{
+                            margin: 0,
+                            fontSize: 11,
+                            padding: '0 10px',
+                          }}>
+                          {meta.label}
+                        </Tag>
+                        <Typography.Text code style={{ fontSize: 12 }}>
+                          {operation.path || '(root)'}
+                        </Typography.Text>
+                      </Space>
+                      {fromPath ? (
+                        <Typography.Text style={{ fontSize: 12 }}>
+                          From{' '}
+                          <Typography.Text code>{fromPath}</Typography.Text>
+                        </Typography.Text>
+                      ) : null}
+                      {value !== undefined
+                        ? formatRevisionDiffValue(value)
+                        : null}
+                    </Space>
+                  </div>
+                );
+              })
+            )}
+            {revisionDiffRevision.error && (
+              <Typography.Text type="danger">
+                Error: {revisionDiffRevision.error}
+              </Typography.Text>
+            )}
+          </Space>
+        ) : null}
+      </Modal>
     </Layout>
   );
 };

@@ -49,7 +49,30 @@ interface MessagesTabProps {
   onLoadMoreMessages?: () => void;
   hasMoreMessages?: boolean;
   loadingMore?: boolean;
+  isNodeRunning?: boolean;
 }
+
+const ensureThinkingIndicatorStyles = (() => {
+  let injected = false;
+  return () => {
+    if (injected || typeof document === 'undefined') return;
+    if (document.getElementById('messages-tab-thinking-style')) {
+      injected = true;
+      return;
+    }
+    const style = document.createElement('style');
+    style.id = 'messages-tab-thinking-style';
+    style.textContent = `
+      @keyframes messages-tab-thinking-pulse {
+        0% { opacity: 0.7; }
+        50% { opacity: 1; }
+        100% { opacity: 0.7; }
+      }
+    `;
+    document.head.appendChild(style);
+    injected = true;
+  };
+})();
 
 const MessagesTab: React.FC<MessagesTabProps> = ({
   messages,
@@ -61,11 +84,18 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
   onLoadMoreMessages,
   hasMoreMessages,
   loadingMore,
+  isNodeRunning = false,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const isPrependingRef = useRef<boolean>(false);
   const pendingAutoScrollRef = useRef<boolean>(false);
+  const autoScrollDisabledRef = useRef<boolean>(false);
+  const lastMessageCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    ensureThinkingIndicatorStyles();
+  }, []);
 
   useEffect(() => {
     pendingAutoScrollRef.current = true;
@@ -83,10 +113,19 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
   useEffect(() => {
     if (messagesLoading) return;
-    if (!pendingAutoScrollRef.current) return;
     const el = scrollContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+
+    const isInitiallyEmpty = lastMessageCountRef.current === 0;
+    const shouldAutoScroll =
+      pendingAutoScrollRef.current || isInitiallyEmpty || !autoScrollDisabledRef.current;
+
+    if (shouldAutoScroll) {
+      el.scrollTop = el.scrollHeight;
+    }
+
     pendingAutoScrollRef.current = false;
+    lastMessageCountRef.current = messages.length;
   }, [messagesLoading, messages.length]);
 
   useEffect(() => {
@@ -137,6 +176,8 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
       isPrependingRef.current = true;
       onLoadMoreMessages();
     }
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 48;
+    autoScrollDisabledRef.current = !nearBottom;
   }, [hasMoreMessages, loadingMore, onLoadMoreMessages]);
 
   const formatMessageContent = (content: unknown): string => {
@@ -404,6 +445,9 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
     return prepared;
   };
+
+  const preparedMessages = prepareReadyMessages(messages);
+  const isThinkingVisible = isNodeRunning && isAgentNode;
 
   const renderSystemGroup = (
     systemMessages: ThreadMessageDto[],
@@ -1301,6 +1345,32 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
           return rows;
         })()}
+        {isThinkingVisible && !messagesLoading && (
+          <div
+            style={{
+              textAlign: 'center',
+              animation:
+                'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
+            }}>
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#8c8c8c',
+                textAlign: 'center',
+                cursor: 'pointer',
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: '1.5',
+                wordBreak: 'break-word',
+                width: '100%',
+              }}>
+              Agent is thinking...
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -43,12 +43,6 @@ export interface CreateGraphDto {
     'description'?: string | null;
     /**
      * 
-     * @type {string}
-     * @memberof CreateGraphDto
-     */
-    'version': string;
-    /**
-     * 
      * @type {CreateGraphDtoSchema}
      * @memberof CreateGraphDto
      */
@@ -426,6 +420,307 @@ export interface GraphNodeWithStatusDtoMetadata {
      */
     'parentThreadId'?: string;
 }
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDto
+ */
+export interface GraphRevisionDto {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'graphId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'fromVersion': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'toVersion': string;
+    /**
+     * JSON Patch (RFC 6902) operations between old and new schemas
+     * @type {Array<GraphRevisionDtoConfigurationDiffInner>}
+     * @memberof GraphRevisionDto
+     */
+    'configurationDiff': Array<GraphRevisionDtoConfigurationDiffInner>;
+    /**
+     * 
+     * @type {CreateGraphDtoSchema}
+     * @memberof GraphRevisionDto
+     */
+    'newSchema': CreateGraphDtoSchema;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'status': GraphRevisionDtoStatusEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'error'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'createdAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDto
+     */
+    'updatedAt': string;
+}
+
+export const GraphRevisionDtoStatusEnum = {
+    Pending: 'pending',
+    Applying: 'applying',
+    Applied: 'applied',
+    Failed: 'failed'
+} as const;
+
+export type GraphRevisionDtoStatusEnum = typeof GraphRevisionDtoStatusEnum[keyof typeof GraphRevisionDtoStatusEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInner
+ */
+export interface GraphRevisionDtoConfigurationDiffInner {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInner
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerOpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInner
+     */
+    'path': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GraphRevisionDtoConfigurationDiffInner
+     */
+    'value': any;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInner
+     */
+    'from': string;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerOpEnum = {
+    Test: 'test'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerOpEnum = typeof GraphRevisionDtoConfigurationDiffInnerOpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerOpEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInnerAnyOf
+ */
+export interface GraphRevisionDtoConfigurationDiffInnerAnyOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerAnyOfOpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf
+     */
+    'path': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf
+     */
+    'value': any;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerAnyOfOpEnum = {
+    Add: 'add'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerAnyOfOpEnum = typeof GraphRevisionDtoConfigurationDiffInnerAnyOfOpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerAnyOfOpEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInnerAnyOf1
+ */
+export interface GraphRevisionDtoConfigurationDiffInnerAnyOf1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf1
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerAnyOf1OpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf1
+     */
+    'path': string;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerAnyOf1OpEnum = {
+    Remove: 'remove'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerAnyOf1OpEnum = typeof GraphRevisionDtoConfigurationDiffInnerAnyOf1OpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerAnyOf1OpEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInnerAnyOf2
+ */
+export interface GraphRevisionDtoConfigurationDiffInnerAnyOf2 {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf2
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerAnyOf2OpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf2
+     */
+    'path': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf2
+     */
+    'value': any;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerAnyOf2OpEnum = {
+    Replace: 'replace'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerAnyOf2OpEnum = typeof GraphRevisionDtoConfigurationDiffInnerAnyOf2OpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerAnyOf2OpEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInnerAnyOf3
+ */
+export interface GraphRevisionDtoConfigurationDiffInnerAnyOf3 {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf3
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerAnyOf3OpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf3
+     */
+    'from': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf3
+     */
+    'path': string;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerAnyOf3OpEnum = {
+    Move: 'move'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerAnyOf3OpEnum = typeof GraphRevisionDtoConfigurationDiffInnerAnyOf3OpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerAnyOf3OpEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInnerAnyOf4
+ */
+export interface GraphRevisionDtoConfigurationDiffInnerAnyOf4 {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf4
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerAnyOf4OpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf4
+     */
+    'from': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf4
+     */
+    'path': string;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerAnyOf4OpEnum = {
+    Copy: 'copy'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerAnyOf4OpEnum = typeof GraphRevisionDtoConfigurationDiffInnerAnyOf4OpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerAnyOf4OpEnum];
+
+/**
+ * 
+ * @export
+ * @interface GraphRevisionDtoConfigurationDiffInnerAnyOf5
+ */
+export interface GraphRevisionDtoConfigurationDiffInnerAnyOf5 {
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf5
+     */
+    'op': GraphRevisionDtoConfigurationDiffInnerAnyOf5OpEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf5
+     */
+    'path': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GraphRevisionDtoConfigurationDiffInnerAnyOf5
+     */
+    'value': any;
+}
+
+export const GraphRevisionDtoConfigurationDiffInnerAnyOf5OpEnum = {
+    Test: 'test'
+} as const;
+
+export type GraphRevisionDtoConfigurationDiffInnerAnyOf5OpEnum = typeof GraphRevisionDtoConfigurationDiffInnerAnyOf5OpEnum[keyof typeof GraphRevisionDtoConfigurationDiffInnerAnyOf5OpEnum];
+
 /**
  * 
  * @export
@@ -1043,6 +1338,8 @@ export type ThreadMessageDtoMessageAnyOf4RoleEnum = typeof ThreadMessageDtoMessa
  * @interface UpdateGraphDto
  */
 export interface UpdateGraphDto {
+    [key: string]: any;
+
     /**
      * 
      * @type {string}
@@ -1051,35 +1348,392 @@ export interface UpdateGraphDto {
     'name'?: string;
     /**
      * 
-     * @type {string}
+     * @type {UpdateGraphDtoDescription}
      * @memberof UpdateGraphDto
      */
-    'description'?: string | null;
+    'description'?: UpdateGraphDtoDescription;
+    /**
+     * 
+     * @type {UpdateGraphDtoSchema}
+     * @memberof UpdateGraphDto
+     */
+    'schema'?: UpdateGraphDtoSchema;
+    /**
+     * 
+     * @type {UpdateGraphDtoMetadata}
+     * @memberof UpdateGraphDto
+     */
+    'metadata'?: UpdateGraphDtoMetadata;
+    /**
+     * 
+     * @type {UpdateGraphDtoTemporary}
+     * @memberof UpdateGraphDto
+     */
+    'temporary'?: UpdateGraphDtoTemporary;
     /**
      * 
      * @type {string}
      * @memberof UpdateGraphDto
      */
-    'version'?: string;
-    /**
-     * 
-     * @type {CreateGraphDtoSchema}
-     * @memberof UpdateGraphDto
-     */
-    'schema'?: CreateGraphDtoSchema;
-    /**
-     * 
-     * @type {CreateGraphDtoMetadata}
-     * @memberof UpdateGraphDto
-     */
-    'metadata'?: CreateGraphDtoMetadata | null;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof UpdateGraphDto
-     */
-    'temporary'?: boolean | null;
+    'currentVersion': string;
 }
+/**
+ * 
+ * @export
+ * @interface UpdateGraphDtoDescription
+ */
+export interface UpdateGraphDtoDescription {
+}
+/**
+ * 
+ * @export
+ * @interface UpdateGraphDtoMetadata
+ */
+export interface UpdateGraphDtoMetadata {
+    /**
+     * Node coordinates and names by node ID
+     * @type {Array<CreateGraphDtoMetadataNodesInner>}
+     * @memberof UpdateGraphDtoMetadata
+     */
+    'nodes'?: Array<CreateGraphDtoMetadataNodesInner>;
+    /**
+     * Zoom level for graph display
+     * @type {number}
+     * @memberof UpdateGraphDtoMetadata
+     */
+    'zoom'?: number;
+    /**
+     * X coordinate
+     * @type {number}
+     * @memberof UpdateGraphDtoMetadata
+     */
+    'x'?: number;
+    /**
+     * Y coordinate
+     * @type {number}
+     * @memberof UpdateGraphDtoMetadata
+     */
+    'y'?: number;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateGraphDtoMetadataAnyOf
+ */
+export interface UpdateGraphDtoMetadataAnyOf {
+    [key: string]: any;
+
+    /**
+     * Node coordinates and names by node ID
+     * @type {Array<CreateGraphDtoMetadataNodesInner>}
+     * @memberof UpdateGraphDtoMetadataAnyOf
+     */
+    'nodes'?: Array<CreateGraphDtoMetadataNodesInner>;
+    /**
+     * Zoom level for graph display
+     * @type {number}
+     * @memberof UpdateGraphDtoMetadataAnyOf
+     */
+    'zoom'?: number;
+    /**
+     * X coordinate
+     * @type {number}
+     * @memberof UpdateGraphDtoMetadataAnyOf
+     */
+    'x'?: number;
+    /**
+     * Y coordinate
+     * @type {number}
+     * @memberof UpdateGraphDtoMetadataAnyOf
+     */
+    'y'?: number;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateGraphDtoSchema
+ */
+export interface UpdateGraphDtoSchema {
+    /**
+     * 
+     * @type {Array<UpdateGraphDtoSchemaNodesInner>}
+     * @memberof UpdateGraphDtoSchema
+     */
+    'nodes': Array<UpdateGraphDtoSchemaNodesInner>;
+    /**
+     * 
+     * @type {Array<UpdateGraphDtoSchemaEdgesInner>}
+     * @memberof UpdateGraphDtoSchema
+     */
+    'edges'?: Array<UpdateGraphDtoSchemaEdgesInner>;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateGraphDtoSchemaEdgesInner
+ */
+export interface UpdateGraphDtoSchemaEdgesInner {
+    /**
+     * Source node ID
+     * @type {string}
+     * @memberof UpdateGraphDtoSchemaEdgesInner
+     */
+    'from': string;
+    /**
+     * Target node ID
+     * @type {string}
+     * @memberof UpdateGraphDtoSchemaEdgesInner
+     */
+    'to': string;
+    /**
+     * Optional edge label
+     * @type {string}
+     * @memberof UpdateGraphDtoSchemaEdgesInner
+     */
+    'label'?: string;
+}
+/**
+ * 
+ * @export
+ * @interface UpdateGraphDtoSchemaNodesInner
+ */
+export interface UpdateGraphDtoSchemaNodesInner {
+    /**
+     * Unique identifier for this node
+     * @type {string}
+     * @memberof UpdateGraphDtoSchemaNodesInner
+     */
+    'id': string;
+    /**
+     * Template name registered in TemplateRegistry
+     * @type {string}
+     * @memberof UpdateGraphDtoSchemaNodesInner
+     */
+    'template': string;
+    /**
+     * Template-specific configuration
+     * @type {{ [key: string]: any; }}
+     * @memberof UpdateGraphDtoSchemaNodesInner
+     */
+    'config': { [key: string]: any; };
+}
+/**
+ * If true, graph will be deleted instead of restored after server restart
+ * @export
+ * @interface UpdateGraphDtoTemporary
+ */
+export interface UpdateGraphDtoTemporary {
+}
+
+/**
+ * GraphRevisionsApi - axios parameter creator
+ * @export
+ */
+export const GraphRevisionsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @param {string} graphId 
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getGraphRevision: async (graphId: string, id: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'graphId' is not null or undefined
+            assertParamExists('getGraphRevision', 'graphId', graphId)
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('getGraphRevision', 'id', id)
+            const localVarPath = `/api/v1/graphs/{graphId}/revisions/{id}`
+                .replace(`{${"graphId"}}`, encodeURIComponent(String(graphId)))
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} graphId 
+         * @param {GetGraphRevisionsStatusEnum} [status] 
+         * @param {number} [limit] Maximum number of revisions to return
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getGraphRevisions: async (graphId: string, status?: GetGraphRevisionsStatusEnum, limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'graphId' is not null or undefined
+            assertParamExists('getGraphRevisions', 'graphId', graphId)
+            const localVarPath = `/api/v1/graphs/{graphId}/revisions`
+                .replace(`{${"graphId"}}`, encodeURIComponent(String(graphId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (status !== undefined) {
+                localVarQueryParameter['status'] = status;
+            }
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * GraphRevisionsApi - functional programming interface
+ * @export
+ */
+export const GraphRevisionsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = GraphRevisionsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @param {string} graphId 
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getGraphRevision(graphId: string, id: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GraphRevisionDto>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getGraphRevision(graphId, id, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['GraphRevisionsApi.getGraphRevision']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} graphId 
+         * @param {GetGraphRevisionsStatusEnum} [status] 
+         * @param {number} [limit] Maximum number of revisions to return
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getGraphRevisions(graphId: string, status?: GetGraphRevisionsStatusEnum, limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<GraphRevisionDto>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getGraphRevisions(graphId, status, limit, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['GraphRevisionsApi.getGraphRevisions']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * GraphRevisionsApi - factory interface
+ * @export
+ */
+export const GraphRevisionsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = GraphRevisionsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {string} graphId 
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getGraphRevision(graphId: string, id: string, options?: RawAxiosRequestConfig): AxiosPromise<GraphRevisionDto> {
+            return localVarFp.getGraphRevision(graphId, id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {string} graphId 
+         * @param {GetGraphRevisionsStatusEnum} [status] 
+         * @param {number} [limit] Maximum number of revisions to return
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getGraphRevisions(graphId: string, status?: GetGraphRevisionsStatusEnum, limit?: number, options?: RawAxiosRequestConfig): AxiosPromise<Array<GraphRevisionDto>> {
+            return localVarFp.getGraphRevisions(graphId, status, limit, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * GraphRevisionsApi - object-oriented interface
+ * @export
+ * @class GraphRevisionsApi
+ * @extends {BaseAPI}
+ */
+export class GraphRevisionsApi extends BaseAPI {
+    /**
+     * 
+     * @param {string} graphId 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof GraphRevisionsApi
+     */
+    public getGraphRevision(graphId: string, id: string, options?: RawAxiosRequestConfig) {
+        return GraphRevisionsApiFp(this.configuration).getGraphRevision(graphId, id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {string} graphId 
+     * @param {GetGraphRevisionsStatusEnum} [status] 
+     * @param {number} [limit] Maximum number of revisions to return
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof GraphRevisionsApi
+     */
+    public getGraphRevisions(graphId: string, status?: GetGraphRevisionsStatusEnum, limit?: number, options?: RawAxiosRequestConfig) {
+        return GraphRevisionsApiFp(this.configuration).getGraphRevisions(graphId, status, limit, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+/**
+ * @export
+ */
+export const GetGraphRevisionsStatusEnum = {
+    Pending: 'pending',
+    Applying: 'applying',
+    Applied: 'applied',
+    Failed: 'failed'
+} as const;
+export type GetGraphRevisionsStatusEnum = typeof GetGraphRevisionsStatusEnum[keyof typeof GetGraphRevisionsStatusEnum];
+
 
 /**
  * GraphsApi - axios parameter creator

@@ -6,11 +6,11 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **string** |  | [optional] [default to undefined]
-**description** | **string** |  | [optional] [default to undefined]
-**version** | **string** |  | [optional] [default to undefined]
-**schema** | [**CreateGraphDtoSchema**](CreateGraphDtoSchema.md) |  | [optional] [default to undefined]
-**metadata** | [**CreateGraphDtoMetadata**](CreateGraphDtoMetadata.md) |  | [optional] [default to undefined]
-**temporary** | **boolean** |  | [optional] [default to false]
+**description** | [**UpdateGraphDtoDescription**](UpdateGraphDtoDescription.md) |  | [optional] [default to undefined]
+**schema** | [**UpdateGraphDtoSchema**](UpdateGraphDtoSchema.md) |  | [optional] [default to undefined]
+**metadata** | [**UpdateGraphDtoMetadata**](UpdateGraphDtoMetadata.md) |  | [optional] [default to undefined]
+**temporary** | [**UpdateGraphDtoTemporary**](UpdateGraphDtoTemporary.md) |  | [optional] [default to undefined]
+**currentVersion** | **string** |  | [default to undefined]
 
 ## Example
 
@@ -20,10 +20,10 @@ import { UpdateGraphDto } from './api';
 const instance: UpdateGraphDto = {
     name,
     description,
-    version,
     schema,
     metadata,
     temporary,
+    currentVersion,
 };
 ```
 
