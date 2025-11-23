@@ -206,7 +206,11 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
   const isBlankContent = (content: unknown): boolean => {
     if (content === null || content === undefined) return true;
-    if (typeof content === 'string') return content.trim().length === 0;
+    if (typeof content === 'string') {
+      const trimmed = content.trim();
+      // Check if it's empty or an empty array/object string
+      return trimmed.length === 0 || trimmed === '[]' || trimmed === '{}';
+    }
     return false;
   };
 
@@ -367,7 +371,11 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
         Array.isArray(m.message?.toolCalls) &&
         m.message!.toolCalls.length > 0
       ) {
-        if (!isBlankContent(m.message?.content)) {
+        // Check if we need to display the message content
+        // Display it if content is not blank OR if toolCalls have meaningful data
+        const hasNonBlankContent = !isBlankContent(m.message?.content);
+
+        if (hasNonBlankContent) {
           prepared.push({
             type: 'chat',
             message: m,
@@ -524,55 +532,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
     resultContent?: unknown,
   ) => {
     if (status === 'calling') {
-      return (
-        <div
-          style={{
-            padding: '8px 12px',
-            marginBottom: '8px',
-            display: 'flex',
-            justifyContent: 'flex-start',
-            alignItems: 'flex-start',
-            gap: '8px',
-          }}>
-          <Avatar
-            style={{
-              backgroundColor: '#52c41a',
-              flexShrink: 0,
-            }}
-            size="small">
-            AI
-          </Avatar>
-          <div
-            style={{
-              maxWidth: '90%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-            }}>
-            <div
-              style={{
-                backgroundColor: '#f3f3f3',
-                borderRadius: '5px',
-                padding: '8px 12px',
-                wordBreak: 'break-word',
-                minWidth: '100px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
-              <Spin size="small" />
-              <span
-                style={{
-                  fontSize: '14px',
-                  lineHeight: '1.4',
-                  color: '#000000',
-                }}>
-                Finishing...
-              </span>
-            </div>
-          </div>
-        </div>
-      );
+      return undefined;
     }
 
     // Extract message and needsMoreInfo flag from result content
