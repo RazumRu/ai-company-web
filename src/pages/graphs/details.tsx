@@ -526,11 +526,15 @@ export const GraphPage = () => {
           ? options.threadId
           : selectedThreadId;
 
+      // Get the external thread ID to pass to the API
+      const selectedThread = threads.find((t) => t.id === threadIdToUse);
+      const externalThreadId = selectedThread?.externalThreadId;
+
       try {
         setCompiledNodesLoading(true);
         const response = await graphsApi.getCompiledNodes(
           id,
-          threadIdToUse || undefined,
+          externalThreadId || undefined,
         );
         const nodesWithStatus = response.data || [];
         setCompiledNodesMap(() => {
@@ -548,7 +552,7 @@ export const GraphPage = () => {
         setCompiledNodesLoading(false);
       }
     },
-    [graph?.status, id, selectedThreadId],
+    [graph?.status, id, selectedThreadId, threads],
   );
 
   const loadRevisions = useCallback(
@@ -846,7 +850,7 @@ export const GraphPage = () => {
                 <Typography.Text
                   type="secondary"
                   style={{ fontSize: 12, display: 'block' }}>
-                  From v{revision.fromVersion}
+                  From v{revision.baseVersion}
                 </Typography.Text>
                 <Typography.Text
                   type="secondary"
@@ -1023,6 +1027,7 @@ export const GraphPage = () => {
           const nextStatus = data.data.status;
           const nextError = data.data.error ?? existing?.error ?? null;
           const nextMetadata = data.data.metadata ?? existing?.metadata;
+          const nextAdditionalNodeMetadata = data.data.additionalNodeMetadata ?? existing?.additionalNodeMetadata;
 
           if (!existing) {
             const graphNode = nodesRef.current.find(
@@ -1060,6 +1065,7 @@ export const GraphPage = () => {
                 config: nodeData.config ?? {},
                 error: nextError,
                 metadata: nextMetadata,
+                additionalNodeMetadata: nextAdditionalNodeMetadata,
               },
             };
           }
@@ -1071,6 +1077,7 @@ export const GraphPage = () => {
               status: nextStatus,
               error: nextError,
               metadata: nextMetadata,
+              additionalNodeMetadata: nextAdditionalNodeMetadata,
             },
           };
         });
@@ -1348,15 +1355,22 @@ export const GraphPage = () => {
 
       const response = await graphsApi.updateGraph(id, {
         name: graph.name,
-        description: graph.description,
+        description: graph.description || undefined,
         schema: {
           nodes: apiNodes,
           edges: apiEdges,
         },
-        metadata: metadata,
+        metadata: metadata || undefined,
         currentVersion: graph.version,
       });
-      const updatedGraph = response.data;
+      const updatedGraph = response.data.graph;
+      const revision = response.data.revision;
+
+      // If a revision was created, add it to the revisions list immediately
+      // (This provides instant feedback instead of waiting for WebSocket)
+      if (revision) {
+        upsertRevision(revision);
+      }
 
       message.success('Graph saved successfully');
       setHasUnsavedChanges(false);
@@ -1406,8 +1420,8 @@ export const GraphPage = () => {
           executeTriggerDto,
         );
 
-        // response.data.threadId is the externalThreadId from LangChain
-        const returnedExternalThreadId = response.data?.threadId;
+        // response.data.externalThreadId is the externalThreadId from LangChain
+        const returnedExternalThreadId = response.data?.externalThreadId;
         const currentExternalThreadId = threadForExecution?.externalThreadId;
         const shouldSelectNewThread =
           returnedExternalThreadId &&
@@ -1557,13 +1571,19 @@ export const GraphPage = () => {
     try {
       const response = await graphsApi.updateGraph(id, {
         name: editingName,
-        description: graph.description,
+        description: graph.description || undefined,
         schema: graph.schema,
-        metadata: graph.metadata,
+        metadata: graph.metadata || undefined,
         currentVersion: graph.version,
       });
 
-      const updatedGraph = response.data;
+      const updatedGraph = response.data.graph;
+      const revision = response.data.revision;
+
+      // If a revision was created, add it to the revisions list immediately
+      if (revision) {
+        upsertRevision(revision);
+      }
 
       setGraph(updatedGraph);
       setEditingName(updatedGraph.name);

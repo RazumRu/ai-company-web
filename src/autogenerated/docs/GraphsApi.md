@@ -422,7 +422,7 @@ const { status, data } = await apiInstance.runGraph(
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **updateGraph**
-> GraphDto updateGraph(updateGraphDto)
+> UpdateGraphResponseDto updateGraph(updateGraphDto)
 
 
 ### Example
@@ -456,7 +456,7 @@ const { status, data } = await apiInstance.updateGraph(
 
 ### Return type
 
-**GraphDto**
+**UpdateGraphResponseDto**
 
 ### Authorization
 

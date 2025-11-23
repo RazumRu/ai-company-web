@@ -5,7 +5,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**threadId** | **string** | The thread ID used for this execution | [default to undefined]
+**externalThreadId** | **string** | The thread ID used for this execution | [default to undefined]
 **checkpointNs** | **string** | The checkpoint namespace for this execution | [optional] [default to undefined]
 
 ## Example
@@ -14,7 +14,7 @@ Name | Type | Description | Notes
 import { ExecuteTriggerResponseDto } from './api';
 
 const instance: ExecuteTriggerResponseDto = {
-    threadId,
+    externalThreadId,
     checkpointNs,
 };
 ```

@@ -29,6 +29,17 @@ interface ShellResult {
   [key: string]: unknown;
 }
 
+interface PendingMessage {
+  content: string;
+  role: 'human' | 'ai';
+  additionalKwargs?: {
+    run_id?: string;
+    created_at?: string;
+    [key: string]: unknown;
+  };
+  createdAt?: string;
+}
+
 type JsonValue =
   | string
   | number
@@ -50,6 +61,8 @@ interface MessagesTabProps {
   hasMoreMessages?: boolean;
   loadingMore?: boolean;
   isNodeRunning?: boolean;
+  pendingMessages?: PendingMessage[];
+  newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
 }
 
 const ensureThinkingIndicatorStyles = (() => {
@@ -85,6 +98,8 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
   hasMoreMessages,
   loadingMore,
   isNodeRunning = false,
+  pendingMessages = [],
+  newMessageMode,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
@@ -118,7 +133,9 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
     const isInitiallyEmpty = lastMessageCountRef.current === 0;
     const shouldAutoScroll =
-      pendingAutoScrollRef.current || isInitiallyEmpty || !autoScrollDisabledRef.current;
+      pendingAutoScrollRef.current ||
+      isInitiallyEmpty ||
+      !autoScrollDisabledRef.current;
 
     if (shouldAutoScroll) {
       el.scrollTop = el.scrollHeight;
@@ -1138,6 +1155,86 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
     );
   };
 
+  const renderPendingMessage = (message: PendingMessage, index: number) => {
+    const isHuman = message.role === 'human';
+    const content = message.content;
+
+    // Determine when the message will be sent
+    const sendTimeText =
+      newMessageMode === 'inject_after_tool_call'
+        ? 'Will be sent after next tool execution'
+        : newMessageMode === 'wait_for_completion'
+          ? 'Will be sent after agent completes current task'
+          : 'Pending';
+
+    return (
+      <div
+        key={`pending-${index}`}
+        style={{
+          padding: '8px 12px',
+          marginBottom: '8px',
+          display: 'flex',
+          justifyContent: isHuman ? 'flex-end' : 'flex-start',
+          alignItems: 'flex-start',
+          gap: '8px',
+          opacity: 0.6,
+        }}>
+        {!isHuman && (
+          <Avatar
+            style={{
+              backgroundColor: '#52c41a',
+              flexShrink: 0,
+            }}
+            size="small">
+            AI
+          </Avatar>
+        )}
+
+        <div
+          style={{
+            maxWidth: '90%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: isHuman ? 'flex-end' : 'flex-start',
+          }}>
+          <div
+            style={{
+              backgroundColor: isHuman ? '#f0f8ff' : '#f3f3f3',
+              borderRadius: '5px',
+              padding: '8px 12px',
+              wordBreak: 'break-word',
+              minWidth: '100px',
+              border: '2px dashed #d9d9d9',
+            }}>
+            <div
+              style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}>
+              {content}
+            </div>
+          </div>
+
+          <Text
+            type="secondary"
+            style={{
+              fontSize: '11px',
+              marginTop: '4px',
+              color: '#8c8c8c',
+              fontStyle: 'italic',
+            }}>
+            {sendTimeText}
+          </Text>
+        </div>
+
+        {isHuman && (
+          <Avatar
+            style={{ backgroundColor: '#1890ff', flexShrink: 0 }}
+            size="small">
+            ME
+          </Avatar>
+        )}
+      </div>
+    );
+  };
+
   if (!selectedThreadId) {
     return (
       <div
@@ -1369,6 +1466,16 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
               }}>
               Agent is thinking...
             </div>
+          </div>
+        )}
+        {pendingMessages && pendingMessages.length > 0 && (
+          <div
+            style={{
+              borderTop: '1px solid #ebebeb',
+              paddingTop: '10px',
+              marginTop: '8px',
+            }}>
+            {pendingMessages.map((msg, idx) => renderPendingMessage(msg, idx))}
           </div>
         )}
       </div>

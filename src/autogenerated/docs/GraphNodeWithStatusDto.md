@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **config** | **any** |  | [default to undefined]
 **error** | **string** |  | [optional] [default to undefined]
 **metadata** | [**GraphNodeWithStatusDtoMetadata**](GraphNodeWithStatusDtoMetadata.md) |  | [optional] [default to undefined]
+**additionalNodeMetadata** | **{ [key: string]: any; }** | Additional metadata exposed by the node implementation | [optional] [default to undefined]
 
 ## Example
 
@@ -28,6 +29,7 @@ const instance: GraphNodeWithStatusDto = {
     config,
     error,
     metadata,
+    additionalNodeMetadata,
 };
 ```
 

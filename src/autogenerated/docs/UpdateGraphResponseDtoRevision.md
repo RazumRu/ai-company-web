@@ -1,4 +1,4 @@
-# GraphRevisionDto
+# UpdateGraphResponseDtoRevision
 
 
 ## Properties
@@ -20,9 +20,9 @@ Name | Type | Description | Notes
 ## Example
 
 ```typescript
-import { GraphRevisionDto } from './api';
+import { UpdateGraphResponseDtoRevision } from './api';
 
-const instance: GraphRevisionDto = {
+const instance: UpdateGraphResponseDtoRevision = {
     id,
     graphId,
     baseVersion,

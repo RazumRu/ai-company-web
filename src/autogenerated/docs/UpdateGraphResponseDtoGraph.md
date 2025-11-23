@@ -1,5 +1,6 @@
-# GraphDto
+# UpdateGraphResponseDtoGraph
 
+Updated graph
 
 ## Properties
 
@@ -21,9 +22,9 @@ Name | Type | Description | Notes
 ## Example
 
 ```typescript
-import { GraphDto } from './api';
+import { UpdateGraphResponseDtoGraph } from './api';
 
-const instance: GraphDto = {
+const instance: UpdateGraphResponseDtoGraph = {
     id,
     name,
     description,

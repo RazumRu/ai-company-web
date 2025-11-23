@@ -55,7 +55,6 @@ export const GraphsListPage = () => {
       const res = await graphsApi.createGraph({
         name: `New Graph ${new Date().toLocaleString()}`,
         description: 'A new graph',
-        version: '1.0.0',
         schema: {
           nodes: [],
           edges: [],

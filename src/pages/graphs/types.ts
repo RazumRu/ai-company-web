@@ -38,6 +38,7 @@ export interface SchemaProperty {
   description?: string;
   default?: unknown;
   const?: unknown;
+  enum?: unknown[];
   additionalProperties?: boolean;
   'x-ui:show-on-node'?: boolean;
   'x-ui:textarea'?: boolean;
@@ -56,6 +57,7 @@ export interface FormField {
   required?: boolean;
   default?: unknown;
   const?: unknown;
+  enum?: unknown[];
   isConst?: boolean;
   isObject?: boolean;
 }

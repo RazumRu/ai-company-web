@@ -10,6 +10,7 @@ import {
   message,
   Modal,
   Popover,
+  Select,
   Space,
   Switch,
   Tabs,
@@ -328,6 +329,7 @@ export const NodeEditSidebar = ({
             required: template.schema.required?.includes(key) || false,
             default: typedProp.default,
             const: typedProp.const,
+            enum: typedProp.enum,
             isConst,
             isObject,
           });
@@ -661,6 +663,7 @@ export const NodeEditSidebar = ({
       required,
       isConst,
       const: constValue,
+      enum: enumValues,
     } = field;
 
     const rules = required
@@ -693,6 +696,30 @@ export const NodeEditSidebar = ({
       return (
         <Form.Item key={key} {...commonProps} initialValue={constValue}>
           <Input disabled size="middle" value={String(constValue)} />
+        </Form.Item>
+      );
+    }
+
+    // Handle enum fields with Select dropdown
+    if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
+      return (
+        <Form.Item key={key} {...commonProps}>
+          <Select
+            placeholder={`Select ${name.toLowerCase()}`}
+            size="middle"
+            allowClear={!required}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '')
+                .toString()
+                .toLowerCase()
+                .includes(input.toLowerCase())
+            }
+            options={enumValues.map((value) => ({
+              label: String(value),
+              value: value,
+            }))}
+          />
         </Form.Item>
       );
     }
@@ -841,6 +868,22 @@ export const NodeEditSidebar = ({
   };
 
   const renderMessagesTabContent = () => {
+    // Extract pending messages from compiledNode's additionalNodeMetadata
+    const pendingMessages = compiledNode?.additionalNodeMetadata?.pendingMessages as Array<{
+      content: string;
+      role: 'human' | 'ai';
+      additionalKwargs?: {
+        run_id?: string;
+        created_at?: string;
+        [key: string]: unknown;
+      };
+      createdAt?: string;
+    }> | undefined;
+
+    // Extract newMessageMode from node config
+    const newMessageMode = (compiledNode?.config as Record<string, unknown>)?.newMessageMode as 
+      'inject_after_tool_call' | 'wait_for_completion' | undefined;
+
     return (
       <div
         style={{
@@ -892,6 +935,8 @@ export const NodeEditSidebar = ({
                 ? compiledNode.status.toLowerCase() === 'running'
                 : true)
             }
+            pendingMessages={pendingMessages}
+            newMessageMode={newMessageMode}
           />
         </div>
       </div>
