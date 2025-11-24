@@ -189,6 +189,7 @@ const markdownComponents: Components = {
   p: ({ children }: MarkdownElementProps<HTMLParagraphElement>) => (
     <p
       style={{
+        margin: 0,
         lineHeight: '1.5',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
@@ -282,6 +283,9 @@ const MarkdownContent: React.FC<{
     maxWidth: '100%',
     overflowX: allowHorizontalScroll ? 'auto' : 'hidden',
     wordBreak: 'break-word',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
     ...style,
   };
 
@@ -317,6 +321,11 @@ const scrollContainerStyle: React.CSSProperties = {
   overflowY: 'auto',
   overflowX: 'hidden',
   padding: 0,
+};
+
+const messageBlockStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  marginBottom: '8px',
 };
 
 const collapsedGradientStyle: React.CSSProperties = {
@@ -866,8 +875,6 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
       fontSize: '12px',
       color: isHovered ? '#4f4f4f' : '#6b6b6b',
       textAlign: 'center',
-      padding: '6px 12px',
-      margin: '4px 12px',
       border: 'none',
       cursor: 'pointer',
       background: 'transparent',
@@ -935,7 +942,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
             color: '#9a9a9a',
             fontStyle: 'italic',
           }}>
-          {isStreaming ? ' • still thinking…' : ''}
+          {isStreaming ? 'still thinking…' : ''}
         </div>
       </div>
     );
@@ -959,12 +966,11 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
     containerStyle,
   }) => {
     const baseContainer: React.CSSProperties = {
-      padding: '8px 12px',
-      marginBottom: '8px',
       display: 'flex',
       justifyContent: isHuman ? 'flex-end' : 'flex-start',
       alignItems: 'flex-start',
       gap: '8px',
+      width: '100%',
     };
 
     const mergedContainer = { ...baseContainer, ...containerStyle };
@@ -1048,7 +1054,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
     return (
       <div
-        style={{ padding: '4px 12px', marginBottom: '4px' }}
+        style={{ width: '100%' }}
         role="button"
         tabIndex={0}
         onClick={() => toggleSystemMessage(groupId)}
@@ -1161,7 +1167,6 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            marginBottom: '12px',
           }}>
           {status === 'calling' && <Spin size="small" />}
           <Text type="secondary" style={{ fontSize: '12px', color: '#8c8c8c' }}>
@@ -1600,7 +1605,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
     );
   };
 
-  const renderPendingMessage = (message: PendingMessage, index: number) => {
+  const renderPendingMessage = (message: PendingMessage) => {
     const isHuman = message.role === 'human';
     const content = message.content;
 
@@ -1614,7 +1619,6 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
     return (
       <ChatBubble
-        key={`pending-${index}`}
         isHuman={isHuman}
         avatarLabel={isHuman ? 'ME' : 'AI'}
         avatarColor={isHuman ? '#1890ff' : '#52c41a'}
@@ -1643,42 +1647,63 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
   const renderPreparedMessages = () => {
     const rows: React.ReactNode[] = [];
     let i = 0;
+    const isFinishToolMessage = (
+      msg: PreparedMessage,
+    ): msg is Extract<PreparedMessage, { type: 'tool' }> =>
+      msg.type === 'tool' && (msg.name || '').toLowerCase() === 'finish';
+
+    const pushRow = (
+      key: React.Key,
+      content: React.ReactNode,
+      extraStyle?: React.CSSProperties,
+    ) => {
+      rows.push(
+        <div key={key} style={{ ...messageBlockStyle, ...extraStyle }}>
+          {content}
+        </div>,
+      );
+    };
 
     while (i < preparedMessages.length) {
       const item = preparedMessages[i];
 
       if (item.type === 'system') {
-        rows.push(
-          <div key={item.id}>
-            {renderSystemGroup(item.messages, item.messages.length)}
-          </div>,
+        pushRow(
+          item.id,
+          renderSystemGroup(item.messages, item.messages.length),
         );
         i++;
         continue;
       }
 
       if (item.type === 'reasoning') {
-        rows.push(
-          <div key={item.id}>
-            <ReasoningMessage message={item.message} />
-          </div>,
-        );
+        pushRow(item.id, <ReasoningMessage message={item.message} />);
         i++;
         continue;
       }
 
       if (item.type === 'chat') {
-        rows.push(<div key={item.id}>{renderMessage(item.message)}</div>);
+        pushRow(item.id, renderMessage(item.message));
         i++;
         continue;
       }
 
       if (item.type === 'tool') {
+        if (isFinishToolMessage(item)) {
+          pushRow(
+            item.id || `finish-${i}`,
+            renderFinishTool(item.status, item.result),
+          );
+          i++;
+          continue;
+        }
+
         const group: Array<Extract<PreparedMessage, { type: 'tool' }>> = [item];
         let j = i + 1;
         while (
           j < preparedMessages.length &&
-          preparedMessages[j].type === 'tool'
+          preparedMessages[j].type === 'tool' &&
+          !isFinishToolMessage(preparedMessages[j])
         ) {
           group.push(
             preparedMessages[j] as Extract<PreparedMessage, { type: 'tool' }>,
@@ -1686,39 +1711,27 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
           j++;
         }
 
-        rows.push(
-          <div
-            key={`tool-stack-${i}`}
-            style={{
-              padding: '8px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              rowGap: 2,
-              marginBottom: 6,
-            }}>
-            {group.map((t, idx) => {
-              const isFinish = (t.name || '').toLowerCase() === 'finish';
-              return (
-                <div key={t.id || `tool-${i}-${idx}`}>
-                  {isFinish
-                    ? renderFinishTool(t.status, t.result)
-                    : t.toolKind === 'shell'
-                      ? renderShellStatusLine(
-                          t.name,
-                          t.status,
-                          t.result,
-                          t.shellCommand,
-                          t.toolOptions,
-                        )
-                      : renderToolStatusLine(
-                          t.name,
-                          t.status,
-                          t.result,
-                          t.toolOptions,
-                        )}
-                </div>
-              );
-            })}
+        pushRow(
+          `tool-stack-${i}`,
+          <div style={{ display: 'flex', flexDirection: 'column', rowGap: 2 }}>
+            {group.map((t, idx) => (
+              <div key={t.id || `tool-${i}-${idx}`}>
+                {t.toolKind === 'shell'
+                  ? renderShellStatusLine(
+                      t.name,
+                      t.status,
+                      t.result,
+                      t.shellCommand,
+                      t.toolOptions,
+                    )
+                  : renderToolStatusLine(
+                      t.name,
+                      t.status,
+                      t.result,
+                      t.toolOptions,
+                    )}
+              </div>
+            ))}
           </div>,
         );
 
@@ -1830,7 +1843,11 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
               paddingTop: '10px',
               marginTop: '8px',
             }}>
-            {pendingMessages.map((msg, idx) => renderPendingMessage(msg, idx))}
+            {pendingMessages.map((msg, idx) => (
+              <div key={`pending-${idx}`} style={messageBlockStyle}>
+                {renderPendingMessage(msg)}
+              </div>
+            ))}
           </div>
         )}
       </div>
