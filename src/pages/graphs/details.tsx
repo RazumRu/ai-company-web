@@ -21,6 +21,7 @@ import {
   EditOutlined,
   ExclamationCircleOutlined,
   PlayCircleOutlined,
+  RightOutlined,
   SaveOutlined,
   StopOutlined,
   WarningOutlined,
@@ -255,6 +256,7 @@ export const GraphPage = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [graph, setGraph] = useState<GraphDto | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<GraphEdge>([]);
@@ -2260,9 +2262,42 @@ export const GraphPage = () => {
         </div>
       </Header>
 
-      <Layout style={{ height: 'calc(100vh - 173px)', overflow: 'hidden' }}>
+      <Layout
+        style={{
+          height: 'calc(100vh - 135px)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}>
+        {leftSidebarCollapsed && (
+          <Button
+            type="default"
+            shape="circle"
+            icon={<RightOutlined />}
+            aria-label="Expand template sidebar"
+            onClick={() => setLeftSidebarCollapsed(false)}
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              zIndex: 100,
+              width: 36,
+              height: 36,
+              minWidth: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #d9d9d9',
+              background: '#fff',
+            }}
+          />
+        )}
         <Sider
           width={280}
+          collapsible={true}
+          defaultCollapsed={false}
+          collapsed={leftSidebarCollapsed}
+          collapsedWidth={0}
+          trigger={null}
           style={{
             background: '#fff',
             borderRight: '1px solid #f0f0f0',
@@ -2271,6 +2306,7 @@ export const GraphPage = () => {
           }}>
           <TemplateSidebar
             onTemplateClick={handleTemplateClick}
+            onClose={() => setLeftSidebarCollapsed(true)}
             templates={templates}
             selectedNode={selectedNode}
             allNodes={nodes}
