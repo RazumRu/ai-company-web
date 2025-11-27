@@ -15,7 +15,6 @@ import {
   Tooltip,
 } from 'antd';
 import {
-  ArrowLeftOutlined,
   CheckOutlined,
   CloseOutlined,
   DownOutlined,
@@ -26,6 +25,7 @@ import {
   StopOutlined,
   WarningOutlined,
   DeleteOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import { useEdgesState, useNodesState, Viewport } from '@xyflow/react';
 import { isAxiosError } from 'axios';
@@ -1027,7 +1027,9 @@ export const GraphPage = () => {
           const nextStatus = data.data.status;
           const nextError = data.data.error ?? existing?.error ?? null;
           const nextMetadata = data.data.metadata ?? existing?.metadata;
-          const nextAdditionalNodeMetadata = data.data.additionalNodeMetadata ?? existing?.additionalNodeMetadata;
+          const nextAdditionalNodeMetadata =
+            data.data.additionalNodeMetadata ??
+            existing?.additionalNodeMetadata;
 
           if (!existing) {
             const graphNode = nodesRef.current.find(
@@ -1677,30 +1679,23 @@ export const GraphPage = () => {
         style={{
           background: '#fff',
           padding: '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
           borderBottom: '1px solid #f0f0f0',
           flexShrink: 0,
+          height: 70,
         }}>
         <div
           style={{
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: 16,
-            flexWrap: 'wrap',
+            gap: 24,
+            height: '100%',
           }}>
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/')}>
-            Back
-          </Button>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
+              gap: 16,
               flexWrap: 'wrap',
             }}>
             {isEditingName ? (
@@ -1792,113 +1787,362 @@ export const GraphPage = () => {
               </Popover>
             )}
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}>
-            <Popover
-              open={threadPopoverVisible}
-              placement="bottomLeft"
-              content={
-                <div
-                  style={{
-                    maxHeight: 300,
-                    overflowY: 'auto',
-                    minWidth: 320,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}>
-                  <Button
-                    key="__new_thread__"
-                    type="text"
-                    style={{
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      height: 'auto',
-                      lineHeight: 1.2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      border: '1px solid #f0f0f0',
-                      borderRadius: 6,
-                      width: '100%',
-                    }}
-                    onClick={() => handleThreadSelect(undefined)}>
-                    <Typography.Text
-                      strong
-                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                      + New thread
-                    </Typography.Text>
-                    <Typography.Text
-                      type="secondary"
-                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                      Clear current selection
-                    </Typography.Text>
-                  </Button>
 
-                  {threadsLoading ? (
-                    <Typography.Text
-                      type="secondary"
-                      style={{ fontSize: '12px' }}>
-                      Loading threads...
-                    </Typography.Text>
-                  ) : threads.length === 0 ? (
-                    <Typography.Text
-                      type="secondary"
-                      style={{ fontSize: '12px' }}>
-                      No threads available
-                    </Typography.Text>
-                  ) : (
-                    threads.map((thread) => {
-                      const statusMeta = getThreadStatusDisplay(thread.status);
-                      const isThreadRunning =
-                        thread.status === ThreadDtoStatusEnum.Running;
-                      return (
-                        <div
-                          key={thread.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            width: '100%',
-                            border: '1px solid #f0f0f0',
-                            borderRadius: 6,
-                            padding: '4px 4px',
-                          }}>
-                          <Button
-                            type="text"
-                            style={{
-                              textAlign: 'left',
-                              padding: '8px 12px',
-                              height: 'auto',
-                              lineHeight: 1.2,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
-                              border: 'none',
-                              boxShadow: 'none',
-                              flex: 1,
-                            }}
-                            onClick={() => handleThreadSelect(thread.id)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                <Popover
+                  open={threadPopoverVisible}
+                  placement="bottomLeft"
+                  content={
+                    <div
+                      style={{
+                        maxHeight: 300,
+                        overflowY: 'auto',
+                        minWidth: 320,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}>
+                      <Button
+                        key="__new_thread__"
+                        type="text"
+                        style={{
+                          textAlign: 'left',
+                          padding: '8px 12px',
+                          height: 'auto',
+                          lineHeight: 1.2,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          border: '1px solid #f0f0f0',
+                          borderRadius: 6,
+                          width: '100%',
+                        }}
+                        onClick={() => handleThreadSelect(undefined)}>
+                        <Typography.Text
+                          strong
+                          style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                          + New thread
+                        </Typography.Text>
+                        <Typography.Text
+                          type="secondary"
+                          style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                          Clear current selection
+                        </Typography.Text>
+                      </Button>
+
+                      {threadsLoading ? (
+                        <Typography.Text
+                          type="secondary"
+                          style={{ fontSize: '12px' }}>
+                          Loading threads...
+                        </Typography.Text>
+                      ) : threads.length === 0 ? (
+                        <Typography.Text
+                          type="secondary"
+                          style={{ fontSize: '12px' }}>
+                          No threads available
+                        </Typography.Text>
+                      ) : (
+                        threads.map((thread) => {
+                          const statusMeta = getThreadStatusDisplay(
+                            thread.status,
+                          );
+                          const isThreadRunning =
+                            thread.status === ThreadDtoStatusEnum.Running;
+                          return (
                             <div
+                              key={thread.id}
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 8,
                                 width: '100%',
-                                justifyContent: 'space-between',
+                                border: '1px solid #f0f0f0',
+                                borderRadius: 6,
+                                padding: '4px 4px',
                               }}>
-                              <Typography.Text
-                                strong
-                                style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                                {thread.name || thread.id}
-                              </Typography.Text>
+                              <Button
+                                type="text"
+                                style={{
+                                  textAlign: 'left',
+                                  padding: '8px 12px',
+                                  height: 'auto',
+                                  lineHeight: 1.2,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  border: 'none',
+                                  boxShadow: 'none',
+                                  flex: 1,
+                                }}
+                                onClick={() => handleThreadSelect(thread.id)}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    width: '100%',
+                                    justifyContent: 'space-between',
+                                  }}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 8,
+                                      minWidth: 0,
+                                    }}>
+                                    <Typography.Text
+                                      strong
+                                      style={{
+                                        fontSize: '12px',
+                                        lineHeight: 1.2,
+                                      }}>
+                                      {thread.name || thread.id}
+                                    </Typography.Text>
+                                    <Popconfirm
+                                      title="Delete thread"
+                                      description="Are you sure you want to delete this thread?"
+                                      okText="Delete"
+                                      okButtonProps={{
+                                        danger: true,
+                                        loading: deletingThreadId === thread.id,
+                                      }}
+                                      cancelText="Cancel"
+                                      disabled={deletingThreadId === thread.id}
+                                      onConfirm={(e) => {
+                                        e?.stopPropagation?.();
+                                        handleDeleteThread(thread.id);
+                                      }}>
+                                      <span
+                                        role="button"
+                                        aria-label={`Delete thread ${thread.name || thread.id}`}
+                                        tabIndex={0}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          width: 24,
+                                          height: 24,
+                                          borderRadius: '50%',
+                                          color: '#ff4d4f',
+                                          backgroundColor: 'transparent',
+                                          transition: 'background-color 0.2s',
+                                          cursor: 'pointer',
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (
+                                            e.key === 'Enter' ||
+                                            e.key === ' '
+                                          ) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            (
+                                              e.currentTarget as HTMLElement
+                                            ).click();
+                                          }
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.backgroundColor =
+                                            'rgba(255, 77, 79, 0.08)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.backgroundColor =
+                                            'transparent';
+                                        }}>
+                                        {deletingThreadId === thread.id ? (
+                                          <LoadingOutlined
+                                            style={{ fontSize: 12 }}
+                                            spin
+                                          />
+                                        ) : (
+                                          <DeleteOutlined />
+                                        )}
+                                      </span>
+                                    </Popconfirm>
+                                  </div>
+                                  {statusMeta && (
+                                    <Tag
+                                      color={statusMeta.color}
+                                      style={{
+                                        margin: 0,
+                                        borderRadius: 999,
+                                        fontSize: '11px',
+                                        lineHeight: '18px',
+                                        padding: '0 8px',
+                                        boxShadow: isThreadRunning
+                                          ? '0 0 0 0 rgba(24, 144, 255, 0.45)'
+                                          : 'none',
+                                        animation: isThreadRunning
+                                          ? 'thread-status-pulse 1.5s ease-out infinite'
+                                          : undefined,
+                                      }}>
+                                      {statusMeta.label}
+                                    </Tag>
+                                  )}
+                                </div>
+                                <Typography.Text
+                                  type="secondary"
+                                  style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                                  {new Date(thread.createdAt).toLocaleString()}
+                                </Typography.Text>
+                                {thread.source ? (
+                                  <Typography.Text
+                                    type="secondary"
+                                    style={{
+                                      fontSize: '12px',
+                                      lineHeight: 1.2,
+                                    }}>
+                                    Source: {thread.source}
+                                  </Typography.Text>
+                                ) : null}
+                              </Button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  }
+                  trigger="click"
+                  onOpenChange={setThreadPopoverVisible}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      cursor: 'pointer',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      transition: 'background-color 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f5f5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}>
+                    {(() => {
+                      const t = threads.find(
+                        (thr) => thr.id === selectedThreadId,
+                      );
+                      const source = t?.source;
+                      const label = (
+                        <Typography.Text
+                          strong
+                          style={{ fontSize: '14px', lineHeight: 1 }}>
+                          Thread
+                        </Typography.Text>
+                      );
+                      return source ? (
+                        <Tooltip title={`Source: ${source}`}>{label}</Tooltip>
+                      ) : (
+                        label
+                      );
+                    })()}
+                    {selectedThreadId ? (
+                      (() => {
+                        const t = threads.find(
+                          (thr) => thr.id === selectedThreadId,
+                        );
+                        const statusMeta = getThreadStatusDisplay(t?.status);
+                        return (
+                          <>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                              }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                }}>
+                                <Typography.Text
+                                  style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                                  {t?.name || selectedThreadId}
+                                </Typography.Text>
+                                {selectedThreadId && (
+                                  <Popconfirm
+                                    title="Delete thread"
+                                    description="Are you sure you want to delete the selected thread?"
+                                    okText="Delete"
+                                    okButtonProps={{
+                                      danger: true,
+                                      loading:
+                                        deletingThreadId === selectedThreadId,
+                                    }}
+                                    cancelText="Cancel"
+                                    disabled={
+                                      deletingThreadId === selectedThreadId
+                                    }
+                                    onConfirm={(e) => {
+                                      e?.stopPropagation?.();
+                                      handleDeleteThread(selectedThreadId);
+                                    }}>
+                                    <span
+                                      role="button"
+                                      aria-label="Delete current thread"
+                                      tabIndex={0}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: '50%',
+                                        color: '#ff4d4f',
+                                        backgroundColor: 'transparent',
+                                        transition: 'background-color 0.2s',
+                                        cursor: 'pointer',
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (
+                                          e.key === 'Enter' ||
+                                          e.key === ' '
+                                        ) {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          (
+                                            e.currentTarget as HTMLElement
+                                          ).click();
+                                        }
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor =
+                                          'rgba(255, 77, 79, 0.08)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor =
+                                          'transparent';
+                                      }}>
+                                      {deletingThreadId === selectedThreadId ? (
+                                        <LoadingOutlined
+                                          style={{ fontSize: 12 }}
+                                          spin
+                                        />
+                                      ) : (
+                                        <DeleteOutlined />
+                                      )}
+                                    </span>
+                                  </Popconfirm>
+                                )}
+                              </div>
                               {statusMeta && (
                                 <Tag
                                   color={statusMeta.color}
@@ -1908,12 +2152,14 @@ export const GraphPage = () => {
                                     fontSize: '11px',
                                     lineHeight: '18px',
                                     padding: '0 8px',
-                                    boxShadow: isThreadRunning
-                                      ? '0 0 0 0 rgba(24, 144, 255, 0.45)'
-                                      : 'none',
-                                    animation: isThreadRunning
-                                      ? 'thread-status-pulse 1.5s ease-out infinite'
-                                      : undefined,
+                                    boxShadow:
+                                      t?.status === ThreadDtoStatusEnum.Running
+                                        ? '0 0 0 0 rgba(24, 144, 255, 0.45)'
+                                        : 'none',
+                                    animation:
+                                      t?.status === ThreadDtoStatusEnum.Running
+                                        ? 'thread-status-pulse 1.5s ease-out infinite'
+                                        : undefined,
                                   }}>
                                   {statusMeta.label}
                                 </Tag>
@@ -1922,229 +2168,95 @@ export const GraphPage = () => {
                             <Typography.Text
                               type="secondary"
                               style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                              {new Date(thread.createdAt).toLocaleString()}
+                              {t
+                                ? `${new Date(t.createdAt).toLocaleString()} | ${t.source || 'unknown source'}`
+                                : ''}
                             </Typography.Text>
-                            {thread.source ? (
-                              <Typography.Text
-                                type="secondary"
-                                style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                                Source: {thread.source}
-                              </Typography.Text>
-                            ) : null}
-                          </Button>
-                          <Popconfirm
-                            title="Delete thread"
-                            description="Are you sure you want to delete this thread?"
-                            okText="Delete"
-                            okButtonProps={{
-                              danger: true,
-                              loading: deletingThreadId === thread.id,
-                            }}
-                            cancelText="Cancel"
-                            onConfirm={(e) => {
-                              e?.stopPropagation?.();
-                              handleDeleteThread(thread.id);
-                            }}>
-                            <Button
-                              size="small"
-                              type="text"
-                              danger
-                              icon={<DeleteOutlined />}
-                              loading={deletingThreadId === thread.id}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </Popconfirm>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              }
-              trigger="click"
-              onOpenChange={setThreadPopoverVisible}>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  transition: 'background-color 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f5f5f5';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}>
-                {(() => {
-                  const t = threads.find((thr) => thr.id === selectedThreadId);
-                  const source = t?.source;
-                  const label = (
-                    <Typography.Text
-                      strong
-                      style={{ fontSize: '14px', lineHeight: 1 }}>
-                      Thread
-                    </Typography.Text>
-                  );
-                  return source ? (
-                    <Tooltip title={`Source: ${source}`}>{label}</Tooltip>
-                  ) : (
-                    label
-                  );
-                })()}
-                {selectedThreadId ? (
-                  (() => {
-                    const t = threads.find(
-                      (thr) => thr.id === selectedThreadId,
-                    );
-                    const statusMeta = getThreadStatusDisplay(t?.status);
-                    return (
+                          </>
+                        );
+                      })()
+                    ) : (
                       <>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            flexWrap: 'wrap',
-                          }}>
-                          <Typography.Text
-                            style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                            {t?.name || selectedThreadId}
-                          </Typography.Text>
-                          {statusMeta && (
-                            <Tag
-                              color={statusMeta.color}
-                              style={{
-                                margin: 0,
-                                borderRadius: 999,
-                                fontSize: '11px',
-                                lineHeight: '18px',
-                                padding: '0 8px',
-                                boxShadow:
-                                  t?.status === ThreadDtoStatusEnum.Running
-                                    ? '0 0 0 0 rgba(24, 144, 255, 0.45)'
-                                    : 'none',
-                                animation:
-                                  t?.status === ThreadDtoStatusEnum.Running
-                                    ? 'thread-status-pulse 1.5s ease-out infinite'
-                                    : undefined,
-                              }}>
-                              {statusMeta.label}
-                            </Tag>
-                          )}
-                        </div>
                         <Typography.Text
                           type="secondary"
                           style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                          {t
-                            ? `${new Date(t.createdAt).toLocaleString()} | ${t.source || 'unknown source'}`
-                            : ''}
+                          No active thread.
+                        </Typography.Text>
+                        <Typography.Text
+                          type="secondary"
+                          style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                          It will be created automatically after first
+                          execution.
                         </Typography.Text>
                       </>
-                    );
-                  })()
-                ) : (
-                  <>
-                    <Typography.Text
-                      type="secondary"
-                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                      No active thread.
-                    </Typography.Text>
-                    <Typography.Text
-                      type="secondary"
-                      style={{ fontSize: '12px', lineHeight: 1.2 }}>
-                      It will be created automatically after first execution.
-                    </Typography.Text>
-                  </>
-                )}
+                    )}
+                  </div>
+                </Popover>
               </div>
-            </Popover>
+            </div>
 
-            {selectedThreadId && (
-              <Popconfirm
-                title="Delete thread"
-                description="Are you sure you want to delete the selected thread?"
-                okText="Delete"
-                okButtonProps={{
-                  danger: true,
-                  loading: deletingThreadId === selectedThreadId,
-                }}
-                cancelText="Cancel"
-                onConfirm={() =>
-                  selectedThreadId && handleDeleteThread(selectedThreadId)
-                }>
-                <Button
-                  size="small"
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  loading={deletingThreadId === selectedThreadId}
+            {(graph?.error || graphError) && (
+              <Popover
+                content={
+                  <div style={{ maxWidth: 500 }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
+                      Graph Error:
+                    </div>
+                    <div>{graph?.error || graphError}</div>
+                  </div>
+                }
+                title="Error Details"
+                trigger="hover"
+                color="#ffd7d9"
+                placement="bottomRight">
+                <ExclamationCircleOutlined
+                  style={{
+                    color: '#ff4d4f',
+                    fontSize: 16,
+                    cursor: 'pointer',
+                  }}
                 />
-              </Popconfirm>
+              </Popover>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Popover
+                content="You have unsaved changes"
+                title="Unsaved Changes"
+                open={hasStructuralChanges ? undefined : false}
+                trigger="hover">
+                <Button
+                  type="primary"
+                  icon={
+                    <Space size={4}>
+                      {hasStructuralChanges ? (
+                        <WarningOutlined style={{ color: '#ffb431' }} />
+                      ) : (
+                        <SaveOutlined />
+                      )}
+                    </Space>
+                  }
+                  onClick={handleSave}
+                  loading={saving}>
+                  Save
+                </Button>
+              </Popover>
+            </div>
+            {graph && (
+              <Button
+                type={isGraphRunning ? 'default' : 'primary'}
+                icon={
+                  isGraphRunning ? <StopOutlined /> : <PlayCircleOutlined />
+                }
+                loading={actionLoading || isGraphCompiling}
+                onClick={handleGraphAction}>
+                {isGraphRunning
+                  ? 'Stop Graph'
+                  : isGraphCompiling
+                    ? 'Compiling...'
+                    : 'Run Graph'}
+              </Button>
             )}
           </div>
-
-          {(graph?.error || graphError) && (
-            <Popover
-              content={
-                <div style={{ maxWidth: 500 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
-                    Graph Error:
-                  </div>
-                  <div>{graph?.error || graphError}</div>
-                </div>
-              }
-              title="Error Details"
-              trigger="hover"
-              color="#ffd7d9"
-              placement="bottomRight">
-              <ExclamationCircleOutlined
-                style={{
-                  color: '#ff4d4f',
-                  fontSize: 16,
-                  cursor: 'pointer',
-                }}
-              />
-            </Popover>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Popover
-              content="You have unsaved changes"
-              title="Unsaved Changes"
-              open={hasStructuralChanges ? undefined : false}
-              trigger="hover">
-              <Button
-                type="primary"
-                icon={
-                  <Space size={4}>
-                    {hasStructuralChanges ? (
-                      <WarningOutlined style={{ color: '#ffb431' }} />
-                    ) : (
-                      <SaveOutlined />
-                    )}
-                  </Space>
-                }
-                onClick={handleSave}
-                loading={saving}>
-                Save
-              </Button>
-            </Popover>
-          </div>
-          {graph && (
-            <Button
-              type={isGraphRunning ? 'default' : 'primary'}
-              icon={isGraphRunning ? <StopOutlined /> : <PlayCircleOutlined />}
-              loading={actionLoading || isGraphCompiling}
-              onClick={handleGraphAction}>
-              {isGraphRunning
-                ? 'Stop Graph'
-                : isGraphCompiling
-                  ? 'Compiling...'
-                  : 'Run Graph'}
-            </Button>
-          )}
         </div>
       </Header>
 

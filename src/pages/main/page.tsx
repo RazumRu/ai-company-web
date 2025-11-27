@@ -1,6 +1,7 @@
-import { List } from '@refinedev/antd';
-import { Spin } from 'antd';
+import { Spin, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+
+const { Title, Paragraph, Text } = Typography;
 
 export const MainPage = () => {
   const [loading, setLoading] = useState(true);
@@ -12,20 +13,44 @@ export const MainPage = () => {
     })();
   }, []);
 
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh',
+        }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
-    <List title="Dashboard">
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
-          <Spin size="large" />
-        </div>
-      ) : (
-        <>
-          {error && (
-            <div style={{ color: 'red', marginBottom: 16 }}>{error}</div>
-          )}
-          Hello!
-        </>
+    <div
+      style={{
+        width: '100%',
+        minHeight: 'calc(100vh - 120px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 24px',
+        position: 'relative',
+      }}>
+      {error && (
+        <Text type="danger" style={{ position: 'absolute', top: 32 }}>
+          {error}
+        </Text>
       )}
-    </List>
+      <Typography style={{ textAlign: 'center', maxWidth: 520 }}>
+        <Title level={2} style={{ marginBottom: 12 }}>
+          Welcome to AI Agent Graph Platform
+        </Title>
+        <Paragraph type="secondary" style={{ fontSize: 16, marginBottom: 0 }}>
+          Select "Graphs" from the sidebar to view your agent graphs.
+        </Paragraph>
+      </Typography>
+    </div>
   );
 };

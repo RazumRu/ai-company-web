@@ -1,0 +1,32 @@
+:root {
+  --app-bg-color: #f9fafb;
+  --app-border-color: #e5e7eb;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: var(--app-bg-color);
+}
+
+body {
+  margin: 0;
+}
+
+.ant-layout,
+.ant-layout-content {
+  background-color: var(--app-bg-color) !important;
+}
+
+.ant-layout-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ant-layout-content > div {
+  padding: 0 !important;
+  min-height: unset !important;
+  background: transparent !important;
+}

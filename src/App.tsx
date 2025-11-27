@@ -3,7 +3,6 @@ import { Authenticated, AuthProvider, Refine } from '@refinedev/core';
 import {
   ErrorComponent,
   ThemedLayoutV2,
-  ThemedSiderV2,
   ThemedTitleV2,
   useNotificationProvider,
 } from '@refinedev/antd';
@@ -18,6 +17,7 @@ import dataProvider from '@refinedev/simple-rest';
 import { App as AntdApp } from 'antd';
 import { BrowserRouter, Outlet, Route, Routes } from 'react-router';
 import { Header } from './components/header';
+import { CustomSider } from './components/layout/CustomSider';
 import { API_URL, PROJECT_ID } from './config';
 import { MainPage } from './pages/main/page';
 import { GraphPage } from './pages/graphs/details';
@@ -122,7 +122,7 @@ function App() {
                         text="AI Company"
                       />
                     )}
-                    Sider={(props) => <ThemedSiderV2 {...props} fixed />}>
+                    Sider={CustomSider}>
                     <Outlet />
                   </ThemedLayoutV2>
                 </Authenticated>
