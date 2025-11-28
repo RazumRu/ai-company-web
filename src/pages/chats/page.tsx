@@ -51,6 +51,7 @@ interface TriggerNodeInfo {
 interface GraphCacheEntry {
   graph: GraphDto;
   triggerNodes: TriggerNodeInfo[];
+  nodeDisplayNames: Record<string, string>;
 }
 
 const buildTriggerNodes = (
@@ -74,6 +75,20 @@ const buildTriggerNodes = (
       name: metadataNodes[node.id] || node.template,
       template: node.template,
     }));
+};
+
+const buildNodeDisplayNames = (graph: GraphDto): Record<string, string> => {
+  const metadataNodes = graph.metadata?.nodes ?? [];
+  return metadataNodes.reduce<Record<string, string>>((acc, node) => {
+    if (!node.id) {
+      return acc;
+    }
+    const metadataName = node.name?.trim();
+    if (metadataName && metadataName.length > 0) {
+      acc[node.id] = metadataName;
+    }
+    return acc;
+  }, {});
 };
 
 const extractThreadSubId = (externalThreadId?: string | null) => {
@@ -141,7 +156,7 @@ export const ChatsPage = () => {
     if (graphEntry) {
       const triggers = graphEntry.triggerNodes ?? [];
       setTriggerNodesForSelectedThread(triggers);
-      
+
       // Auto-select first trigger if none selected or current selection is invalid
       if (triggers.length > 0) {
         const isCurrentTriggerValid = triggers.some(
@@ -235,6 +250,7 @@ export const ChatsPage = () => {
             next[missingGraphIds[idx]] = {
               graph,
               triggerNodes: buildTriggerNodes(graph, templatesByName),
+              nodeDisplayNames: buildNodeDisplayNames(graph),
             };
           });
           return next;
@@ -291,6 +307,7 @@ export const ChatsPage = () => {
         nextEntries[graphId] = {
           graph: entry.graph,
           triggerNodes: updatedTriggers,
+          nodeDisplayNames: entry.nodeDisplayNames,
         };
         if (updatedTriggers.length !== entry.triggerNodes.length) {
           changed = true;
@@ -663,6 +680,10 @@ export const ChatsPage = () => {
         hasMoreMessages={hasMoreMessages}
         loadingMore={messagesLoadingMore}
         isNodeRunning={selectedThread.status === ThreadDtoStatusEnum.Running}
+        nodeDisplayNames={
+          graphCache[selectedThread.graphId]?.nodeDisplayNames
+        }
+        showNodeHeadings
       />
     );
   }, [
@@ -673,6 +694,7 @@ export const ChatsPage = () => {
     hasMoreMessages,
     handleLoadMoreMessages,
     messagesLoadingMore,
+    graphCache,
   ]);
 
   const handleDeleteThread = useCallback(
@@ -979,22 +1001,22 @@ export const ChatsPage = () => {
                       }}>
                       <Dropdown
                         menu={{
-                          items: triggerNodesForSelectedThread.map((trigger) => ({
-                            key: trigger.id,
-                            label: trigger.name,
-                            onClick: () => setSelectedTriggerId(trigger.id),
-                          })),
+                          items: triggerNodesForSelectedThread.map(
+                            (trigger) => ({
+                              key: trigger.id,
+                              label: trigger.name,
+                              onClick: () => setSelectedTriggerId(trigger.id),
+                            }),
+                          ),
                           selectedKeys: selectedTriggerId
                             ? [selectedTriggerId]
                             : [],
                         }}
                         trigger={['click']}>
                         <Button
-                          type="link"
-                          size="small"
+                          type="default"
+                          size="middle"
                           style={{
-                            padding: 0,
-                            height: 'auto',
                             flexShrink: 0,
                           }}>
                           {triggerNodesForSelectedThread.find(

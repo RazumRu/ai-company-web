@@ -65,6 +65,8 @@ export interface ThreadMessagesViewProps {
   messagesLoading: boolean;
   selectedThreadId?: string;
   nodeId?: string;
+  nodeDisplayNames?: Record<string, string>;
+  showNodeHeadings?: boolean;
   isAgentNode?: boolean;
   nodeTemplateKind?: string;
   onLoadMoreMessages?: () => void;
@@ -371,6 +373,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   messagesLoading,
   selectedThreadId,
   nodeId,
+  nodeDisplayNames,
+  showNodeHeadings = false,
   isAgentNode = true,
   nodeTemplateKind,
   onLoadMoreMessages,
@@ -555,6 +559,40 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     return role === 'tool' || role === 'tool-shell';
   };
 
+  const buildToolCallResultIndex = (
+    allMessages: ThreadMessageDto[],
+  ): Record<string, ThreadMessageDto[]> => {
+    return allMessages.reduce<Record<string, ThreadMessageDto[]>>(
+      (acc, msg) => {
+        if (!isToolLikeRole(msg.message?.role as string)) {
+          return acc;
+        }
+        const toolCallId = getMessageString(msg.message, 'toolCallId');
+        if (!toolCallId) {
+          return acc;
+        }
+        if (!acc[toolCallId]) {
+          acc[toolCallId] = [];
+        }
+        acc[toolCallId].push(msg);
+        return acc;
+      },
+      {},
+    );
+  };
+
+  const getToolMessageKey = (msg?: ThreadMessageDto): string | undefined => {
+    if (!msg) return undefined;
+    if (msg.id) return msg.id;
+    const messageLevelId =
+      typeof msg.message?.id === 'string' ? msg.message.id : undefined;
+    if (messageLevelId) return messageLevelId;
+    if (msg.createdAt) return `created-${msg.createdAt}`;
+    const toolCallId = getMessageString(msg.message, 'toolCallId');
+    if (toolCallId) return `toolCall-${toolCallId}`;
+    return undefined;
+  };
+
   const argsToObject = (
     args?: string | Record<string, unknown>,
   ): Record<string, JsonValue> | null => {
@@ -652,9 +690,27 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   };
 
   type PreparedMessage =
-    | { type: 'system'; messages: ThreadMessageDto[]; id: string }
-    | { type: 'reasoning'; message: ThreadMessageDto; id: string }
-    | { type: 'chat'; message: ThreadMessageDto; id: string }
+    | {
+        type: 'system';
+        messages: ThreadMessageDto[];
+        id: string;
+        nodeId?: string;
+        createdAt?: string;
+      }
+    | {
+        type: 'reasoning';
+        message: ThreadMessageDto;
+        id: string;
+        nodeId?: string;
+        createdAt?: string;
+      }
+    | {
+        type: 'chat';
+        message: ThreadMessageDto;
+        id: string;
+        nodeId?: string;
+        createdAt?: string;
+      }
     | {
         type: 'tool';
         name: string;
@@ -664,11 +720,45 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         toolKind?: 'generic' | 'shell';
         shellCommand?: string;
         toolOptions?: Record<string, JsonValue>;
+        nodeId?: string;
+        createdAt?: string;
+        roleLabel?: string;
       };
 
   const prepareReadyMessages = (
     msgs: ThreadMessageDto[],
   ): PreparedMessage[] => {
+    const toolCallResultsById = buildToolCallResultIndex(msgs);
+    const consumedToolCallIds = new Set<string>();
+    const consumedToolMessageKeys = new Set<string>();
+
+    const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
+      const key = getToolMessageKey(msg);
+      if (key) {
+        consumedToolMessageKeys.add(key);
+      }
+    };
+
+    const markToolCallConsumed = (toolCallId?: string) => {
+      if (toolCallId) {
+        consumedToolCallIds.add(toolCallId);
+      }
+    };
+
+    const consumeToolResultById = (
+      toolCallId?: string,
+    ): ThreadMessageDto | undefined => {
+      if (!toolCallId) return undefined;
+      const queue = toolCallResultsById[toolCallId];
+      if (!queue || queue.length === 0) {
+        return undefined;
+      }
+      const next = queue.shift();
+      markToolCallConsumed(toolCallId);
+      markToolMessageConsumed(next);
+      return next;
+    };
+
     const prepared: PreparedMessage[] = [];
     let i = 0;
 
@@ -682,6 +772,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             type: 'reasoning',
             message: m,
             id: `reasoning-${m.id || m.createdAt}`,
+            nodeId: m.nodeId,
+            createdAt: m.createdAt,
           });
         }
         i++;
@@ -702,6 +794,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
           type: 'system',
           messages: sys,
           id: `system-${sys[0].id || sys[0].createdAt}`,
+          nodeId: sys[0]?.nodeId,
+          createdAt: sys[0]?.createdAt,
         });
         i = j;
         continue;
@@ -721,6 +815,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             type: 'chat',
             message: m,
             id: `chat-${m.id || m.createdAt}`,
+            nodeId: m.nodeId,
+            createdAt: m.createdAt,
           });
         }
 
@@ -738,9 +834,18 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         for (let idx = 0; idx < toolCalls.length; idx++) {
           const tc = toolCalls[idx];
           const name = tc.name || tc.function?.name || 'tool';
-          const matched = followingTools.find(
-            (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
-          );
+          let matched = consumeToolResultById(tc.id);
+          if (!matched) {
+            matched = followingTools.find(
+              (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
+            );
+            if (matched) {
+              markToolCallConsumed(
+                tc.id || getMessageString(matched.message, 'toolCallId'),
+              );
+              markToolMessageConsumed(matched);
+            }
+          }
           const resultContent = matched?.message?.content;
           const toolArgs = tc.function?.arguments ?? tc.args;
           const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
@@ -763,6 +868,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             toolKind: isShell ? 'shell' : 'generic',
             shellCommand,
             toolOptions: toolOptions || undefined,
+            nodeId: matched?.nodeId ?? m.nodeId,
+            createdAt: matched?.createdAt ?? m.createdAt,
+            roleLabel: name || 'tool',
           });
         }
 
@@ -771,6 +879,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
       }
 
       if (isToolLikeRole(role)) {
+        const toolCallId = getMessageString(m.message, 'toolCallId');
+        const messageKey = getToolMessageKey(m);
+        if (
+          (toolCallId && consumedToolCallIds.has(toolCallId)) ||
+          (messageKey && consumedToolMessageKeys.has(messageKey))
+        ) {
+          i++;
+          continue;
+        }
+
         const name = getMessageString(m.message, 'name') || 'tool';
         const resultContent = m.message?.content;
         const resultObj =
@@ -794,6 +912,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
           toolKind: isShell ? 'shell' : 'generic',
           shellCommand,
           toolOptions,
+          nodeId: m.nodeId,
+          createdAt: m.createdAt,
+          roleLabel: name || 'tool',
         });
         i++;
         continue;
@@ -804,6 +925,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
           type: 'chat',
           message: m,
           id: `chat-${m.id || m.createdAt}`,
+          nodeId: m.nodeId,
+          createdAt: m.createdAt,
         });
       }
       i++;
@@ -1112,6 +1235,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   const renderFinishTool = (
     status: 'calling' | 'executed',
     resultContent?: unknown,
+    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
   ) => {
     if (status === 'calling') {
       return undefined;
@@ -1146,7 +1270,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         bubbleStyle={{
           backgroundColor: '#f3f3f3',
           borderLeft: `3px solid ${messageColor}`,
-        }}>
+        }}
+        footer={renderMetadataText(
+          metadata?.createdAt,
+          metadata?.roleLabel,
+          metadata?.nodeId,
+        )}>
         <Text
           type="secondary"
           style={{
@@ -1172,6 +1301,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     status: 'calling' | 'executed',
     resultContent?: unknown,
     toolOptions?: Record<string, JsonValue>,
+    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
   ) => {
     const line = (
       <div
@@ -1206,16 +1336,38 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
       </div>
     );
 
+    let baseLine: React.ReactNode = line;
     if (status === 'executed' && resultContent !== undefined) {
       const contentNode = renderToolPopoverContent(resultContent, toolOptions);
-      return (
+      baseLine = (
         <Popover content={contentNode} trigger={['click']} placement="topLeft">
           {line}
         </Popover>
       );
     }
 
-    return line;
+    const metadataNode = renderMetadataText(
+      metadata?.createdAt,
+      metadata?.roleLabel ?? name,
+      metadata?.nodeId,
+    );
+
+    if (!metadataNode) {
+      return baseLine;
+    }
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+        }}>
+        {baseLine}
+        {metadataNode}
+      </div>
+    );
   };
 
   const truncateToLines = (
@@ -1234,7 +1386,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     resultContent?: unknown;
     shellCommand?: string;
     toolOptions?: Record<string, JsonValue>;
-  }> = ({ name, status, resultContent, shellCommand, toolOptions }) => {
+    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string };
+  }> = ({
+    name,
+    status,
+    resultContent,
+    shellCommand,
+    toolOptions,
+    metadata,
+  }) => {
     const [commandExpanded, setCommandExpanded] = useState(false);
     const [outputExpanded, setOutputExpanded] = useState(false);
 
@@ -1302,6 +1462,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
       ? truncateToLines(shellCommand, 3)
       : null;
     const outputTruncated = outputText ? truncateToLines(outputText, 3) : null;
+
+    const metadataNode = renderMetadataText(
+      metadata?.createdAt,
+      metadata?.roleLabel ?? name,
+      metadata?.nodeId,
+    );
 
     return (
       <div style={{ marginBottom: `12px` }}>
@@ -1527,6 +1693,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             </div>
           )}
         </div>
+        {metadataNode}
       </div>
     );
   };
@@ -1537,6 +1704,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     resultContent?: unknown,
     shellCommand?: string,
     toolOptions?: Record<string, JsonValue>,
+    metadata?: { nodeId?: string; createdAt?: string },
   ) => {
     return (
       <ShellToolDisplay
@@ -1545,6 +1713,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         resultContent={resultContent}
         shellCommand={shellCommand}
         toolOptions={toolOptions}
+        metadata={metadata}
       />
     );
   };
@@ -1593,7 +1762,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   const renderMessage = (message: ThreadMessageDto) => {
     const role = (message.message?.role as string) || '';
     const content = formatMessageContent(message.message?.content);
-    const createdAt = new Date(message.createdAt).toLocaleString();
+    const metadataText =
+      formatMetadataLine(message.createdAt, role, message.nodeId) ||
+      (role ? `from ${role}` : undefined);
 
     if (isToolLikeRole(role)) {
       const name = getMessageString(message.message, 'name') || 'tool';
@@ -1619,11 +1790,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         avatarLabel={isHuman ? 'ME' : 'AI'}
         avatarColor={avatarColor}
         footer={
-          <Text
-            type="secondary"
-            style={{ fontSize: '11px', marginTop: '4px', color: '#8c8c8c' }}>
-            {`${createdAt} | ${role}`}
-          </Text>
+          metadataText ? (
+            <Text
+              type="secondary"
+              style={{ fontSize: '11px', marginTop: '4px', color: '#8c8c8c' }}>
+              {metadataText}
+            </Text>
+          ) : undefined
         }>
         <MarkdownContent
           content={content}
@@ -1669,6 +1842,69 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
           style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
         />
       </ChatBubble>
+    );
+  };
+
+  const formatNodeLabel = (nodeIdentifier?: string): string | undefined => {
+    if (!nodeIdentifier) {
+      return undefined;
+    }
+    const mapped = nodeDisplayNames?.[nodeIdentifier];
+    if (mapped && mapped.trim().length > 0) {
+      return mapped;
+    }
+    if (nodeIdentifier.length <= 10) {
+      return nodeIdentifier;
+    }
+    return `Node ${nodeIdentifier.slice(-6)}`;
+  };
+
+  const formatMetadataLine = (
+    createdAt?: string,
+    roleLabel?: string,
+    sourceNodeId?: string,
+  ): string | undefined => {
+    const datePart = createdAt
+      ? new Date(createdAt).toLocaleString()
+      : undefined;
+    const descriptorParts: string[] = [];
+    if (roleLabel) {
+      descriptorParts.push(`from ${roleLabel}`);
+    }
+    if (showNodeHeadings) {
+      const label = formatNodeLabel(sourceNodeId || nodeId);
+      if (label) {
+        descriptorParts.push(`(${label} node)`);
+      }
+    }
+    const descriptor = descriptorParts.join(' ');
+    const parts = [datePart, descriptor].filter((part) => part && part.length);
+    if (!parts.length) {
+      return undefined;
+    }
+    return parts.join(' | ');
+  };
+
+  const renderMetadataText = (
+    createdAt?: string,
+    roleLabel?: string,
+    sourceNodeId?: string,
+  ): React.ReactNode => {
+    const text = formatMetadataLine(createdAt, roleLabel, sourceNodeId);
+    if (!text) {
+      return null;
+    }
+    return (
+      <Text
+        type="secondary"
+        style={{
+          fontSize: '11px',
+          marginTop: '4px',
+          color: '#8c8c8c',
+          display: 'block',
+        }}>
+        {text}
+      </Text>
     );
   };
 
@@ -1720,7 +1956,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         if (isFinishToolMessage(item)) {
           pushRow(
             item.id || `finish-${i}`,
-            renderFinishTool(item.status, item.result),
+            renderFinishTool(item.status, item.result, {
+              nodeId: item.nodeId,
+              createdAt: item.createdAt,
+              roleLabel: 'ai',
+            }),
           );
           i++;
           continue;
@@ -1751,6 +1991,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
                       t.result,
                       t.shellCommand,
                       t.toolOptions,
+                      {
+                        nodeId: t.nodeId,
+                        createdAt: t.createdAt,
+                        roleLabel: t.roleLabel ?? t.name,
+                      },
                     )
                   : renderToolStatusLine(
                       t.name,
