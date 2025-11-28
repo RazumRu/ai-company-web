@@ -184,15 +184,25 @@ class WebSocketService {
    * @param graphId The ID of the graph to subscribe to
    */
   subscribeToGraph(graphId: string): void {
+    if (!graphId) {
+      console.warn('[WebSocket] Cannot subscribe - invalid graph id');
+      return;
+    }
+
+    // Always track desired subscriptions so we can resubscribe on reconnect
+    this.subscribedGraphs.add(graphId);
+
     if (!this.socket?.connected) {
-      console.warn('[WebSocket] Cannot subscribe - not connected');
+      console.log(
+        '[WebSocket] Socket not connected yet. Queued subscription for graph:',
+        graphId,
+      );
       return;
     }
 
     console.log('[WebSocket] Subscribing to graph:', graphId);
     const payload: SubscribeGraphPayload = { graphId };
     this.socket.emit('subscribe_graph', payload);
-    this.subscribedGraphs.add(graphId);
   }
 
   /**
@@ -200,15 +210,25 @@ class WebSocketService {
    * @param graphId The ID of the graph to unsubscribe from
    */
   unsubscribeFromGraph(graphId: string): void {
+    if (!graphId) {
+      console.warn('[WebSocket] Cannot unsubscribe - invalid graph id');
+      return;
+    }
+
+    // Remove locally regardless of socket state so reconnects don't resubscribe
+    this.subscribedGraphs.delete(graphId);
+
     if (!this.socket?.connected) {
-      console.warn('[WebSocket] Cannot unsubscribe - not connected');
+      console.log(
+        '[WebSocket] Socket not connected. Removed queued subscription for graph:',
+        graphId,
+      );
       return;
     }
 
     console.log('[WebSocket] Unsubscribing from graph:', graphId);
     const payload: UnsubscribeGraphPayload = { graphId };
     this.socket.emit('unsubscribe_graph', payload);
-    this.subscribedGraphs.delete(graphId);
   }
 
   /**

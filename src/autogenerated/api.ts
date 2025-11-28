@@ -570,82 +570,49 @@ export const TemplateDtoKindEnum = {
 export type TemplateDtoKindEnum = typeof TemplateDtoKindEnum[keyof typeof TemplateDtoKindEnum];
 
 /**
- * 
+ * @type TemplateDtoInputsInner
  * @export
- * @interface TemplateDtoInputsInner
  */
-export interface TemplateDtoInputsInner {
-    /**
-     * 
-     * @type {string}
-     * @memberof TemplateDtoInputsInner
-     */
-    'type': TemplateDtoInputsInnerTypeEnum;
-    /**
-     * 
-     * @type {string}
-     * @memberof TemplateDtoInputsInner
-     */
-    'value': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof TemplateDtoInputsInner
-     */
-    'required'?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof TemplateDtoInputsInner
-     */
-    'multiple': boolean;
-}
-
-export const TemplateDtoInputsInnerTypeEnum = {
-    Kind: 'kind',
-    Template: 'template'
-} as const;
-
-export type TemplateDtoInputsInnerTypeEnum = typeof TemplateDtoInputsInnerTypeEnum[keyof typeof TemplateDtoInputsInnerTypeEnum];
+export type TemplateDtoInputsInner = TemplateDtoInputsInnerOneOf | TemplateDtoInputsInnerOneOf1;
 
 /**
  * 
  * @export
- * @interface TemplateDtoInputsInnerAnyOf
+ * @interface TemplateDtoInputsInnerOneOf
  */
-export interface TemplateDtoInputsInnerAnyOf {
+export interface TemplateDtoInputsInnerOneOf {
     /**
      * 
      * @type {string}
-     * @memberof TemplateDtoInputsInnerAnyOf
+     * @memberof TemplateDtoInputsInnerOneOf
      */
-    'type': TemplateDtoInputsInnerAnyOfTypeEnum;
+    'type': TemplateDtoInputsInnerOneOfTypeEnum;
     /**
      * 
      * @type {string}
-     * @memberof TemplateDtoInputsInnerAnyOf
+     * @memberof TemplateDtoInputsInnerOneOf
      */
-    'value': TemplateDtoInputsInnerAnyOfValueEnum;
+    'value': TemplateDtoInputsInnerOneOfValueEnum;
     /**
      * 
      * @type {boolean}
-     * @memberof TemplateDtoInputsInnerAnyOf
+     * @memberof TemplateDtoInputsInnerOneOf
      */
     'required'?: boolean;
     /**
      * 
      * @type {boolean}
-     * @memberof TemplateDtoInputsInnerAnyOf
+     * @memberof TemplateDtoInputsInnerOneOf
      */
     'multiple': boolean;
 }
 
-export const TemplateDtoInputsInnerAnyOfTypeEnum = {
+export const TemplateDtoInputsInnerOneOfTypeEnum = {
     Kind: 'kind'
 } as const;
 
-export type TemplateDtoInputsInnerAnyOfTypeEnum = typeof TemplateDtoInputsInnerAnyOfTypeEnum[keyof typeof TemplateDtoInputsInnerAnyOfTypeEnum];
-export const TemplateDtoInputsInnerAnyOfValueEnum = {
+export type TemplateDtoInputsInnerOneOfTypeEnum = typeof TemplateDtoInputsInnerOneOfTypeEnum[keyof typeof TemplateDtoInputsInnerOneOfTypeEnum];
+export const TemplateDtoInputsInnerOneOfValueEnum = {
     Runtime: 'runtime',
     Tool: 'tool',
     SimpleAgent: 'simpleAgent',
@@ -653,45 +620,45 @@ export const TemplateDtoInputsInnerAnyOfValueEnum = {
     Resource: 'resource'
 } as const;
 
-export type TemplateDtoInputsInnerAnyOfValueEnum = typeof TemplateDtoInputsInnerAnyOfValueEnum[keyof typeof TemplateDtoInputsInnerAnyOfValueEnum];
+export type TemplateDtoInputsInnerOneOfValueEnum = typeof TemplateDtoInputsInnerOneOfValueEnum[keyof typeof TemplateDtoInputsInnerOneOfValueEnum];
 
 /**
  * 
  * @export
- * @interface TemplateDtoInputsInnerAnyOf1
+ * @interface TemplateDtoInputsInnerOneOf1
  */
-export interface TemplateDtoInputsInnerAnyOf1 {
+export interface TemplateDtoInputsInnerOneOf1 {
     /**
      * 
      * @type {string}
-     * @memberof TemplateDtoInputsInnerAnyOf1
+     * @memberof TemplateDtoInputsInnerOneOf1
      */
-    'type': TemplateDtoInputsInnerAnyOf1TypeEnum;
+    'type': TemplateDtoInputsInnerOneOf1TypeEnum;
     /**
      * 
      * @type {string}
-     * @memberof TemplateDtoInputsInnerAnyOf1
+     * @memberof TemplateDtoInputsInnerOneOf1
      */
     'value': string;
     /**
      * 
      * @type {boolean}
-     * @memberof TemplateDtoInputsInnerAnyOf1
+     * @memberof TemplateDtoInputsInnerOneOf1
      */
     'required'?: boolean;
     /**
      * 
      * @type {boolean}
-     * @memberof TemplateDtoInputsInnerAnyOf1
+     * @memberof TemplateDtoInputsInnerOneOf1
      */
     'multiple': boolean;
 }
 
-export const TemplateDtoInputsInnerAnyOf1TypeEnum = {
+export const TemplateDtoInputsInnerOneOf1TypeEnum = {
     Template: 'template'
 } as const;
 
-export type TemplateDtoInputsInnerAnyOf1TypeEnum = typeof TemplateDtoInputsInnerAnyOf1TypeEnum[keyof typeof TemplateDtoInputsInnerAnyOf1TypeEnum];
+export type TemplateDtoInputsInnerOneOf1TypeEnum = typeof TemplateDtoInputsInnerOneOf1TypeEnum[keyof typeof TemplateDtoInputsInnerOneOf1TypeEnum];
 
 /**
  * 
@@ -814,317 +781,311 @@ export interface ThreadMessageDto {
     'message': ThreadMessageDtoMessage;
 }
 /**
- * 
+ * @type ThreadMessageDtoMessage
  * @export
- * @interface ThreadMessageDtoMessage
  */
-export interface ThreadMessageDtoMessage {
-    /**
-     * Message role
-     * @type {string}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'role': ThreadMessageDtoMessageRoleEnum;
-    /**
-     * Parsed tool result as JSON
-     * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'content': { [key: string]: any; };
-    /**
-     * Additional message metadata
-     * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'additionalKwargs'?: { [key: string]: any; };
-    /**
-     * Message ID
-     * @type {string}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'id'?: string;
-    /**
-     * Tool calls in the message
-     * @type {Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'toolCalls'?: Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>;
-    /**
-     * Tool name
-     * @type {string}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'name': string;
-    /**
-     * Tool call ID
-     * @type {string}
-     * @memberof ThreadMessageDtoMessage
-     */
-    'toolCallId': string;
-}
-
-export const ThreadMessageDtoMessageRoleEnum = {
-    Tool: 'tool'
-} as const;
-
-export type ThreadMessageDtoMessageRoleEnum = typeof ThreadMessageDtoMessageRoleEnum[keyof typeof ThreadMessageDtoMessageRoleEnum];
+export type ThreadMessageDtoMessage = ThreadMessageDtoMessageOneOf | ThreadMessageDtoMessageOneOf1 | ThreadMessageDtoMessageOneOf2 | ThreadMessageDtoMessageOneOf3 | ThreadMessageDtoMessageOneOf4 | ThreadMessageDtoMessageOneOf5;
 
 /**
  * 
  * @export
- * @interface ThreadMessageDtoMessageAnyOf
+ * @interface ThreadMessageDtoMessageOneOf
  */
-export interface ThreadMessageDtoMessageAnyOf {
+export interface ThreadMessageDtoMessageOneOf {
     /**
      * Message role
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf
+     * @memberof ThreadMessageDtoMessageOneOf
      */
-    'role': ThreadMessageDtoMessageAnyOfRoleEnum;
+    'role': ThreadMessageDtoMessageOneOfRoleEnum;
     /**
      * Message content
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf
+     * @memberof ThreadMessageDtoMessageOneOf
      */
     'content': string;
     /**
      * Additional message metadata
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf
+     * @memberof ThreadMessageDtoMessageOneOf
      */
     'additionalKwargs'?: { [key: string]: any; };
 }
 
-export const ThreadMessageDtoMessageAnyOfRoleEnum = {
+export const ThreadMessageDtoMessageOneOfRoleEnum = {
     Human: 'human'
 } as const;
 
-export type ThreadMessageDtoMessageAnyOfRoleEnum = typeof ThreadMessageDtoMessageAnyOfRoleEnum[keyof typeof ThreadMessageDtoMessageAnyOfRoleEnum];
+export type ThreadMessageDtoMessageOneOfRoleEnum = typeof ThreadMessageDtoMessageOneOfRoleEnum[keyof typeof ThreadMessageDtoMessageOneOfRoleEnum];
 
 /**
  * 
  * @export
- * @interface ThreadMessageDtoMessageAnyOf1
+ * @interface ThreadMessageDtoMessageOneOf1
  */
-export interface ThreadMessageDtoMessageAnyOf1 {
+export interface ThreadMessageDtoMessageOneOf1 {
     /**
      * Message role
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf1
+     * @memberof ThreadMessageDtoMessageOneOf1
      */
-    'role': ThreadMessageDtoMessageAnyOf1RoleEnum;
+    'role': ThreadMessageDtoMessageOneOf1RoleEnum;
     /**
      * Message content
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf1
+     * @memberof ThreadMessageDtoMessageOneOf1
      */
     'content': string;
     /**
      * Message ID
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf1
+     * @memberof ThreadMessageDtoMessageOneOf1
      */
     'id'?: string;
     /**
-     * Tool calls in the message
-     * @type {Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>}
-     * @memberof ThreadMessageDtoMessageAnyOf1
+     * 
+     * @type {any}
+     * @memberof ThreadMessageDtoMessageOneOf1
      */
-    'toolCalls'?: Array<ThreadMessageDtoMessageAnyOf1ToolCallsInner>;
+    'rawContent'?: any;
+    /**
+     * Tool calls in the message
+     * @type {Array<ThreadMessageDtoMessageOneOf1ToolCallsInner>}
+     * @memberof ThreadMessageDtoMessageOneOf1
+     */
+    'toolCalls'?: Array<ThreadMessageDtoMessageOneOf1ToolCallsInner>;
     /**
      * Additional message metadata
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf1
+     * @memberof ThreadMessageDtoMessageOneOf1
      */
     'additionalKwargs'?: { [key: string]: any; };
 }
 
-export const ThreadMessageDtoMessageAnyOf1RoleEnum = {
+export const ThreadMessageDtoMessageOneOf1RoleEnum = {
     Ai: 'ai'
 } as const;
 
-export type ThreadMessageDtoMessageAnyOf1RoleEnum = typeof ThreadMessageDtoMessageAnyOf1RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf1RoleEnum];
+export type ThreadMessageDtoMessageOneOf1RoleEnum = typeof ThreadMessageDtoMessageOneOf1RoleEnum[keyof typeof ThreadMessageDtoMessageOneOf1RoleEnum];
 
 /**
  * 
  * @export
- * @interface ThreadMessageDtoMessageAnyOf1ToolCallsInner
+ * @interface ThreadMessageDtoMessageOneOf1ToolCallsInner
  */
-export interface ThreadMessageDtoMessageAnyOf1ToolCallsInner {
+export interface ThreadMessageDtoMessageOneOf1ToolCallsInner {
     /**
      * Tool name
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     * @memberof ThreadMessageDtoMessageOneOf1ToolCallsInner
      */
     'name': string;
     /**
      * Tool arguments
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     * @memberof ThreadMessageDtoMessageOneOf1ToolCallsInner
      */
     'args': { [key: string]: any; };
     /**
      * Tool call type
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     * @memberof ThreadMessageDtoMessageOneOf1ToolCallsInner
      */
     'type': string;
     /**
      * Tool call ID
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf1ToolCallsInner
+     * @memberof ThreadMessageDtoMessageOneOf1ToolCallsInner
      */
     'id': string;
 }
 /**
  * 
  * @export
- * @interface ThreadMessageDtoMessageAnyOf2
+ * @interface ThreadMessageDtoMessageOneOf2
  */
-export interface ThreadMessageDtoMessageAnyOf2 {
+export interface ThreadMessageDtoMessageOneOf2 {
+    /**
+     * Message ID
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageOneOf2
+     */
+    'id'?: string;
     /**
      * Message role
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf2
+     * @memberof ThreadMessageDtoMessageOneOf2
      */
-    'role': ThreadMessageDtoMessageAnyOf2RoleEnum;
+    'role': ThreadMessageDtoMessageOneOf2RoleEnum;
     /**
-     * Message content
+     * Reasoning trace emitted by the model
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf2
+     * @memberof ThreadMessageDtoMessageOneOf2
      */
     'content': string;
     /**
      * Additional message metadata
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf2
+     * @memberof ThreadMessageDtoMessageOneOf2
      */
     'additionalKwargs'?: { [key: string]: any; };
 }
 
-export const ThreadMessageDtoMessageAnyOf2RoleEnum = {
-    System: 'system'
+export const ThreadMessageDtoMessageOneOf2RoleEnum = {
+    Reasoning: 'reasoning'
 } as const;
 
-export type ThreadMessageDtoMessageAnyOf2RoleEnum = typeof ThreadMessageDtoMessageAnyOf2RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf2RoleEnum];
+export type ThreadMessageDtoMessageOneOf2RoleEnum = typeof ThreadMessageDtoMessageOneOf2RoleEnum[keyof typeof ThreadMessageDtoMessageOneOf2RoleEnum];
 
 /**
  * 
  * @export
- * @interface ThreadMessageDtoMessageAnyOf3
+ * @interface ThreadMessageDtoMessageOneOf3
  */
-export interface ThreadMessageDtoMessageAnyOf3 {
+export interface ThreadMessageDtoMessageOneOf3 {
     /**
      * Message role
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf3
+     * @memberof ThreadMessageDtoMessageOneOf3
      */
-    'role': ThreadMessageDtoMessageAnyOf3RoleEnum;
+    'role': ThreadMessageDtoMessageOneOf3RoleEnum;
+    /**
+     * Message content
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageOneOf3
+     */
+    'content': string;
+    /**
+     * Additional message metadata
+     * @type {{ [key: string]: any; }}
+     * @memberof ThreadMessageDtoMessageOneOf3
+     */
+    'additionalKwargs'?: { [key: string]: any; };
+}
+
+export const ThreadMessageDtoMessageOneOf3RoleEnum = {
+    System: 'system'
+} as const;
+
+export type ThreadMessageDtoMessageOneOf3RoleEnum = typeof ThreadMessageDtoMessageOneOf3RoleEnum[keyof typeof ThreadMessageDtoMessageOneOf3RoleEnum];
+
+/**
+ * 
+ * @export
+ * @interface ThreadMessageDtoMessageOneOf4
+ */
+export interface ThreadMessageDtoMessageOneOf4 {
+    /**
+     * Message role
+     * @type {string}
+     * @memberof ThreadMessageDtoMessageOneOf4
+     */
+    'role': ThreadMessageDtoMessageOneOf4RoleEnum;
     /**
      * Tool name - shell
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf3
+     * @memberof ThreadMessageDtoMessageOneOf4
      */
-    'name': ThreadMessageDtoMessageAnyOf3NameEnum;
+    'name': ThreadMessageDtoMessageOneOf4NameEnum;
     /**
      * 
-     * @type {ThreadMessageDtoMessageAnyOf3Content}
-     * @memberof ThreadMessageDtoMessageAnyOf3
+     * @type {ThreadMessageDtoMessageOneOf4Content}
+     * @memberof ThreadMessageDtoMessageOneOf4
      */
-    'content': ThreadMessageDtoMessageAnyOf3Content;
+    'content': ThreadMessageDtoMessageOneOf4Content;
     /**
      * Tool call ID
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf3
+     * @memberof ThreadMessageDtoMessageOneOf4
      */
     'toolCallId': string;
     /**
      * Additional message metadata
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf3
+     * @memberof ThreadMessageDtoMessageOneOf4
      */
     'additionalKwargs'?: { [key: string]: any; };
 }
 
-export const ThreadMessageDtoMessageAnyOf3RoleEnum = {
+export const ThreadMessageDtoMessageOneOf4RoleEnum = {
     ToolShell: 'tool-shell'
 } as const;
 
-export type ThreadMessageDtoMessageAnyOf3RoleEnum = typeof ThreadMessageDtoMessageAnyOf3RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf3RoleEnum];
-export const ThreadMessageDtoMessageAnyOf3NameEnum = {
+export type ThreadMessageDtoMessageOneOf4RoleEnum = typeof ThreadMessageDtoMessageOneOf4RoleEnum[keyof typeof ThreadMessageDtoMessageOneOf4RoleEnum];
+export const ThreadMessageDtoMessageOneOf4NameEnum = {
     Shell: 'shell'
 } as const;
 
-export type ThreadMessageDtoMessageAnyOf3NameEnum = typeof ThreadMessageDtoMessageAnyOf3NameEnum[keyof typeof ThreadMessageDtoMessageAnyOf3NameEnum];
+export type ThreadMessageDtoMessageOneOf4NameEnum = typeof ThreadMessageDtoMessageOneOf4NameEnum[keyof typeof ThreadMessageDtoMessageOneOf4NameEnum];
 
 /**
  * Parsed shell execution result
  * @export
- * @interface ThreadMessageDtoMessageAnyOf3Content
+ * @interface ThreadMessageDtoMessageOneOf4Content
  */
-export interface ThreadMessageDtoMessageAnyOf3Content {
+export interface ThreadMessageDtoMessageOneOf4Content {
     /**
      * Exit code of the shell command
      * @type {number}
-     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     * @memberof ThreadMessageDtoMessageOneOf4Content
      */
     'exitCode': number;
     /**
      * Standard output from the command
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     * @memberof ThreadMessageDtoMessageOneOf4Content
      */
     'stdout': string;
     /**
      * Standard error from the command
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf3Content
+     * @memberof ThreadMessageDtoMessageOneOf4Content
      */
     'stderr': string;
 }
 /**
  * 
  * @export
- * @interface ThreadMessageDtoMessageAnyOf4
+ * @interface ThreadMessageDtoMessageOneOf5
  */
-export interface ThreadMessageDtoMessageAnyOf4 {
+export interface ThreadMessageDtoMessageOneOf5 {
     /**
      * Message role
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf4
+     * @memberof ThreadMessageDtoMessageOneOf5
      */
-    'role': ThreadMessageDtoMessageAnyOf4RoleEnum;
+    'role': ThreadMessageDtoMessageOneOf5RoleEnum;
     /**
      * Tool name
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf4
+     * @memberof ThreadMessageDtoMessageOneOf5
      */
     'name': string;
     /**
      * Parsed tool result as JSON
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf4
+     * @memberof ThreadMessageDtoMessageOneOf5
      */
     'content': { [key: string]: any; };
     /**
      * Tool call ID
      * @type {string}
-     * @memberof ThreadMessageDtoMessageAnyOf4
+     * @memberof ThreadMessageDtoMessageOneOf5
      */
     'toolCallId': string;
     /**
      * Additional message metadata
      * @type {{ [key: string]: any; }}
-     * @memberof ThreadMessageDtoMessageAnyOf4
+     * @memberof ThreadMessageDtoMessageOneOf5
      */
     'additionalKwargs'?: { [key: string]: any; };
 }
 
-export const ThreadMessageDtoMessageAnyOf4RoleEnum = {
+export const ThreadMessageDtoMessageOneOf5RoleEnum = {
     Tool: 'tool'
 } as const;
 
-export type ThreadMessageDtoMessageAnyOf4RoleEnum = typeof ThreadMessageDtoMessageAnyOf4RoleEnum[keyof typeof ThreadMessageDtoMessageAnyOf4RoleEnum];
+export type ThreadMessageDtoMessageOneOf5RoleEnum = typeof ThreadMessageDtoMessageOneOf5RoleEnum[keyof typeof ThreadMessageDtoMessageOneOf5RoleEnum];
 
 /**
  * 
@@ -1530,228 +1491,196 @@ export interface UpdateGraphResponseDtoRevisionClientSchema {
     'edges'?: Array<CreateGraphDtoSchemaEdgesInner>;
 }
 /**
- * 
+ * @type UpdateGraphResponseDtoRevisionConfigurationDiffInner
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInner
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInner {
-    /**
-     * 
-     * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInner
-     */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOpEnum;
-    /**
-     * 
-     * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInner
-     */
-    'path': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInner
-     */
-    'value': any;
-    /**
-     * 
-     * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInner
-     */
-    'from': string;
-}
-
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOpEnum = {
-    Test: 'test'
-} as const;
-
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInner = UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1 | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2 | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3 | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4 | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5;
 
 /**
  * 
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf
+ * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf {
+export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf {
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
      */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOfOpEnum;
+    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
      */
     'path': string;
     /**
      * 
      * @type {any}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
      */
     'value': any;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOfOpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum = {
     Add: 'add'
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOfOpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOfOpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOfOpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum];
 
 /**
  * 
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1
+ * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1 {
+export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1 {
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
      */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1OpEnum;
+    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
      */
     'path': string;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1OpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum = {
     Remove: 'remove'
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf1OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum];
 
 /**
  * 
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2
+ * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2 {
+export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2 {
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
      */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2OpEnum;
+    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
      */
     'path': string;
     /**
      * 
      * @type {any}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
      */
     'value': any;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2OpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum = {
     Replace: 'replace'
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf2OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum];
 
 /**
  * 
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3
+ * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3 {
+export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3 {
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
      */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3OpEnum;
+    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
      */
     'from': string;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
      */
     'path': string;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3OpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum = {
     Move: 'move'
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf3OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum];
 
 /**
  * 
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4
+ * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4 {
+export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4 {
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
      */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4OpEnum;
+    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
      */
     'from': string;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
      */
     'path': string;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4OpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum = {
     Copy: 'copy'
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf4OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum];
 
 /**
  * 
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5
+ * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5 {
+export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5 {
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
      */
-    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5OpEnum;
+    'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum;
     /**
      * 
      * @type {string}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
      */
     'path': string;
     /**
      * 
      * @type {any}
-     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5
+     * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
      */
     'value': any;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5OpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum = {
     Test: 'test'
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf5OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum = typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum];
 
 /**
  * Merged schema result
@@ -2951,15 +2880,13 @@ export const ThreadsApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
-         * @param {string} graphId Filter by graph ID
+         * @param {string} [graphId] Filter by graph ID
          * @param {number} [limit] Maximum number of threads to return
          * @param {number} [offset] Number of threads to skip
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getThreads: async (graphId: string, limit?: number, offset?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'graphId' is not null or undefined
-            assertParamExists('getThreads', 'graphId', graphId)
+        getThreads: async (graphId?: string, limit?: number, offset?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/api/v1/threads`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3062,13 +2989,13 @@ export const ThreadsApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @param {string} graphId Filter by graph ID
+         * @param {string} [graphId] Filter by graph ID
          * @param {number} [limit] Maximum number of threads to return
          * @param {number} [offset] Number of threads to skip
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getThreads(graphId: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ThreadDto>>> {
+        async getThreads(graphId?: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<ThreadDto>>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.getThreads(graphId, limit, offset, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['ThreadsApi.getThreads']?.[localVarOperationServerIndex]?.url;
@@ -3125,13 +3052,13 @@ export const ThreadsApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
-         * @param {string} graphId Filter by graph ID
+         * @param {string} [graphId] Filter by graph ID
          * @param {number} [limit] Maximum number of threads to return
          * @param {number} [offset] Number of threads to skip
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getThreads(graphId: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): AxiosPromise<Array<ThreadDto>> {
+        getThreads(graphId?: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig): AxiosPromise<Array<ThreadDto>> {
             return localVarFp.getThreads(graphId, limit, offset, options).then((request) => request(axios, basePath));
         },
     };
@@ -3193,14 +3120,14 @@ export class ThreadsApi extends BaseAPI {
 
     /**
      * 
-     * @param {string} graphId Filter by graph ID
+     * @param {string} [graphId] Filter by graph ID
      * @param {number} [limit] Maximum number of threads to return
      * @param {number} [offset] Number of threads to skip
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof ThreadsApi
      */
-    public getThreads(graphId: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig) {
+    public getThreads(graphId?: string, limit?: number, offset?: number, options?: RawAxiosRequestConfig) {
         return ThreadsApiFp(this.configuration).getThreads(graphId, limit, offset, options).then((request) => request(this.axios, this.basePath));
     }
 }

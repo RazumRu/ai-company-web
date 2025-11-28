@@ -1,4 +1,4 @@
-# ThreadMessageDtoMessage
+# ThreadMessageDtoMessageOneOf1
 
 
 ## Properties
@@ -6,28 +6,24 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **role** | **string** | Message role | [default to undefined]
-**content** | **{ [key: string]: any; }** | Parsed tool result as JSON | [default to undefined]
-**additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata | [optional] [default to undefined]
+**content** | **string** | Message content | [default to undefined]
 **id** | **string** | Message ID | [optional] [default to undefined]
 **rawContent** | **any** |  | [optional] [default to undefined]
 **toolCalls** | [**Array&lt;ThreadMessageDtoMessageOneOf1ToolCallsInner&gt;**](ThreadMessageDtoMessageOneOf1ToolCallsInner.md) | Tool calls in the message | [optional] [default to undefined]
-**name** | **string** | Tool name | [default to undefined]
-**toolCallId** | **string** | Tool call ID | [default to undefined]
+**additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata | [optional] [default to undefined]
 
 ## Example
 
 ```typescript
-import { ThreadMessageDtoMessage } from './api';
+import { ThreadMessageDtoMessageOneOf1 } from './api';
 
-const instance: ThreadMessageDtoMessage = {
+const instance: ThreadMessageDtoMessageOneOf1 = {
     role,
     content,
-    additionalKwargs,
     id,
     rawContent,
     toolCalls,
-    name,
-    toolCallId,
+    additionalKwargs,
 };
 ```
 

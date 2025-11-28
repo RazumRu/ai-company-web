@@ -179,7 +179,6 @@ export const GraphsListPage = () => {
   return (
     <div
       style={{
-        backgroundColor: '#f5f7fb',
         minHeight: '100%',
       }}>
       <div

@@ -53,213 +53,22 @@ import type {
   AgentMessageNotification,
   GraphNodeUpdateNotification,
 } from '../../../services/WebSocketTypes';
-import MessagesTab from './MessagesTab';
+import {
+  STREAMING_REASONING_FLAG,
+  sortMessagesChronologically,
+  extractReasoningEntries,
+  narrowReasoningContainer,
+  mergeMessagesReplacingStreaming,
+  removeStreamingReasoningMessages,
+  buildIdSet,
+  getMessageRunId,
+  getReasoningIdentifier,
+  type ReasoningChunkEntry,
+} from '../../../utils/threadMessages';
+import ThreadMessagesView from './ThreadMessagesView';
 
 const { Sider } = Layout;
 const { Title, Text } = Typography;
-const STREAMING_REASONING_FLAG = '__streamingReasoning';
-
-const sortMessagesChronologically = (
-  msgs: ThreadMessageDto[],
-): ThreadMessageDto[] =>
-  [...msgs].sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-  );
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-interface ReasoningChunkEntry {
-  reasoningId: string;
-  content: string;
-  createdAt?: string;
-  updatedAt?: string;
-  runId?: string;
-  threadId?: string;
-}
-
-const extractReasoningEntries = (
-  source: unknown,
-  context: { threadId?: string; runId?: string } = {},
-): ReasoningChunkEntry[] => {
-  if (!isPlainObject(source)) {
-    return [];
-  }
-
-  const entries: ReasoningChunkEntry[] = [];
-
-  Object.entries(source).forEach(([key, raw]) => {
-    if (typeof raw === 'string') {
-      entries.push({
-        reasoningId: key,
-        content: raw,
-        threadId: context.threadId,
-        runId: context.runId,
-      });
-      return;
-    }
-
-    if (isPlainObject(raw)) {
-      const rawObject = raw as Record<string, unknown>;
-      const nestedThreadId =
-        (typeof rawObject.threadId === 'string' ? rawObject.threadId : undefined) ??
-        context.threadId ??
-        (key.includes(':') ? key : undefined);
-      const nestedRunId =
-        (typeof rawObject.runId === 'string' ? rawObject.runId : undefined) ??
-        context.runId ??
-        (key.startsWith('run-') ? key : undefined);
-
-      if (typeof rawObject.content === 'string') {
-        entries.push({
-          reasoningId: key,
-          content: rawObject.content,
-          createdAt:
-            typeof rawObject.createdAt === 'string'
-              ? rawObject.createdAt
-              : undefined,
-          updatedAt:
-            typeof rawObject.updatedAt === 'string'
-              ? rawObject.updatedAt
-              : undefined,
-          runId: nestedRunId,
-          threadId: nestedThreadId,
-        });
-        return;
-      }
-
-      entries.push(
-        ...extractReasoningEntries(rawObject, {
-          threadId: nestedThreadId,
-          runId: nestedRunId,
-        }),
-      );
-    }
-  });
-
-  return entries;
-};
-
-const narrowReasoningContainer = (
-  source: unknown,
-  keys: Array<string | undefined>,
-): unknown => {
-  if (!isPlainObject(source)) return source;
-  let current: unknown = source;
-  let narrowed = false;
-
-  keys.forEach((key) => {
-    if (!key || !isPlainObject(current)) return;
-    const next = (current as Record<string, unknown>)[key];
-    if (next !== undefined) {
-      current = next;
-      narrowed = true;
-    }
-  });
-
-  return narrowed ? current : source;
-};
-
-const isReasoningMessage = (msg: ThreadMessageDto): boolean =>
-  (msg.message?.role as string) === 'reasoning';
-
-const getReasoningIdentifier = (msg: ThreadMessageDto): string | undefined => {
-  if (!isReasoningMessage(msg)) return undefined;
-  const reasoningId = msg.message?.id;
-  if (typeof reasoningId === 'string' && reasoningId.length > 0) {
-    return reasoningId;
-  }
-  const kwargs = msg.message?.additionalKwargs as
-    | Record<string, unknown>
-    | undefined;
-  const fallback = kwargs?.reasoningId;
-  return typeof fallback === 'string' && fallback.length > 0
-    ? fallback
-    : undefined;
-};
-
-const getMessageRunId = (msg: ThreadMessageDto): string | undefined => {
-  const kwargs = msg.message?.additionalKwargs as
-    | Record<string, unknown>
-    | undefined;
-  if (!kwargs) return undefined;
-  const runId = kwargs.run_id;
-  return typeof runId === 'string' ? runId : undefined;
-};
-
-const isStreamingReasoningMessage = (msg: ThreadMessageDto): boolean => {
-  if (!isReasoningMessage(msg)) return false;
-  const kwargs = msg.message?.additionalKwargs as
-    | Record<string, unknown>
-    | undefined;
-  if (!kwargs) return false;
-  return Boolean(kwargs[STREAMING_REASONING_FLAG]);
-};
-
-const removeStreamingReasoningMessages = (
-  msgs: ThreadMessageDto[],
-  predicate: (msg: ThreadMessageDto) => boolean,
-): ThreadMessageDto[] => {
-  if (!predicate) return msgs;
-  return msgs.filter((msg) => {
-    if (!isStreamingReasoningMessage(msg)) return true;
-    return !predicate(msg);
-  });
-};
-
-const mergeMessagesReplacingStreaming = (
-  prev: ThreadMessageDto[],
-  incoming: ThreadMessageDto[],
-): ThreadMessageDto[] => {
-  if (incoming.length === 0) {
-    return prev;
-  }
-
-  const reasoningIds = new Set(
-    incoming
-      .map((msg) => getReasoningIdentifier(msg))
-      .filter((id): id is string => Boolean(id)),
-  );
-
-  const reasoningRunIds = new Set(
-    incoming
-      .filter((msg) => isReasoningMessage(msg))
-      .map((msg) => getMessageRunId(msg))
-      .filter((runId): runId is string => Boolean(runId)),
-  );
-
-  const cleanedPrev =
-    reasoningIds.size > 0 || reasoningRunIds.size > 0
-      ? removeStreamingReasoningMessages(prev, (msg) => {
-          if (!isStreamingReasoningMessage(msg)) {
-            return false;
-          }
-          const reasoningId = getReasoningIdentifier(msg);
-          if (reasoningId && reasoningIds.has(reasoningId)) {
-            return true;
-          }
-          const runId = getMessageRunId(msg);
-          if (runId && reasoningRunIds.has(runId)) {
-            return true;
-          }
-          return false;
-        })
-      : prev;
-
-  const map = new Map<string, ThreadMessageDto>();
-  cleanedPrev.forEach((msg) => map.set(msg.id, msg));
-  incoming.forEach((msg) => map.set(msg.id, msg));
-
-  return sortMessagesChronologically(Array.from(map.values()));
-};
-
-const buildIdSet = (
-  ...values: Array<string | undefined>
-): Set<string> | undefined => {
-  const filtered = values.filter((value): value is string => Boolean(value));
-  return filtered.length > 0 ? new Set(filtered) : undefined;
-};
 
 interface NodeEditSidebarProps {
   node: GraphNode | null;
@@ -612,9 +421,11 @@ export const NodeEditSidebar = ({
         const existing = byId.get(entry.reasoningId);
         const existingMessage = existing?.message as any;
         const isExistingStreaming = Boolean(
-          (existingMessage?.additionalKwargs as Record<string, unknown> | undefined)?.[
-            STREAMING_REASONING_FLAG
-          ],
+          (
+            existingMessage?.additionalKwargs as
+              | Record<string, unknown>
+              | undefined
+          )?.[STREAMING_REASONING_FLAG],
         );
 
         if (existing && !isExistingStreaming) {
@@ -641,8 +452,7 @@ export const NodeEditSidebar = ({
           (nextPayload?.additionalKwargs as Record<string, unknown>) ?? {};
 
         const additionalChanged =
-          JSON.stringify(existingAdditional) !==
-          JSON.stringify(nextAdditional);
+          JSON.stringify(existingAdditional) !== JSON.stringify(nextAdditional);
 
         if (
           !existing ||
@@ -671,7 +481,9 @@ export const NodeEditSidebar = ({
 
   useEffect(() => {
     if (externalThreadId) return;
-    const derived = messages.find((msg) => msg.externalThreadId)?.externalThreadId;
+    const derived = messages.find(
+      (msg) => msg.externalThreadId,
+    )?.externalThreadId;
     if (derived) {
       setExternalThreadId(derived);
     }
@@ -762,12 +574,15 @@ export const NodeEditSidebar = ({
           0,
         );
         const newMessages = response.data?.reverse() || [];
-        const responseExternalThreadId =
-          newMessages.find((m) => m.externalThreadId)?.externalThreadId;
+        const responseExternalThreadId = newMessages.find(
+          (m) => m.externalThreadId,
+        )?.externalThreadId;
         if (responseExternalThreadId) {
           setExternalThreadId(responseExternalThreadId);
         }
-        setMessages((prev) => mergeMessagesReplacingStreaming(prev, newMessages));
+        setMessages((prev) =>
+          mergeMessagesReplacingStreaming(prev, newMessages),
+        );
         setHasMoreMessages(newMessages.length === 50);
         setCurrentOffset(50);
       } catch (error) {
@@ -830,7 +645,8 @@ export const NodeEditSidebar = ({
         typeof event.data?.metadata?.runId === 'string'
           ? event.data.metadata.runId
           : undefined;
-      const targetThreadId = eventThreadId ?? externalThreadId ?? selectedThreadId;
+      const targetThreadId =
+        eventThreadId ?? externalThreadId ?? selectedThreadId;
       const targetRunIds = buildIdSet(event.runId, metadataRunId);
 
       const clearStreamingForContext = () => {
@@ -845,7 +661,8 @@ export const NodeEditSidebar = ({
             const threadMatches = targetThreadId
               ? msg.externalThreadId === targetThreadId ||
                 (!msg.externalThreadId && targetThreadId === selectedThreadId)
-              : !msg.externalThreadId || msg.externalThreadId === selectedThreadId;
+              : !msg.externalThreadId ||
+                msg.externalThreadId === selectedThreadId;
             if (!threadMatches) {
               return false;
             }
@@ -894,13 +711,11 @@ export const NodeEditSidebar = ({
       }
 
       const runIdCandidates = new Set(
-        [event.runId, metadataRunId].filter(
-          (id): id is string => Boolean(id),
-        ),
+        [event.runId, metadataRunId].filter((id): id is string => Boolean(id)),
       );
       const threadIdCandidates = new Set(
-        [eventThreadId ?? externalThreadId].filter(
-          (id): id is string => Boolean(id),
+        [eventThreadId ?? externalThreadId].filter((id): id is string =>
+          Boolean(id),
         ),
       );
 
@@ -1058,8 +873,9 @@ export const NodeEditSidebar = ({
         0,
       );
       const newMessages = response.data?.reverse() || [];
-      const responseExternalThreadId =
-        newMessages.find((m) => m.externalThreadId)?.externalThreadId;
+      const responseExternalThreadId = newMessages.find(
+        (m) => m.externalThreadId,
+      )?.externalThreadId;
       if (responseExternalThreadId) {
         setExternalThreadId(responseExternalThreadId);
       }
@@ -1458,20 +1274,26 @@ export const NodeEditSidebar = ({
 
   const renderMessagesTabContent = () => {
     // Extract pending messages from compiledNode's additionalNodeMetadata
-    const pendingMessages = compiledNode?.additionalNodeMetadata?.pendingMessages as Array<{
-      content: string;
-      role: 'human' | 'ai';
-      additionalKwargs?: {
-        run_id?: string;
-        created_at?: string;
-        [key: string]: unknown;
-      };
-      createdAt?: string;
-    }> | undefined;
+    const pendingMessages = compiledNode?.additionalNodeMetadata
+      ?.pendingMessages as
+      | Array<{
+          content: string;
+          role: 'human' | 'ai';
+          additionalKwargs?: {
+            run_id?: string;
+            created_at?: string;
+            [key: string]: unknown;
+          };
+          createdAt?: string;
+        }>
+      | undefined;
 
     // Extract newMessageMode from node config
-    const newMessageMode = (compiledNode?.config as Record<string, unknown>)?.newMessageMode as 
-      'inject_after_tool_call' | 'wait_for_completion' | undefined;
+    const newMessageMode = (compiledNode?.config as Record<string, unknown>)
+      ?.newMessageMode as
+      | 'inject_after_tool_call'
+      | 'wait_for_completion'
+      | undefined;
 
     return (
       <div
@@ -1499,6 +1321,9 @@ export const NodeEditSidebar = ({
             icon={<ReloadOutlined />}
             onClick={refreshMessages}
             loading={messagesLoading}
+            style={{
+              border: 'none',
+            }}
             disabled={!selectedThreadId || !node?.id || !isAgentNode}></Button>
         </div>
 
@@ -1508,7 +1333,7 @@ export const NodeEditSidebar = ({
             minHeight: 0,
             overflow: 'hidden',
           }}>
-          <MessagesTab
+          <ThreadMessagesView
             messages={messages}
             messagesLoading={messagesLoading}
             selectedThreadId={selectedThreadId}

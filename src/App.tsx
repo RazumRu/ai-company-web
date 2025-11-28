@@ -22,10 +22,11 @@ import { API_URL, PROJECT_ID } from './config';
 import { MainPage } from './pages/main/page';
 import { GraphPage } from './pages/graphs/details';
 import { GraphsListPage } from './pages/graphs/list';
+import { ChatsPage } from './pages/chats/page';
 import { createAuthProvider, useAuth } from './auth';
 import { useKeycloak } from '@react-keycloak/web';
 import { useEffect } from 'react';
-import { HomeOutlined, NodeIndexOutlined } from '@ant-design/icons';
+import { HomeOutlined, MessageOutlined, NodeIndexOutlined } from '@ant-design/icons';
 
 // Login page component that redirects to Keycloak
 const LoginPage = ({ authProvider }: { authProvider: AuthProvider }) => {
@@ -85,6 +86,14 @@ function App() {
                 icon: <NodeIndexOutlined />,
               },
             },
+            {
+              name: 'Chats',
+              list: '/chats',
+              meta: {
+                label: 'Chats',
+                icon: <MessageOutlined />,
+              },
+            },
           ]}
           options={{
             syncWithLocation: true,
@@ -130,6 +139,7 @@ function App() {
               <Route index element={<MainPage />} />
               <Route path="/graphs" element={<GraphsListPage />} />
               <Route path="/graphs/:id" element={<GraphPage />} />
+              <Route path="/chats" element={<ChatsPage />} />
               <Route path="*" element={<ErrorComponent />} />
             </Route>
             <Route

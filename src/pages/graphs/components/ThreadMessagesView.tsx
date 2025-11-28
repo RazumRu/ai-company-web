@@ -1,4 +1,4 @@
-// MessagesTab.tsx
+// ThreadMessagesView.tsx
 import React, {
   useEffect,
   useRef,
@@ -60,7 +60,7 @@ type JsonValue =
 
 const { Text } = Typography;
 
-interface MessagesTabProps {
+export interface ThreadMessagesViewProps {
   messages: ThreadMessageDto[];
   messagesLoading: boolean;
   selectedThreadId?: string;
@@ -300,6 +300,34 @@ const MarkdownContent: React.FC<{
   );
 };
 
+type MessagePayload = ThreadMessageDto['message'];
+
+const getMessageRecord = (
+  payload?: MessagePayload,
+): Record<string, unknown> | undefined => {
+  if (!payload || typeof payload !== 'object') {
+    return undefined;
+  }
+  return payload as unknown as Record<string, unknown>;
+};
+
+const getMessageValue = <T = unknown,>(
+  payload: MessagePayload | undefined,
+  key: string,
+): T | undefined => {
+  const record = getMessageRecord(payload);
+  if (!record) return undefined;
+  return record[key] as T | undefined;
+};
+
+const getMessageString = (
+  payload: MessagePayload | undefined,
+  key: string,
+): string | undefined => {
+  const value = getMessageValue(payload, key);
+  return typeof value === 'string' ? value : undefined;
+};
+
 const fullHeightColumnStyle: React.CSSProperties = {
   height: '100%',
   display: 'flex',
@@ -320,7 +348,7 @@ const scrollContainerStyle: React.CSSProperties = {
   minHeight: 0,
   overflowY: 'auto',
   overflowX: 'hidden',
-  padding: 0,
+  padding: '12px 16px',
 };
 
 const messageBlockStyle: React.CSSProperties = {
@@ -338,7 +366,7 @@ const collapsedGradientStyle: React.CSSProperties = {
   pointerEvents: 'none',
 };
 
-const MessagesTab: React.FC<MessagesTabProps> = ({
+const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   messages,
   messagesLoading,
   selectedThreadId,
@@ -679,11 +707,11 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
         continue;
       }
 
-      if (
-        role === 'ai' &&
-        Array.isArray(m.message?.toolCalls) &&
-        m.message!.toolCalls.length > 0
-      ) {
+      const messageToolCalls = getMessageValue<ToolCall[]>(
+        m.message,
+        'toolCalls',
+      );
+      if (role === 'ai' && messageToolCalls && messageToolCalls.length > 0) {
         // Check if we need to display the message content
         // Display it if content is not blank OR if toolCalls have meaningful data
         const hasNonBlankContent = !isBlankContent(m.message?.content);
@@ -706,12 +734,12 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
           j++;
         }
 
-        const toolCalls = m.message!.toolCalls as unknown as ToolCall[];
+        const toolCalls = messageToolCalls;
         for (let idx = 0; idx < toolCalls.length; idx++) {
           const tc = toolCalls[idx];
           const name = tc.name || tc.function?.name || 'tool';
           const matched = followingTools.find(
-            (tm) => tm.message?.toolCallId === tc.id,
+            (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
           );
           const resultContent = matched?.message?.content;
           const toolArgs = tc.function?.arguments ?? tc.args;
@@ -743,7 +771,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
       }
 
       if (isToolLikeRole(role)) {
-        const name = m.message?.name || 'tool';
+        const name = getMessageString(m.message, 'name') || 'tool';
         const resultContent = m.message?.content;
         const resultObj =
           typeof resultContent === 'object' &&
@@ -873,7 +901,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
 
     const containerStyle: React.CSSProperties = {
       fontSize: '12px',
-      color: isHovered ? '#4f4f4f' : '#6b6b6b',
+      color: isHovered ? '#8c8c8c' : '#afafaf',
       textAlign: 'center',
       border: 'none',
       cursor: 'pointer',
@@ -1039,12 +1067,12 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
     const textContainerStyle: React.CSSProperties = expanded
       ? {
           fontSize: '12px',
-          color: isHovered ? '#595959' : '#8c8c8c',
+          color: isHovered ? '#8c8c8c' : '#afafaf',
           textAlign: 'center',
         }
       : {
           fontSize: '12px',
-          color: isHovered ? '#595959' : '#8c8c8c',
+          color: isHovered ? '#8c8c8c' : '#afafaf',
           textAlign: 'center',
           maxHeight: '60px',
           overflow: 'hidden',
@@ -1568,7 +1596,7 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
     const createdAt = new Date(message.createdAt).toLocaleString();
 
     if (isToolLikeRole(role)) {
-      const name = message.message?.name || 'tool';
+      const name = getMessageString(message.message, 'name') || 'tool';
       const resultContent = message.message?.content;
       // For standalone tools, we don't have access to the original arguments
       return renderToolStatusLine(name, 'executed', resultContent, undefined);
@@ -1855,4 +1883,4 @@ const MessagesTab: React.FC<MessagesTabProps> = ({
   );
 };
 
-export default MessagesTab;
+export default ThreadMessagesView;

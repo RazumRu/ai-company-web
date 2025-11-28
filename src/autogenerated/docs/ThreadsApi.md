@@ -234,7 +234,7 @@ import {
 const configuration = new Configuration();
 const apiInstance = new ThreadsApi(configuration);
 
-let graphId: string; //Filter by graph ID (default to undefined)
+let graphId: string; //Filter by graph ID (optional) (default to undefined)
 let limit: number; //Maximum number of threads to return (optional) (default to 50)
 let offset: number; //Number of threads to skip (optional) (default to 0)
 
@@ -249,7 +249,7 @@ const { status, data } = await apiInstance.getThreads(
 
 |Name | Type | Description  | Notes|
 |------------- | ------------- | ------------- | -------------|
-| **graphId** | [**string**] | Filter by graph ID | defaults to undefined|
+| **graphId** | [**string**] | Filter by graph ID | (optional) defaults to undefined|
 | **limit** | [**number**] | Maximum number of threads to return | (optional) defaults to 50|
 | **offset** | [**number**] | Number of threads to skip | (optional) defaults to 0|
 
