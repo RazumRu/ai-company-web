@@ -13,7 +13,6 @@ import {
   Select,
   Space,
   Switch,
-  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -26,11 +25,9 @@ import {
   ExclamationCircleOutlined,
   ExpandOutlined,
   InfoCircleOutlined,
-  MessageOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
-  SettingOutlined,
 } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
@@ -1357,30 +1354,12 @@ export const NodeEditSidebar = ({
     );
   };
 
-  const tabHeaders = [
-    {
-      key: 'options',
-      label: (
-        <span>
-          <SettingOutlined style={{ marginRight: 8 }} />
-          Options
-        </span>
-      ),
-    },
-    ...(isAgentNode
-      ? [
-          {
-            key: 'messages',
-            label: (
-              <span>
-                <MessageOutlined style={{ marginRight: 8 }} />
-                Messages
-              </span>
-            ),
-          },
-        ]
-      : []),
-  ];
+  const tabItems = isAgentNode
+    ? [
+        { key: 'options', label: 'Options' },
+        { key: 'messages', label: 'Messages' },
+      ]
+    : [{ key: 'options', label: 'Options' }];
 
   if (!visible) {
     return null;
@@ -1544,17 +1523,67 @@ export const NodeEditSidebar = ({
             display: 'flex',
             flexDirection: 'column',
           }}>
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            items={tabHeaders}
-            tabBarStyle={{ marginBottom: 0, flexShrink: 0 }}
+          <div
             style={{
               flexShrink: 0,
               display: 'flex',
-              flexDirection: 'column',
-            }}
-          />
+            }}>
+            <div
+              role="tablist"
+              aria-label="Node editor tabs"
+              style={{
+                background: '#f2f2f7',
+                borderRadius: 999,
+                padding: 4,
+                display: 'flex',
+                gap: 6,
+                width: '100%',
+              }}>
+              {tabItems.map((tab, index) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveTab(tab.key)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowRight') {
+                        event.preventDefault();
+                        const nextKey =
+                          tabItems[(index + 1) % tabItems.length]?.key ??
+                          tab.key;
+                        setActiveTab(nextKey);
+                      } else if (event.key === 'ArrowLeft') {
+                        event.preventDefault();
+                        const prevKey =
+                          tabItems[
+                            (index - 1 + tabItems.length) % tabItems.length
+                          ]?.key ?? tab.key;
+                        setActiveTab(prevKey);
+                      }
+                    }}
+                    style={{
+                      border: 'none',
+                      background: isActive ? '#ffffff' : 'transparent',
+                      padding: '4px 0',
+                      borderRadius: 999,
+                      fontWeight: 600,
+                      fontSize: 13,
+                      color: isActive ? '#111' : '#555',
+                      cursor: 'pointer',
+                      boxShadow: isActive
+                        ? '0 4px 12px rgba(15, 23, 42, 0.12)'
+                        : 'none',
+                      transition: 'all 0.2s ease',
+                      flex: 1,
+                    }}>
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div
             style={{

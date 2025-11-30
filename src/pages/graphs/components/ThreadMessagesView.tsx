@@ -584,8 +584,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   const getToolMessageKey = (msg?: ThreadMessageDto): string | undefined => {
     if (!msg) return undefined;
     if (msg.id) return msg.id;
-    const messageLevelId =
-      typeof msg.message?.id === 'string' ? msg.message.id : undefined;
+    const messageLevelId = getMessageString(msg.message, 'id');
     if (messageLevelId) return messageLevelId;
     if (msg.createdAt) return `created-${msg.createdAt}`;
     const toolCallId = getMessageString(msg.message, 'toolCallId');
@@ -1704,7 +1703,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     resultContent?: unknown,
     shellCommand?: string,
     toolOptions?: Record<string, JsonValue>,
-    metadata?: { nodeId?: string; createdAt?: string },
+    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
   ) => {
     return (
       <ShellToolDisplay
