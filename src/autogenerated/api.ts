@@ -518,6 +518,25 @@ export type GraphRevisionDtoStatusEnum = typeof GraphRevisionDtoStatusEnum[keyof
 /**
  * 
  * @export
+ * @interface LiteLlmModelDto
+ */
+export interface LiteLlmModelDto {
+    /**
+     * Model identifier
+     * @type {string}
+     * @memberof LiteLlmModelDto
+     */
+    'id': string;
+    /**
+     * Owner of the model
+     * @type {string}
+     * @memberof LiteLlmModelDto
+     */
+    'ownedBy': string;
+}
+/**
+ * 
+ * @export
  * @interface TemplateDto
  */
 export interface TemplateDto {
@@ -2603,6 +2622,107 @@ export class GraphsApi extends BaseAPI {
      */
     public updateGraph(id: string, updateGraphDto: UpdateGraphDto, options?: RawAxiosRequestConfig) {
         return GraphsApiFp(this.configuration).updateGraph(id, updateGraphDto, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * LitellmApi - axios parameter creator
+ * @export
+ */
+export const LitellmApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listModels: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/v1/litellm/models`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearer required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * LitellmApi - functional programming interface
+ * @export
+ */
+export const LitellmApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = LitellmApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listModels(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<LiteLlmModelDto>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listModels(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['LitellmApi.listModels']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * LitellmApi - factory interface
+ * @export
+ */
+export const LitellmApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = LitellmApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listModels(options?: RawAxiosRequestConfig): AxiosPromise<Array<LiteLlmModelDto>> {
+            return localVarFp.listModels(options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * LitellmApi - object-oriented interface
+ * @export
+ * @class LitellmApi
+ * @extends {BaseAPI}
+ */
+export class LitellmApi extends BaseAPI {
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof LitellmApi
+     */
+    public listModels(options?: RawAxiosRequestConfig) {
+        return LitellmApiFp(this.configuration).listModels(options).then((request) => request(this.axios, this.basePath));
     }
 }
 

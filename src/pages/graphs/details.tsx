@@ -2343,7 +2343,7 @@ export const GraphPage = () => {
                       width: 36,
                       height: 36,
                       borderRadius: 8,
-                      color: '#3085e0',
+                      color: hasStructuralChanges ? '#ffd421' : '#3085e0',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -2363,10 +2363,6 @@ export const GraphPage = () => {
                     }}>
                     {saving ? (
                       <LoadingOutlined style={{ fontSize: 20 }} spin />
-                    ) : hasStructuralChanges ? (
-                      <WarningFilled
-                        style={{ color: '#ffb431', fontSize: 20 }}
-                      />
                     ) : (
                       <SaveFilled style={{ fontSize: 20 }} />
                     )}

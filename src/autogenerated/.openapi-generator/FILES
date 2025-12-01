@@ -18,6 +18,8 @@ docs/GraphNodeWithStatusDtoMetadata.md
 docs/GraphRevisionDto.md
 docs/GraphRevisionsApi.md
 docs/GraphsApi.md
+docs/LiteLlmModelDto.md
+docs/LitellmApi.md
 docs/TemplateDto.md
 docs/TemplateDtoInputsInner.md
 docs/TemplateDtoInputsInnerOneOf.md
