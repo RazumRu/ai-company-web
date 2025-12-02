@@ -24,11 +24,14 @@ export const buildTriggerNodes = (
       const template = templates[node.template];
       return (template?.kind ?? '').toLowerCase() === 'trigger';
     })
-    .map((node) => ({
-      id: node.id,
-      name: metadataNodes[node.id] || node.template,
-      template: node.template,
-    }));
+    .map((node) => {
+      const template = templates[node.template];
+      return {
+        id: node.id,
+        name: metadataNodes[node.id] || template?.name || node.template,
+        template: node.template,
+      };
+    });
 };
 
 export const buildNodeDisplayNames = (
@@ -54,5 +57,3 @@ export const extractThreadSubId = (
   const parts = externalThreadId.split(':');
   return parts[parts.length - 1];
 };
-
-

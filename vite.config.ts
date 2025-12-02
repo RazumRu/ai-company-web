@@ -8,7 +8,7 @@ export default defineConfig({
     host: '0.0.0.0',
   },
   server: {
-   // allowedHosts: [],
+    // allowedHosts: [],
     host: '0.0.0.0',
   },
 });

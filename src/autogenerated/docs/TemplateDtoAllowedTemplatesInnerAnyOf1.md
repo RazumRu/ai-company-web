@@ -1,13 +1,12 @@
 # TemplateDtoAllowedTemplatesInnerAnyOf1
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**type** | **string** |  | [default to undefined]
-**value** | **string** |  | [default to undefined]
-**required** | **boolean** |  | [optional] [default to undefined]
+| Name         | Type        | Description | Notes                             |
+| ------------ | ----------- | ----------- | --------------------------------- |
+| **type**     | **string**  |             | [default to undefined]            |
+| **value**    | **string**  |             | [default to undefined]            |
+| **required** | **boolean** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { TemplateDtoAllowedTemplatesInnerAnyOf1 } from './api';
 
 const instance: TemplateDtoAllowedTemplatesInnerAnyOf1 = {
-    type,
-    value,
-    required,
+  type,
+  value,
+  required,
 };
 ```
 

@@ -93,8 +93,16 @@ export const TemplateModal = ({
                       <div>
                         <Tag color="blue">{rule.type}</Tag>
                         <Text strong>{rule.value}</Text>
-                        {rule.required && <Tag color="red" style={{ marginLeft: 8 }}>Required</Tag>}
-                        {rule.multiple && <Tag color="orange" style={{ marginLeft: 8 }}>Multiple</Tag>}
+                        {rule.required && (
+                          <Tag color="red" style={{ marginLeft: 8 }}>
+                            Required
+                          </Tag>
+                        )}
+                        {rule.multiple && (
+                          <Tag color="orange" style={{ marginLeft: 8 }}>
+                            Multiple
+                          </Tag>
+                        )}
                       </div>
                       {matchingTemplates.length > 0 && (
                         <div

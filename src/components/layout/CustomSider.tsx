@@ -69,4 +69,3 @@ export const CustomSider = (props: RefineThemedLayoutV2SiderProps) => {
     />
   );
 };
-

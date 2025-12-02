@@ -109,7 +109,9 @@ export const TriggerModal = ({
             </Text>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text type="success">Using selected thread: {selectedThreadName || selectedThreadId}</Text>
+              <Text type="success">
+                Using selected thread: {selectedThreadName || selectedThreadId}
+              </Text>
               {selectedThreadSource ? (
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   Source: {selectedThreadSource}

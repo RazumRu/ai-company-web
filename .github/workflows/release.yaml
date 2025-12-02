@@ -72,8 +72,6 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
-
-
 #  build-and-push:
 #    runs-on: ubuntu-22.04
 #    name: Build And Push

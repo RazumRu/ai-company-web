@@ -265,10 +265,10 @@ export const GraphPage = () => {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [nodeEditSidebarVisible, setNodeEditSidebarVisible] = useState(false);
   const [templates, setTemplates] = useState<TemplateDto[]>([]);
-  const templatesByName = useMemo(
+  const templatesById = useMemo(
     () =>
       templates.reduce<Record<string, TemplateDto>>((acc, template) => {
-        acc[template.name] = template;
+        acc[template.id] = template;
         return acc;
       }, {}),
     [templates],
@@ -316,8 +316,8 @@ export const GraphPage = () => {
 
   const triggerNodesForGraph = useMemo(() => {
     if (!graph) return [];
-    return buildTriggerNodes(graph, templatesByName);
-  }, [graph, templatesByName]);
+    return buildTriggerNodes(graph, templatesById);
+  }, [graph, templatesById]);
 
   const nodeDisplayNames = useMemo(
     () => (graph ? buildNodeDisplayNames(graph) : {}),
@@ -386,7 +386,7 @@ export const GraphPage = () => {
         const apiNodes = graphData.schema?.nodes || [];
         const reactFlowNodes: GraphNode[] = apiNodes.map((node, index) => {
           const nodeMeta = nodeMetadataMap[node.id];
-          const template = templatesList.find((t) => t.name === node.template);
+          const template = templatesList.find((t) => t.id === node.template);
           return {
             id: node.id,
             type: 'custom',
@@ -397,7 +397,7 @@ export const GraphPage = () => {
                   y: 100 + Math.floor(index / 3) * 150,
                 },
             data: {
-              label: nodeMeta?.name || node.template,
+              label: nodeMeta?.name || template?.name || node.template,
               template: node.template,
               templateKind: template?.kind,
               templateSchema: template?.schema,
@@ -438,7 +438,7 @@ export const GraphPage = () => {
             if (!node.data.templateKind || !node.data.templateSchema) {
               const template = templatesList.find(
                 (t) =>
-                  t.name === (node.data as unknown as GraphNodeData).template,
+                  t.id === (node.data as unknown as GraphNodeData).template,
               );
 
               if (template) {
@@ -1930,6 +1930,10 @@ export const GraphPage = () => {
                                       style={{
                                         fontSize: '12px',
                                         lineHeight: 1.2,
+                                        maxWidth: '400px',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
                                       }}>
                                       {thread.name || thread.id}
                                     </Typography.Text>
@@ -2098,7 +2102,14 @@ export const GraphPage = () => {
                                   gap: 6,
                                 }}>
                                 <Typography.Text
-                                  style={{ fontSize: '12px', lineHeight: 1.2 }}>
+                                  style={{
+                                    fontSize: '12px',
+                                    lineHeight: 1.2,
+                                    maxWidth: '400px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}>
                                   {t?.name || selectedThreadId}
                                 </Typography.Text>
                                 {selectedThreadId && (

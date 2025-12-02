@@ -1,13 +1,12 @@
 # UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**op** | **string** |  | [default to undefined]
-**path** | **string** |  | [default to undefined]
-**value** | **any** |  | [default to undefined]
+| Name      | Type       | Description | Notes                  |
+| --------- | ---------- | ----------- | ---------------------- |
+| **op**    | **string** |             | [default to undefined] |
+| **path**  | **string** |             | [default to undefined] |
+| **value** | **any**    |             | [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf } from './api';
 
 const instance: UpdateGraphResponseDtoRevisionConfigurationDiffInnerAnyOf = {
-    op,
-    path,
-    value,
+  op,
+  path,
+  value,
 };
 ```
 

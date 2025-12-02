@@ -29,8 +29,7 @@ export const sortMessagesChronologically = (
   msgs: ThreadMessageDto[],
 ): ThreadMessageDto[] =>
   [...msgs].sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
 export const extractReasoningEntries = (
@@ -57,7 +56,9 @@ export const extractReasoningEntries = (
     if (isPlainObject(raw)) {
       const rawObject = raw as Record<string, unknown>;
       const nestedThreadId =
-        (typeof rawObject.threadId === 'string' ? rawObject.threadId : undefined) ??
+        (typeof rawObject.threadId === 'string'
+          ? rawObject.threadId
+          : undefined) ??
         context.threadId ??
         (key.includes(':') ? key : undefined);
       const nestedRunId =
@@ -144,9 +145,7 @@ export const getMessageRunId = (msg: ThreadMessageDto): string | undefined => {
   return typeof runId === 'string' ? runId : undefined;
 };
 
-export const isStreamingReasoningMessage = (
-  msg: ThreadMessageDto,
-): boolean => {
+export const isStreamingReasoningMessage = (msg: ThreadMessageDto): boolean => {
   if (!isReasoningMessage(msg)) return false;
   const kwargs = msg.message?.additionalKwargs as
     | Record<string, unknown>
@@ -218,4 +217,3 @@ export const buildIdSet = (
   const filtered = values.filter((value): value is string => Boolean(value));
   return filtered.length > 0 ? new Set(filtered) : undefined;
 };
-

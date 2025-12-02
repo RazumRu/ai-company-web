@@ -1,13 +1,12 @@
 # GraphRevisionDtoConfigurationDiffInnerAnyOf5
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**op** | **string** |  | [default to undefined]
-**path** | **string** |  | [default to undefined]
-**value** | **any** |  | [default to undefined]
+| Name      | Type       | Description | Notes                  |
+| --------- | ---------- | ----------- | ---------------------- |
+| **op**    | **string** |             | [default to undefined] |
+| **path**  | **string** |             | [default to undefined] |
+| **value** | **any**    |             | [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { GraphRevisionDtoConfigurationDiffInnerAnyOf5 } from './api';
 
 const instance: GraphRevisionDtoConfigurationDiffInnerAnyOf5 = {
-    op,
-    path,
-    value,
+  op,
+  path,
+  value,
 };
 ```
 

@@ -17,6 +17,19 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  getReasoningIdentifier,
+  extractReasoningEntries,
+  narrowReasoningContainer,
+  removeStreamingReasoningMessages,
+  buildIdSet,
+  getMessageRunId,
+  STREAMING_REASONING_FLAG,
+  sortMessagesChronologically,
+  type ReasoningChunkEntry,
+} from '../../../utils/threadMessages';
+import { useWebSocketEvent } from '../../../hooks/useWebSocket';
+import type { GraphNodeUpdateNotification } from '../../../services/WebSocketTypes';
 
 interface ToolCallFunction {
   name?: string;
@@ -75,6 +88,15 @@ export interface ThreadMessagesViewProps {
   isNodeRunning?: boolean;
   pendingMessages?: PendingMessage[];
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
+  // Props for reasoning message handling
+  graphId?: string;
+  externalThreadId?: string;
+  onExternalThreadIdChange?: (externalThreadId: string | undefined) => void;
+  isDraft?: boolean;
+  // Callback to update messages when reasoning chunks are processed
+  onMessagesUpdate?: (
+    updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
+  ) => void;
 }
 
 const ensureThinkingIndicatorStyles = (() => {
@@ -354,8 +376,7 @@ const scrollContainerStyle: React.CSSProperties = {
 };
 
 const messageBlockStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  marginBottom: '8px',
+  marginBottom: '25px',
 };
 
 const collapsedGradientStyle: React.CSSProperties = {
@@ -383,6 +404,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
   isNodeRunning = false,
   pendingMessages = [],
   newMessageMode,
+  graphId,
+  externalThreadId,
+  onExternalThreadIdChange,
+  isDraft = false,
+  onMessagesUpdate,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
@@ -404,6 +430,341 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
       return next;
     });
   }, []);
+
+  const [expandedReasoningIds, setExpandedReasoningIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const toggleReasoningMessage = useCallback((id: string) => {
+    setExpandedReasoningIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Build reasoning thread message
+  const buildReasoningThreadMessage = useCallback(
+    (
+      entry: ReasoningChunkEntry,
+      existing: ThreadMessageDto | undefined,
+      context: { externalThreadId?: string; runId?: string },
+    ): ThreadMessageDto => {
+      const nowIso = new Date().toISOString();
+      const existingMessage = existing?.message as any;
+      const existingAdditional =
+        (existingMessage?.additionalKwargs as Record<string, unknown>) ?? {};
+
+      const resolvedExternalThreadId =
+        context.externalThreadId ??
+        entry.threadId ??
+        existing?.externalThreadId ??
+        externalThreadId ??
+        selectedThreadId ??
+        '';
+
+      const createdAt =
+        existing?.createdAt ??
+        entry.createdAt ??
+        (typeof existingAdditional.created_at === 'string'
+          ? (existingAdditional.created_at as string)
+          : nowIso);
+      const updatedAt = entry.updatedAt ?? existing?.updatedAt ?? nowIso;
+
+      const additionalKwargs: Record<string, unknown> = {
+        ...existingAdditional,
+        reasoningId: entry.reasoningId,
+        hideForLlm: true,
+        [STREAMING_REASONING_FLAG]: true,
+      };
+
+      const resolvedRunId =
+        context.runId ??
+        entry.runId ??
+        (typeof existingAdditional.run_id === 'string'
+          ? (existingAdditional.run_id as string)
+          : undefined);
+      if (resolvedRunId) {
+        additionalKwargs.run_id = resolvedRunId;
+      }
+
+      if (entry.createdAt) {
+        additionalKwargs.created_at = entry.createdAt;
+      } else if (!additionalKwargs.created_at) {
+        additionalKwargs.created_at = createdAt;
+      }
+
+      if (!additionalKwargs.reasoningId) {
+        additionalKwargs.reasoningId = entry.reasoningId;
+      }
+
+      return {
+        id: entry.reasoningId,
+        threadId: selectedThreadId ?? '',
+        nodeId: nodeId ?? entry.reasoningId,
+        externalThreadId: resolvedExternalThreadId,
+        createdAt,
+        updatedAt,
+        message: {
+          id: entry.reasoningId,
+          role: 'reasoning' as any,
+          content: entry.content,
+          additionalKwargs,
+        } as any,
+      };
+    },
+    [selectedThreadId, nodeId, externalThreadId],
+  );
+
+  // Apply reasoning entries to messages
+  const applyReasoningEntries = useCallback(
+    (
+      entries: ReasoningChunkEntry[],
+      context: { externalThreadId?: string; runId?: string },
+    ) => {
+      if (!entries.length || !onMessagesUpdate || isDraft) return;
+
+      onMessagesUpdate((prev) => {
+        let hasChanges = false;
+        const byId = new Map<string, ThreadMessageDto>();
+
+        prev.forEach((msg) => {
+          byId.set(msg.id, msg);
+        });
+
+        entries.forEach((entry) => {
+          const existing = byId.get(entry.reasoningId);
+          const existingMessage = existing?.message as any;
+          const isExistingStreaming = Boolean(
+            (
+              existingMessage?.additionalKwargs as
+                | Record<string, unknown>
+                | undefined
+            )?.[STREAMING_REASONING_FLAG],
+          );
+
+          if (existing && !isExistingStreaming) {
+            return;
+          }
+
+          const nextMessage = buildReasoningThreadMessage(
+            entry,
+            existing,
+            context,
+          );
+          const nextPayload = nextMessage.message as any;
+
+          const existingContent =
+            typeof existingMessage?.content === 'string'
+              ? existingMessage.content
+              : '';
+          const nextContent =
+            typeof nextPayload?.content === 'string' ? nextPayload.content : '';
+
+          const existingAdditional =
+            (existingMessage?.additionalKwargs as Record<string, unknown>) ??
+            {};
+          const nextAdditional =
+            (nextPayload?.additionalKwargs as Record<string, unknown>) ?? {};
+
+          const additionalChanged =
+            JSON.stringify(existingAdditional) !==
+            JSON.stringify(nextAdditional);
+
+          // Always update streaming reasoning messages, even if content appears the same
+          // This ensures we capture incremental updates during streaming
+          const isStreamingMessage = Boolean(
+            nextAdditional[STREAMING_REASONING_FLAG],
+          );
+
+          if (
+            !existing ||
+            existingContent !== nextContent ||
+            existing.updatedAt !== nextMessage.updatedAt ||
+            additionalChanged ||
+            isStreamingMessage
+          ) {
+            hasChanges = true;
+          }
+
+          byId.set(entry.reasoningId, nextMessage);
+        });
+
+        if (!hasChanges) {
+          return prev;
+        }
+
+        const merged = Array.from(byId.values());
+        return sortMessagesChronologically(merged);
+      });
+    },
+    [buildReasoningThreadMessage, isDraft, onMessagesUpdate],
+  );
+
+  // Handle graph.node.update events for reasoning chunks
+  useWebSocketEvent(
+    'graph.node.update',
+    (notification) => {
+      const event = notification as GraphNodeUpdateNotification;
+
+      if (isDraft || !graphId || !selectedThreadId) return;
+      if (event.graphId !== graphId) return;
+      // If nodeId is provided (graph page), filter by nodeId
+      if (nodeId && event.nodeId !== nodeId) return;
+
+      const additionalMetadata = event.data?.additionalNodeMetadata;
+      const reasoningChunks = additionalMetadata?.reasoningChunks;
+      const eventThreadId =
+        (typeof event.threadId === 'string' && event.threadId.length > 0
+          ? event.threadId
+          : undefined) ??
+        (typeof event.data?.metadata?.threadId === 'string'
+          ? event.data.metadata.threadId
+          : undefined);
+      const eventInternalThreadId =
+        typeof event.internalThreadId === 'string' &&
+        event.internalThreadId.length > 0
+          ? event.internalThreadId
+          : undefined;
+      const metadataRunId =
+        typeof event.data?.metadata?.runId === 'string'
+          ? event.data.metadata.runId
+          : undefined;
+
+      // Check if this event is for the current thread
+      // Match by external thread ID, internal thread ID, or if both are missing
+      const threadMatches =
+        eventThreadId === externalThreadId ||
+        eventInternalThreadId === selectedThreadId ||
+        (!eventThreadId && !externalThreadId && !eventInternalThreadId);
+
+      if (!threadMatches) {
+        return;
+      }
+
+      const targetThreadId =
+        eventThreadId ?? externalThreadId ?? selectedThreadId;
+      const targetRunIds = buildIdSet(event.runId, metadataRunId);
+
+      const clearStreamingForContext = () => {
+        if (!onMessagesUpdate) return;
+        if (!targetThreadId && !targetRunIds) {
+          onMessagesUpdate((prev) =>
+            removeStreamingReasoningMessages(prev, () => true),
+          );
+          return;
+        }
+        onMessagesUpdate((prev) =>
+          removeStreamingReasoningMessages(prev, (msg) => {
+            const threadMatches = targetThreadId
+              ? msg.externalThreadId === targetThreadId ||
+                (!msg.externalThreadId && targetThreadId === selectedThreadId)
+              : !msg.externalThreadId ||
+                msg.externalThreadId === selectedThreadId;
+            if (!threadMatches) {
+              return false;
+            }
+            if (targetRunIds && targetRunIds.size > 0) {
+              const msgRunId = getMessageRunId(msg);
+              if (!msgRunId || !targetRunIds.has(msgRunId)) {
+                return false;
+              }
+            }
+            return true;
+          }),
+        );
+      };
+
+      if (!reasoningChunks) {
+        clearStreamingForContext();
+        return;
+      }
+
+      // If we matched by internal thread ID, we should process the event
+      // even if external thread IDs don't match (they might not be set yet)
+      const matchedByInternalId = eventInternalThreadId === selectedThreadId;
+
+      if (
+        !matchedByInternalId &&
+        externalThreadId &&
+        eventThreadId &&
+        externalThreadId !== eventThreadId
+      ) {
+        return;
+      }
+
+      if (!externalThreadId && eventThreadId && onExternalThreadIdChange) {
+        onExternalThreadIdChange(eventThreadId);
+      }
+
+      const container = narrowReasoningContainer(reasoningChunks, [
+        eventThreadId ?? externalThreadId,
+        selectedThreadId,
+        event.runId ?? metadataRunId,
+      ]);
+
+      const entries = extractReasoningEntries(container, {
+        threadId: eventThreadId ?? externalThreadId,
+        runId: event.runId ?? metadataRunId,
+      });
+
+      if (!entries.length) {
+        clearStreamingForContext();
+        return;
+      }
+
+      const runIdCandidates = new Set(
+        [event.runId, metadataRunId].filter((id): id is string => Boolean(id)),
+      );
+      const threadIdCandidates = new Set(
+        [eventThreadId ?? externalThreadId].filter((id): id is string =>
+          Boolean(id),
+        ),
+      );
+
+      const filteredEntries = entries.filter((entry) => {
+        if (
+          threadIdCandidates.size > 0 &&
+          entry.threadId &&
+          !threadIdCandidates.has(entry.threadId)
+        ) {
+          return false;
+        }
+        if (
+          runIdCandidates.size > 0 &&
+          entry.runId &&
+          !runIdCandidates.has(entry.runId)
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      const relevantEntries =
+        filteredEntries.length > 0 ? filteredEntries : entries;
+
+      applyReasoningEntries(relevantEntries, {
+        externalThreadId: eventThreadId ?? externalThreadId,
+        runId:
+          event.runId ??
+          metadataRunId ??
+          relevantEntries.find((entry) => entry.runId)?.runId,
+      });
+    },
+    [
+      graphId,
+      selectedThreadId,
+      nodeId,
+      externalThreadId,
+      isDraft,
+      applyReasoningEntries,
+      onExternalThreadIdChange,
+      onMessagesUpdate,
+    ],
+  );
 
   useEffect(() => {
     ensureThinkingIndicatorStyles();
@@ -958,7 +1319,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     const [animatedChunk, setAnimatedChunk] = useState('');
     const prevContentRef = useRef(content);
     const timeoutRef = useRef<number | null>(null);
-    const [expanded, setExpanded] = useState(false);
+    const reasoningId = getReasoningIdentifier(message) ?? message.id;
+    const expanded = expandedReasoningIds.has(reasoningId);
     const [isHovered, setIsHovered] = useState(false);
     const preview = useMemo(
       () => createReasoningPreview(baseContent),
@@ -1011,7 +1373,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     }, []);
 
     const handleToggle = () => {
-      setExpanded((prev) => !prev);
+      toggleReasoningMessage(reasoningId);
     };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1345,28 +1707,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
       );
     }
 
-    const metadataNode = renderMetadataText(
-      metadata?.createdAt,
-      metadata?.roleLabel ?? name,
-      metadata?.nodeId,
-    );
-
-    if (!metadataNode) {
-      return baseLine;
-    }
-
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 4,
-        }}>
-        {baseLine}
-        {metadataNode}
-      </div>
-    );
+    // Don't show metadata for tool messages
+    return baseLine;
   };
 
   const truncateToLines = (
@@ -1407,9 +1749,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
     const exitCodeStatus = exitCode !== undefined ? exitCode : null;
     const exitCodeColor =
       exitCodeStatus === null
-        ? '#c4c4c4'
+        ? '#9d9d9d'
         : exitCodeStatus === 0
-          ? '#c4c4c4'
+          ? '#9d9d9d'
           : '#ff4d4f'; // Red for non-zero exit codes
     const tint =
       exitCodeStatus === null
@@ -1418,6 +1760,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
           ? '#1d2b1f'
           : '#2b1d1d';
 
+    const fullToolNameText = `${name}${toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''}`;
+
     const toolNameElement = (
       <div
         style={{
@@ -1425,13 +1769,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             status === 'executed' && resultContent !== undefined
               ? 'pointer'
               : 'default',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}
         aria-label={
           status === 'executed'
             ? `View shell result for ${name}`
             : `Shell ${name} is calling`
-        }>
-        {name}
+        }
+        title={fullToolNameText}>
+        {fullToolNameText}
       </div>
     );
 
@@ -1462,27 +1810,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
       : null;
     const outputTruncated = outputText ? truncateToLines(outputText, 3) : null;
 
-    const metadataNode = renderMetadataText(
-      metadata?.createdAt,
-      metadata?.roleLabel ?? name,
-      metadata?.nodeId,
-    );
-
+    // Don't show metadata for tool messages
     return (
-      <div style={{ marginBottom: `12px` }}>
-        {toolOptions?.purpose && (
-          <Text
-            type="secondary"
-            style={{
-              fontSize: '12px',
-              color: '#8c8c8c',
-              lineHeight: '15px',
-              display: 'block',
-              marginBottom: '10px',
-            }}>
-            {String(toolOptions.purpose)}
-          </Text>
-        )}
+      <div style={{ marginBottom: `25px` }}>
         <div
           style={{
             background: '#1e1e1e',
@@ -1528,6 +1858,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
               <span
                 style={{
                   color: exitCodeColor,
+                  whiteSpace: 'nowrap',
+                  fontSize: '11px',
                 }}>
                 executed
                 {exitCodeStatus !== null ? ` | exit ${exitCodeStatus}` : ''}
@@ -1692,7 +2024,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             </div>
           )}
         </div>
-        {metadataNode}
       </div>
     );
   };
@@ -2050,7 +2381,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
 
   if (messages.length === 0) {
     return renderFullHeightState(
-      <Text type="secondary">No messages found for this thread and node.</Text>,
+      <Text type="secondary">No messages found for this thread.</Text>,
     );
   }
 

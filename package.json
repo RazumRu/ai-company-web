@@ -53,6 +53,7 @@
   "scripts": {
     "dev": "refine dev",
     "build": "tsc && refine build",
+    "lint:fix": "prettier --write . && pnpm eslint \"src/**/*.{js,ts,tsx}\" --fix",
     "start": "refine start",
     "refine": "refine",
     "up-versions": "./scripts/up-versions.sh",

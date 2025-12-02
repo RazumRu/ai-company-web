@@ -4,12 +4,12 @@ Node coordinates and names by node ID
 
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **number** | X coordinate of the node | [default to undefined]
-**x** | **number** | X coordinate of the node | [default to undefined]
-**y** | **number** | Y coordinate of the node | [default to undefined]
-**name** | **string** | Optional display name for the node | [optional] [default to undefined]
+| Name     | Type       | Description                        | Notes                             |
+| -------- | ---------- | ---------------------------------- | --------------------------------- |
+| **id**   | **number** | X coordinate of the node           | [default to undefined]            |
+| **x**    | **number** | X coordinate of the node           | [default to undefined]            |
+| **y**    | **number** | Y coordinate of the node           | [default to undefined]            |
+| **name** | **string** | Optional display name for the node | [optional] [default to undefined] |
 
 ## Example
 
@@ -17,10 +17,10 @@ Name | Type | Description | Notes
 import { CreateGraphDtoMetadataNodes } from './api';
 
 const instance: CreateGraphDtoMetadataNodes = {
-    id,
-    x,
-    y,
-    name,
+  id,
+  x,
+  y,
+  name,
 };
 ```
 

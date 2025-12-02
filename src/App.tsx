@@ -26,7 +26,11 @@ import { ChatsPage } from './pages/chats/page';
 import { createAuthProvider, useAuth } from './auth';
 import { useKeycloak } from '@react-keycloak/web';
 import { useEffect } from 'react';
-import { HomeOutlined, MessageOutlined, NodeIndexOutlined } from '@ant-design/icons';
+import {
+  HomeOutlined,
+  MessageOutlined,
+  NodeIndexOutlined,
+} from '@ant-design/icons';
 
 // Login page component that redirects to Keycloak
 const LoginPage = ({ authProvider }: { authProvider: AuthProvider }) => {

@@ -64,7 +64,7 @@ export const CustomNode = ({
   const nodeData = data as unknown as GraphNodeData;
   const allNodes = useStore((s) => s.nodes) as GraphNode[];
   const allEdges = useStore((s) => s.edges) as GraphEdge[];
-  const nodeTemplate = templates?.find((t) => t.name === nodeData.template);
+  const nodeTemplate = templates?.find((t) => t.id === nodeData.template);
 
   useEffect(() => {
     ensureNodeStatusPulseStyle();
@@ -202,7 +202,7 @@ export const CustomNode = ({
     : compiledNodesLoading
       ? '#1890ff'
       : compiledNode?.status
-        ? statusDotColorMap[compiledNode.status] ?? '#d9d9d9'
+        ? (statusDotColorMap[compiledNode.status] ?? '#d9d9d9')
         : '#d9d9d9';
 
   const isStatusRunning =
@@ -217,9 +217,7 @@ export const CustomNode = ({
     backgroundColor: statusDotColor,
     display: 'inline-block',
     cursor: 'help',
-    boxShadow: isStatusRunning
-      ? '0 0 0 0 rgba(82, 196, 26, 0.6)'
-      : 'none',
+    boxShadow: isStatusRunning ? '0 0 0 0 rgba(82, 196, 26, 0.6)' : 'none',
     animation: isStatusRunning
       ? 'graph-node-status-pulse 1.5s ease-out infinite'
       : undefined,

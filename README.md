@@ -23,11 +23,13 @@ Front-end workspace for authoring and operating complex AI agent automations. Pr
 ## Screens & Workflows
 
 ### Graph Library
+
 - View every agent graph with status chips (Running/Stopped/Compiling/Error/Draft), version tags, and node counts.
 - Create graphs from scratch, duplicate existing ones, or archive unused flows.
 - Inline search and health stats help ops teams prioritize which automations need attention.
 
 ### Graph Studio
+
 - Canvas powered by `@xyflow/react` with zoom/pan, snap-to-grid, and autosave of viewport + layout in the browser (via `GraphStorageService`).
 - Template sidebar shows connection requirements, compatible inputs, and drag handles for each building block.
 - Node editing sidebar renders JSON-schema driven forms, key/value helpers, live node metadata, and execution transcripts.
@@ -35,11 +37,13 @@ Front-end workspace for authoring and operating complex AI agent automations. Pr
 - Runtime controls (Save, Run, Stop) automatically sync with graph status and compiled node telemetry pushed over WebSockets.
 
 ### Conversation Hub
+
 - Chats page lists all execution threads with status badges, associated graph names, creation timestamps, and per-thread actions.
 - Selecting a thread opens a full message timeline (including streaming/partial tokens) plus a prompt composer tied to the graph’s trigger nodes.
 - Operators can route a message through any trigger, reuse historical thread IDs, and jump back to the graph designer with deep links.
 
 ### Notifications & Revision Tracking
+
 - Socket.io listeners stream graph updates, node state changes, agent messages, revision lifecycle events, and thread mutations.
 - Toast notifications summarize compile/apply progress, trigger results, and failures so operators never miss a critical change.
 - Version badges keep designers aware of the last applied revision before starting a new run.
@@ -56,11 +60,13 @@ Front-end workspace for authoring and operating complex AI agent automations. Pr
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js ≥ 22
 - pnpm ≥ 10 (repo enforces the version in `package.json`)
 - Running instances of the AI Company API and Keycloak realm (defaults assume `localhost:5000` and `localhost:8082`)
 
 ### Local Setup
+
 1. **Install dependencies**
    ```bash
    pnpm install
@@ -82,12 +88,12 @@ Front-end workspace for authoring and operating complex AI agent automations. Pr
 
 ### Configuration Keys
 
-| Key | Description | Development default |
-| --- | --- | --- |
-| `API_URL` | REST + WebSocket base URL for the platform backend | `http://localhost:5000` |
-| `KEYCLOAK_URL` / `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` | SSO entrypoint and client info | `http://localhost:8082`, `ai-company`, `ai-company` |
-| `PROJECT_ID` | Refine project identifier (for devtools) | `oA2Grn-tb5EdO-q4j17C` |
-| `WEBSITE_URL` | Base URL where the web client is hosted | `http://localhost:3004` |
+| Key                                                      | Description                                        | Development default                                 |
+| -------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------- |
+| `API_URL`                                                | REST + WebSocket base URL for the platform backend | `http://localhost:5000`                             |
+| `KEYCLOAK_URL` / `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` | SSO entrypoint and client info                     | `http://localhost:8082`, `ai-company`, `ai-company` |
+| `PROJECT_ID`                                             | Refine project identifier (for devtools)           | `oA2Grn-tb5EdO-q4j17C`                              |
+| `WEBSITE_URL`                                            | Base URL where the web client is hosted            | `http://localhost:3004`                             |
 
 Adjust the production equivalents in `src/config/production.ts` or swap in runtime environment variables during your build pipeline.
 
@@ -113,6 +119,7 @@ Adjust the production equivalents in `src/config/production.ts` or swap in runti
 ## Contributing & Next Steps
 
 This front-end is intentionally decoupled from vendor-specific models so new triggers, agent templates, or tool integrations can be added by extending the backend catalog and regenerating the API client. To contribute:
+
 - Open a discussion or issue describing the feature or workflow pain point.
 - Keep UI/UX contributions focused on improving graph authoring, release management, or operator collaboration (chat, notifications, audits).
 - When backend endpoints change, re-run `pnpm generate:api` to keep typings fresh and document any new capabilities here.

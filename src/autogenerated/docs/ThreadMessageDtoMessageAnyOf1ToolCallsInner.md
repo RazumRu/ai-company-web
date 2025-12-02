@@ -1,14 +1,13 @@
 # ThreadMessageDtoMessageAnyOf1ToolCallsInner
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**name** | **string** | Tool name | [default to undefined]
-**args** | **{ [key: string]: any; }** | Tool arguments | [default to undefined]
-**type** | **string** | Tool call type | [default to undefined]
-**id** | **string** | Tool call ID | [default to undefined]
+| Name     | Type                        | Description    | Notes                  |
+| -------- | --------------------------- | -------------- | ---------------------- |
+| **name** | **string**                  | Tool name      | [default to undefined] |
+| **args** | **{ [key: string]: any; }** | Tool arguments | [default to undefined] |
+| **type** | **string**                  | Tool call type | [default to undefined] |
+| **id**   | **string**                  | Tool call ID   | [default to undefined] |
 
 ## Example
 
@@ -16,10 +15,10 @@ Name | Type | Description | Notes
 import { ThreadMessageDtoMessageAnyOf1ToolCallsInner } from './api';
 
 const instance: ThreadMessageDtoMessageAnyOf1ToolCallsInner = {
-    name,
-    args,
-    type,
-    id,
+  name,
+  args,
+  type,
+  id,
 };
 ```
 

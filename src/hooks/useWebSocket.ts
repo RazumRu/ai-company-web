@@ -4,8 +4,10 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import { webSocketService, SocketEventHandler } from '../services/WebSocketService';
-import type { SocketNotification } from '../services/WebSocketTypes';
+import {
+  webSocketService,
+  SocketEventHandler,
+} from '../services/WebSocketService';
 import { useAuth } from '../auth';
 
 interface UseWebSocketOptions {
@@ -57,7 +59,7 @@ interface UseWebSocketReturn {
 
 /**
  * Custom hook for WebSocket functionality
- * 
+ *
  * @example
  * ```tsx
  * const { subscribeToGraph, on } = useWebSocket({
@@ -70,7 +72,9 @@ interface UseWebSocketReturn {
  * });
  * ```
  */
-export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketReturn => {
+export const useWebSocket = (
+  options: UseWebSocketOptions = {},
+): UseWebSocketReturn => {
   const { autoConnect = true, graphId, handlers } = options;
   const { keycloak } = useAuth();
   const handlersRef = useRef(handlers);
@@ -129,9 +133,11 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
     if (!handlers) return;
 
     // Register all handlers
-    const unsubscribeFns = Object.entries(handlers).map(([eventType, handler]) => {
-      return webSocketService.on(eventType, handler);
-    });
+    const unsubscribeFns = Object.entries(handlers).map(
+      ([eventType, handler]) => {
+        return webSocketService.on(eventType, handler);
+      },
+    );
 
     unsubscribeFnsRef.current = unsubscribeFns;
 
@@ -169,7 +175,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
 
 /**
  * Hook to listen for specific WebSocket events
- * 
+ *
  * @example
  * ```tsx
  * useWebSocketEvent('agent.message', (data) => {
@@ -180,7 +186,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}): UseWebSocketRet
 export const useWebSocketEvent = (
   eventType: string,
   handler: SocketEventHandler,
-  deps: React.DependencyList = []
+  deps: React.DependencyList = [],
 ): void => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableHandler = useCallback(handler, deps);
@@ -190,4 +196,3 @@ export const useWebSocketEvent = (
     return unsubscribe;
   }, [eventType, stableHandler]);
 };
-

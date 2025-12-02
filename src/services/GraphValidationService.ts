@@ -36,7 +36,7 @@ export class GraphValidationService {
 
     // Find template for source node
     const sourceTemplate = templates.find(
-      (t) => t.name === sourceNode.data.template,
+      (t) => t.id === sourceNode.data.template,
     );
     if (!sourceTemplate) {
       errors.push({
@@ -59,7 +59,7 @@ export class GraphValidationService {
 
     // Find template for target node
     const targetTemplate = templates.find(
-      (t) => t.name === targetNode.data.template,
+      (t) => t.id === targetNode.data.template,
     );
     if (!targetTemplate) {
       errors.push({
@@ -136,7 +136,7 @@ export class GraphValidationService {
     node: GraphNode,
     templates: TemplateDto[],
   ): TemplateDto[] {
-    const nodeTemplate = templates.find((t) => t.name === node.data.template);
+    const nodeTemplate = templates.find((t) => t.id === node.data.template);
     if (!nodeTemplate || !nodeTemplate.outputs) {
       return [];
     }
@@ -157,7 +157,7 @@ export class GraphValidationService {
       if (rule.type === 'kind') {
         return targetTemplate.kind === rule.value;
       } else if (rule.type === 'template') {
-        return targetTemplate.name === rule.value;
+        return targetTemplate.id === rule.value;
       }
       return false;
     });
@@ -223,7 +223,7 @@ export class GraphValidationService {
     templates: TemplateDto[],
   ): ValidationError[] {
     const errors: ValidationError[] = [];
-    const nodeTemplate = templates.find((t) => t.name === node.data.template);
+    const nodeTemplate = templates.find((t) => t.id === node.data.template);
 
     if (!nodeTemplate || !nodeTemplate.inputs) {
       return errors;
@@ -277,7 +277,7 @@ export class GraphValidationService {
 
       if (connectedNode) {
         const connectedTemplate = templates.find(
-          (t) => t.name === connectedNode.data.template,
+          (t) => t.id === connectedNode.data.template,
         );
         if (connectedTemplate) {
           if (
@@ -287,7 +287,7 @@ export class GraphValidationService {
             return true;
           } else if (
             requiredRule.type === 'template' &&
-            connectedTemplate.name === requiredRule.value
+            connectedTemplate.id === requiredRule.value
           ) {
             return true;
           }
@@ -305,7 +305,7 @@ export class GraphValidationService {
     node: GraphNode,
     templates: TemplateDto[],
   ): ConnectionRule[] {
-    const nodeTemplate = templates.find((t) => t.name === node.data.template);
+    const nodeTemplate = templates.find((t) => t.id === node.data.template);
 
     if (!nodeTemplate || !nodeTemplate.inputs) {
       return [];
@@ -328,7 +328,7 @@ export class GraphValidationService {
     node: GraphNode,
     templates: TemplateDto[],
   ): Array<InputOutputRule> {
-    const nodeTemplate = templates.find((t) => t.name === node.data.template);
+    const nodeTemplate = templates.find((t) => t.id === node.data.template);
 
     if (!nodeTemplate || !nodeTemplate.inputs) {
       return [];
@@ -339,7 +339,7 @@ export class GraphValidationService {
         if (rule.type === 'kind') {
           return template.kind === rule.value;
         } else if (rule.type === 'template') {
-          return template.name === rule.value;
+          return template.id === rule.value;
         }
         return false;
       });

@@ -72,10 +72,10 @@ export const resolveHandlesForNodes = (
   }
 
   const sourceTemplate = templates.find(
-    (t) => t.name === (sourceNode.data as unknown as GraphNodeData).template,
+    (t) => t.id === (sourceNode.data as unknown as GraphNodeData).template,
   );
   const targetTemplate = templates.find(
-    (t) => t.name === (targetNode.data as unknown as GraphNodeData).template,
+    (t) => t.id === (targetNode.data as unknown as GraphNodeData).template,
   );
 
   if (!sourceTemplate || !targetTemplate) {
@@ -96,7 +96,7 @@ export const resolveHandlesForNodes = (
     : [];
 
   const targetByTemplate = targetInputs.find(
-    (r) => r.type === 'template' && slug(r.value) === slug(sourceTemplate.name),
+    (r) => r.type === 'template' && r.value === sourceTemplate.id,
   );
   const targetByKind = targetInputs.find(
     (r) =>
@@ -107,7 +107,7 @@ export const resolveHandlesForNodes = (
   const targetRule = targetByTemplate || targetByKind;
 
   const sourceByTemplate = sourceOutputs.find(
-    (r) => r.type === 'template' && slug(r.value) === slug(targetTemplate.name),
+    (r) => r.type === 'template' && r.value === targetTemplate.id,
   );
   const sourceByKind = sourceOutputs.find(
     (r) =>
@@ -219,10 +219,10 @@ export const GraphCanvas = ({
           }
 
           const sourceTemplate = templates.find(
-            (t) => t.name === sourceNode.data.template,
+            (t) => t.id === sourceNode.data.template,
           );
           const targetTemplate = templates.find(
-            (t) => t.name === targetNode.data.template,
+            (t) => t.id === targetNode.data.template,
           );
 
           if (sourceTemplate && targetTemplate) {
@@ -233,7 +233,7 @@ export const GraphCanvas = ({
                 return true;
               } else if (
                 rule.type === 'template' &&
-                targetTemplate.name === rule.value
+                targetTemplate.id === rule.value
               ) {
                 return true;
               }
@@ -293,7 +293,7 @@ export const GraphCanvas = ({
         position,
         data: {
           label: template.name,
-          template: template.name,
+          template: template.id,
           templateKind: template.kind,
           templateSchema: template.schema,
           config: {},
