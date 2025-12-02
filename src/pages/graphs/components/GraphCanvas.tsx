@@ -172,6 +172,9 @@ export const GraphCanvas = ({
 }: GraphCanvasProps) => {
   const reactFlowRef = useRef<HTMLDivElement | null>(null);
 
+  // Memoize nodeTypes to prevent recreation on every render
+  // Only recreate when templates, graphStatus, or compiledNodesLoading change
+  // compiledNodes is passed per-node, so it doesn't need to be in dependencies
   const nodeTypes = useMemo<NodeTypes>(
     () => ({
       custom: (p) => (
@@ -185,17 +188,21 @@ export const GraphCanvas = ({
         />
       ),
     }),
-    [templates, graphStatus, compiledNodes, compiledNodesLoading],
+    [templates, graphStatus, compiledNodesLoading, onTriggerClick],
   );
 
-  const enhancedNodes = nodes.map((node) => ({
-    ...node,
-    data: {
-      ...node.data,
-      onEdit: () => onNodeEdit(node),
-      onDelete: () => onNodeDelete(node.id),
-    },
-  }));
+  // Memoize enhancedNodes to prevent recreation on every render
+  // Only recreate when nodes array or callbacks change
+  const enhancedNodes = useMemo(() => {
+    return nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        onEdit: () => onNodeEdit(node),
+        onDelete: () => onNodeDelete(node.id),
+      },
+    }));
+  }, [nodes, onNodeEdit, onNodeDelete]);
 
   const onConnect = useCallback(
     (params: Connection) => {

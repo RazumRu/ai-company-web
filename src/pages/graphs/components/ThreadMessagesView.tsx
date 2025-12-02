@@ -389,429 +389,434 @@ const collapsedGradientStyle: React.CSSProperties = {
   pointerEvents: 'none',
 };
 
-const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
-  messages,
-  messagesLoading,
-  selectedThreadId,
-  nodeId,
-  nodeDisplayNames,
-  showNodeHeadings = false,
-  isAgentNode = true,
-  nodeTemplateKind,
-  onLoadMoreMessages,
-  hasMoreMessages,
-  loadingMore,
-  isNodeRunning = false,
-  pendingMessages = [],
-  newMessageMode,
-  graphId,
-  externalThreadId,
-  onExternalThreadIdChange,
-  isDraft = false,
-  onMessagesUpdate,
-}) => {
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const prevScrollHeightRef = useRef<number>(0);
-  const isPrependingRef = useRef<boolean>(false);
-  const pendingAutoScrollRef = useRef<boolean>(false);
-  const autoScrollDisabledRef = useRef<boolean>(false);
-  const lastMessageCountRef = useRef<number>(0);
-  const [expandedSystemIds, setExpandedSystemIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const toggleSystemMessage = useCallback((id: string) => {
-    setExpandedSystemIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
+  ({
+    messages,
+    messagesLoading,
+    selectedThreadId,
+    nodeId,
+    nodeDisplayNames,
+    showNodeHeadings = false,
+    isAgentNode = true,
+    nodeTemplateKind,
+    onLoadMoreMessages,
+    hasMoreMessages,
+    loadingMore,
+    isNodeRunning = false,
+    pendingMessages = [],
+    newMessageMode,
+    graphId,
+    externalThreadId,
+    onExternalThreadIdChange,
+    isDraft = false,
+    onMessagesUpdate,
+  }) => {
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+    const prevScrollHeightRef = useRef<number>(0);
+    const isPrependingRef = useRef<boolean>(false);
+    const pendingAutoScrollRef = useRef<boolean>(false);
+    const autoScrollDisabledRef = useRef<boolean>(false);
+    const lastMessageCountRef = useRef<number>(0);
+    const [expandedSystemIds, setExpandedSystemIds] = useState<Set<string>>(
+      () => new Set(),
+    );
+    const toggleSystemMessage = useCallback((id: string) => {
+      setExpandedSystemIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }, []);
 
-  const [expandedReasoningIds, setExpandedReasoningIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const toggleReasoningMessage = useCallback((id: string) => {
-    setExpandedReasoningIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+    const [expandedReasoningIds, setExpandedReasoningIds] = useState<
+      Set<string>
+    >(() => new Set());
+    const toggleReasoningMessage = useCallback((id: string) => {
+      setExpandedReasoningIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }, []);
 
-  // Build reasoning thread message
-  const buildReasoningThreadMessage = useCallback(
-    (
-      entry: ReasoningChunkEntry,
-      existing: ThreadMessageDto | undefined,
-      context: { externalThreadId?: string; runId?: string },
-    ): ThreadMessageDto => {
-      const nowIso = new Date().toISOString();
-      const existingMessage = existing?.message as any;
-      const existingAdditional =
-        (existingMessage?.additionalKwargs as Record<string, unknown>) ?? {};
+    // Build reasoning thread message
+    const buildReasoningThreadMessage = useCallback(
+      (
+        entry: ReasoningChunkEntry,
+        existing: ThreadMessageDto | undefined,
+        context: { externalThreadId?: string; runId?: string },
+      ): ThreadMessageDto => {
+        const nowIso = new Date().toISOString();
+        const existingMessage = existing?.message as any;
+        const existingAdditional =
+          (existingMessage?.additionalKwargs as Record<string, unknown>) ?? {};
 
-      const resolvedExternalThreadId =
-        context.externalThreadId ??
-        entry.threadId ??
-        existing?.externalThreadId ??
-        externalThreadId ??
-        selectedThreadId ??
-        '';
+        const resolvedExternalThreadId =
+          context.externalThreadId ??
+          entry.threadId ??
+          existing?.externalThreadId ??
+          externalThreadId ??
+          selectedThreadId ??
+          '';
 
-      const createdAt =
-        existing?.createdAt ??
-        entry.createdAt ??
-        (typeof existingAdditional.created_at === 'string'
-          ? (existingAdditional.created_at as string)
-          : nowIso);
-      const updatedAt = entry.updatedAt ?? existing?.updatedAt ?? nowIso;
+        const createdAt =
+          existing?.createdAt ??
+          entry.createdAt ??
+          (typeof existingAdditional.created_at === 'string'
+            ? (existingAdditional.created_at as string)
+            : nowIso);
+        const updatedAt = entry.updatedAt ?? existing?.updatedAt ?? nowIso;
 
-      const additionalKwargs: Record<string, unknown> = {
-        ...existingAdditional,
-        reasoningId: entry.reasoningId,
-        hideForLlm: true,
-        [STREAMING_REASONING_FLAG]: true,
-      };
+        const additionalKwargs: Record<string, unknown> = {
+          ...existingAdditional,
+          reasoningId: entry.reasoningId,
+          hideForLlm: true,
+          [STREAMING_REASONING_FLAG]: true,
+        };
 
-      const resolvedRunId =
-        context.runId ??
-        entry.runId ??
-        (typeof existingAdditional.run_id === 'string'
-          ? (existingAdditional.run_id as string)
-          : undefined);
-      if (resolvedRunId) {
-        additionalKwargs.run_id = resolvedRunId;
-      }
-
-      if (entry.createdAt) {
-        additionalKwargs.created_at = entry.createdAt;
-      } else if (!additionalKwargs.created_at) {
-        additionalKwargs.created_at = createdAt;
-      }
-
-      if (!additionalKwargs.reasoningId) {
-        additionalKwargs.reasoningId = entry.reasoningId;
-      }
-
-      return {
-        id: entry.reasoningId,
-        threadId: selectedThreadId ?? '',
-        nodeId: nodeId ?? entry.reasoningId,
-        externalThreadId: resolvedExternalThreadId,
-        createdAt,
-        updatedAt,
-        message: {
-          id: entry.reasoningId,
-          role: 'reasoning' as any,
-          content: entry.content,
-          additionalKwargs,
-        } as any,
-      };
-    },
-    [selectedThreadId, nodeId, externalThreadId],
-  );
-
-  // Apply reasoning entries to messages
-  const applyReasoningEntries = useCallback(
-    (
-      entries: ReasoningChunkEntry[],
-      context: { externalThreadId?: string; runId?: string },
-    ) => {
-      if (!entries.length || !onMessagesUpdate || isDraft) return;
-
-      onMessagesUpdate((prev) => {
-        let hasChanges = false;
-        const byId = new Map<string, ThreadMessageDto>();
-
-        prev.forEach((msg) => {
-          byId.set(msg.id, msg);
-        });
-
-        entries.forEach((entry) => {
-          const existing = byId.get(entry.reasoningId);
-          const existingMessage = existing?.message as any;
-          const isExistingStreaming = Boolean(
-            (
-              existingMessage?.additionalKwargs as
-                | Record<string, unknown>
-                | undefined
-            )?.[STREAMING_REASONING_FLAG],
-          );
-
-          if (existing && !isExistingStreaming) {
-            return;
-          }
-
-          const nextMessage = buildReasoningThreadMessage(
-            entry,
-            existing,
-            context,
-          );
-          const nextPayload = nextMessage.message as any;
-
-          const existingContent =
-            typeof existingMessage?.content === 'string'
-              ? existingMessage.content
-              : '';
-          const nextContent =
-            typeof nextPayload?.content === 'string' ? nextPayload.content : '';
-
-          const existingAdditional =
-            (existingMessage?.additionalKwargs as Record<string, unknown>) ??
-            {};
-          const nextAdditional =
-            (nextPayload?.additionalKwargs as Record<string, unknown>) ?? {};
-
-          const additionalChanged =
-            JSON.stringify(existingAdditional) !==
-            JSON.stringify(nextAdditional);
-
-          // Always update streaming reasoning messages, even if content appears the same
-          // This ensures we capture incremental updates during streaming
-          const isStreamingMessage = Boolean(
-            nextAdditional[STREAMING_REASONING_FLAG],
-          );
-
-          if (
-            !existing ||
-            existingContent !== nextContent ||
-            existing.updatedAt !== nextMessage.updatedAt ||
-            additionalChanged ||
-            isStreamingMessage
-          ) {
-            hasChanges = true;
-          }
-
-          byId.set(entry.reasoningId, nextMessage);
-        });
-
-        if (!hasChanges) {
-          return prev;
+        const resolvedRunId =
+          context.runId ??
+          entry.runId ??
+          (typeof existingAdditional.run_id === 'string'
+            ? (existingAdditional.run_id as string)
+            : undefined);
+        if (resolvedRunId) {
+          additionalKwargs.run_id = resolvedRunId;
         }
 
-        const merged = Array.from(byId.values());
-        return sortMessagesChronologically(merged);
-      });
-    },
-    [buildReasoningThreadMessage, isDraft, onMessagesUpdate],
-  );
+        if (entry.createdAt) {
+          additionalKwargs.created_at = entry.createdAt;
+        } else if (!additionalKwargs.created_at) {
+          additionalKwargs.created_at = createdAt;
+        }
 
-  // Handle graph.node.update events for reasoning chunks
-  useWebSocketEvent(
-    'graph.node.update',
-    (notification) => {
-      const event = notification as GraphNodeUpdateNotification;
+        if (!additionalKwargs.reasoningId) {
+          additionalKwargs.reasoningId = entry.reasoningId;
+        }
 
-      if (isDraft || !graphId || !selectedThreadId) return;
-      if (event.graphId !== graphId) return;
-      // If nodeId is provided (graph page), filter by nodeId
-      if (nodeId && event.nodeId !== nodeId) return;
+        return {
+          id: entry.reasoningId,
+          threadId: selectedThreadId ?? '',
+          nodeId: nodeId ?? entry.reasoningId,
+          externalThreadId: resolvedExternalThreadId,
+          createdAt,
+          updatedAt,
+          message: {
+            id: entry.reasoningId,
+            role: 'reasoning' as any,
+            content: entry.content,
+            additionalKwargs,
+          } as any,
+        };
+      },
+      [selectedThreadId, nodeId, externalThreadId],
+    );
 
-      const additionalMetadata = event.data?.additionalNodeMetadata;
-      const reasoningChunks = additionalMetadata?.reasoningChunks;
-      const eventThreadId =
-        (typeof event.threadId === 'string' && event.threadId.length > 0
-          ? event.threadId
-          : undefined) ??
-        (typeof event.data?.metadata?.threadId === 'string'
-          ? event.data.metadata.threadId
-          : undefined);
-      const eventInternalThreadId =
-        typeof event.internalThreadId === 'string' &&
-        event.internalThreadId.length > 0
-          ? event.internalThreadId
-          : undefined;
-      const metadataRunId =
-        typeof event.data?.metadata?.runId === 'string'
-          ? event.data.metadata.runId
-          : undefined;
+    // Apply reasoning entries to messages
+    const applyReasoningEntries = useCallback(
+      (
+        entries: ReasoningChunkEntry[],
+        context: { externalThreadId?: string; runId?: string },
+      ) => {
+        if (!entries.length || !onMessagesUpdate || isDraft) return;
 
-      // Check if this event is for the current thread
-      // Match by external thread ID, internal thread ID, or if both are missing
-      const threadMatches =
-        eventThreadId === externalThreadId ||
-        eventInternalThreadId === selectedThreadId ||
-        (!eventThreadId && !externalThreadId && !eventInternalThreadId);
+        onMessagesUpdate((prev) => {
+          let hasChanges = false;
+          const byId = new Map<string, ThreadMessageDto>();
 
-      if (!threadMatches) {
-        return;
-      }
+          prev.forEach((msg) => {
+            byId.set(msg.id, msg);
+          });
 
-      const targetThreadId =
-        eventThreadId ?? externalThreadId ?? selectedThreadId;
-      const targetRunIds = buildIdSet(event.runId, metadataRunId);
+          entries.forEach((entry) => {
+            const existing = byId.get(entry.reasoningId);
+            const existingMessage = existing?.message as any;
+            const isExistingStreaming = Boolean(
+              (
+                existingMessage?.additionalKwargs as
+                  | Record<string, unknown>
+                  | undefined
+              )?.[STREAMING_REASONING_FLAG],
+            );
 
-      const clearStreamingForContext = () => {
-        if (!onMessagesUpdate) return;
-        if (!targetThreadId && !targetRunIds) {
-          onMessagesUpdate((prev) =>
-            removeStreamingReasoningMessages(prev, () => true),
-          );
+            if (existing && !isExistingStreaming) {
+              return;
+            }
+
+            const nextMessage = buildReasoningThreadMessage(
+              entry,
+              existing,
+              context,
+            );
+            const nextPayload = nextMessage.message as any;
+
+            const existingContent =
+              typeof existingMessage?.content === 'string'
+                ? existingMessage.content
+                : '';
+            const nextContent =
+              typeof nextPayload?.content === 'string'
+                ? nextPayload.content
+                : '';
+
+            const existingAdditional =
+              (existingMessage?.additionalKwargs as Record<string, unknown>) ??
+              {};
+            const nextAdditional =
+              (nextPayload?.additionalKwargs as Record<string, unknown>) ?? {};
+
+            const additionalChanged =
+              JSON.stringify(existingAdditional) !==
+              JSON.stringify(nextAdditional);
+
+            // Always update streaming reasoning messages, even if content appears the same
+            // This ensures we capture incremental updates during streaming
+            const isStreamingMessage = Boolean(
+              nextAdditional[STREAMING_REASONING_FLAG],
+            );
+
+            if (
+              !existing ||
+              existingContent !== nextContent ||
+              existing.updatedAt !== nextMessage.updatedAt ||
+              additionalChanged ||
+              isStreamingMessage
+            ) {
+              hasChanges = true;
+            }
+
+            byId.set(entry.reasoningId, nextMessage);
+          });
+
+          if (!hasChanges) {
+            return prev;
+          }
+
+          const merged = Array.from(byId.values());
+          return sortMessagesChronologically(merged);
+        });
+      },
+      [buildReasoningThreadMessage, isDraft, onMessagesUpdate],
+    );
+
+    // Handle graph.node.update events for reasoning chunks
+    useWebSocketEvent(
+      'graph.node.update',
+      (notification) => {
+        const event = notification as GraphNodeUpdateNotification;
+
+        if (isDraft || !graphId || !selectedThreadId) return;
+        if (event.graphId !== graphId) return;
+        // If nodeId is provided (graph page), filter by nodeId
+        if (nodeId && event.nodeId !== nodeId) return;
+
+        const additionalMetadata = event.data?.additionalNodeMetadata;
+        const reasoningChunks = additionalMetadata?.reasoningChunks;
+        const eventThreadId =
+          (typeof event.threadId === 'string' && event.threadId.length > 0
+            ? event.threadId
+            : undefined) ??
+          (typeof event.data?.metadata?.threadId === 'string'
+            ? event.data.metadata.threadId
+            : undefined);
+        const eventInternalThreadId =
+          typeof event.internalThreadId === 'string' &&
+          event.internalThreadId.length > 0
+            ? event.internalThreadId
+            : undefined;
+        const metadataRunId =
+          typeof event.data?.metadata?.runId === 'string'
+            ? event.data.metadata.runId
+            : undefined;
+
+        // Check if this event is for the current thread
+        // Match by external thread ID, internal thread ID, or if both are missing
+        const threadMatches =
+          eventThreadId === externalThreadId ||
+          eventInternalThreadId === selectedThreadId ||
+          (!eventThreadId && !externalThreadId && !eventInternalThreadId);
+
+        if (!threadMatches) {
           return;
         }
-        onMessagesUpdate((prev) =>
-          removeStreamingReasoningMessages(prev, (msg) => {
-            const threadMatches = targetThreadId
-              ? msg.externalThreadId === targetThreadId ||
-                (!msg.externalThreadId && targetThreadId === selectedThreadId)
-              : !msg.externalThreadId ||
-                msg.externalThreadId === selectedThreadId;
-            if (!threadMatches) {
-              return false;
-            }
-            if (targetRunIds && targetRunIds.size > 0) {
-              const msgRunId = getMessageRunId(msg);
-              if (!msgRunId || !targetRunIds.has(msgRunId)) {
+
+        const targetThreadId =
+          eventThreadId ?? externalThreadId ?? selectedThreadId;
+        const targetRunIds = buildIdSet(event.runId, metadataRunId);
+
+        const clearStreamingForContext = () => {
+          if (!onMessagesUpdate) return;
+          if (!targetThreadId && !targetRunIds) {
+            onMessagesUpdate((prev) =>
+              removeStreamingReasoningMessages(prev, () => true),
+            );
+            return;
+          }
+          onMessagesUpdate((prev) =>
+            removeStreamingReasoningMessages(prev, (msg) => {
+              const threadMatches = targetThreadId
+                ? msg.externalThreadId === targetThreadId ||
+                  (!msg.externalThreadId && targetThreadId === selectedThreadId)
+                : !msg.externalThreadId ||
+                  msg.externalThreadId === selectedThreadId;
+              if (!threadMatches) {
                 return false;
               }
-            }
-            return true;
-          }),
+              if (targetRunIds && targetRunIds.size > 0) {
+                const msgRunId = getMessageRunId(msg);
+                if (!msgRunId || !targetRunIds.has(msgRunId)) {
+                  return false;
+                }
+              }
+              return true;
+            }),
+          );
+        };
+
+        if (!reasoningChunks) {
+          clearStreamingForContext();
+          return;
+        }
+
+        // If we matched by internal thread ID, we should process the event
+        // even if external thread IDs don't match (they might not be set yet)
+        const matchedByInternalId = eventInternalThreadId === selectedThreadId;
+
+        if (
+          !matchedByInternalId &&
+          externalThreadId &&
+          eventThreadId &&
+          externalThreadId !== eventThreadId
+        ) {
+          return;
+        }
+
+        if (!externalThreadId && eventThreadId && onExternalThreadIdChange) {
+          onExternalThreadIdChange(eventThreadId);
+        }
+
+        const container = narrowReasoningContainer(reasoningChunks, [
+          eventThreadId ?? externalThreadId,
+          selectedThreadId,
+          event.runId ?? metadataRunId,
+        ]);
+
+        const entries = extractReasoningEntries(container, {
+          threadId: eventThreadId ?? externalThreadId,
+          runId: event.runId ?? metadataRunId,
+        });
+
+        if (!entries.length) {
+          clearStreamingForContext();
+          return;
+        }
+
+        const runIdCandidates = new Set(
+          [event.runId, metadataRunId].filter((id): id is string =>
+            Boolean(id),
+          ),
         );
-      };
+        const threadIdCandidates = new Set(
+          [eventThreadId ?? externalThreadId].filter((id): id is string =>
+            Boolean(id),
+          ),
+        );
 
-      if (!reasoningChunks) {
-        clearStreamingForContext();
-        return;
-      }
+        const filteredEntries = entries.filter((entry) => {
+          if (
+            threadIdCandidates.size > 0 &&
+            entry.threadId &&
+            !threadIdCandidates.has(entry.threadId)
+          ) {
+            return false;
+          }
+          if (
+            runIdCandidates.size > 0 &&
+            entry.runId &&
+            !runIdCandidates.has(entry.runId)
+          ) {
+            return false;
+          }
+          return true;
+        });
 
-      // If we matched by internal thread ID, we should process the event
-      // even if external thread IDs don't match (they might not be set yet)
-      const matchedByInternalId = eventInternalThreadId === selectedThreadId;
+        const relevantEntries =
+          filteredEntries.length > 0 ? filteredEntries : entries;
 
-      if (
-        !matchedByInternalId &&
-        externalThreadId &&
-        eventThreadId &&
-        externalThreadId !== eventThreadId
-      ) {
-        return;
-      }
-
-      if (!externalThreadId && eventThreadId && onExternalThreadIdChange) {
-        onExternalThreadIdChange(eventThreadId);
-      }
-
-      const container = narrowReasoningContainer(reasoningChunks, [
-        eventThreadId ?? externalThreadId,
+        applyReasoningEntries(relevantEntries, {
+          externalThreadId: eventThreadId ?? externalThreadId,
+          runId:
+            event.runId ??
+            metadataRunId ??
+            relevantEntries.find((entry) => entry.runId)?.runId,
+        });
+      },
+      [
+        graphId,
         selectedThreadId,
-        event.runId ?? metadataRunId,
-      ]);
+        nodeId,
+        externalThreadId,
+        isDraft,
+        applyReasoningEntries,
+        onExternalThreadIdChange,
+        onMessagesUpdate,
+      ],
+    );
 
-      const entries = extractReasoningEntries(container, {
-        threadId: eventThreadId ?? externalThreadId,
-        runId: event.runId ?? metadataRunId,
-      });
+    useEffect(() => {
+      ensureThinkingIndicatorStyles();
+      ensureReasoningAnimationStyles();
+    }, []);
 
-      if (!entries.length) {
-        clearStreamingForContext();
-        return;
+    useEffect(() => {
+      pendingAutoScrollRef.current = true;
+    }, [selectedThreadId, nodeId]);
+
+    useEffect(() => {
+      if (!isPrependingRef.current) return;
+      const el = scrollContainerRef.current;
+      if (el) {
+        const diff = el.scrollHeight - prevScrollHeightRef.current;
+        el.scrollTop = diff + el.scrollTop;
+      }
+      isPrependingRef.current = false;
+    }, [messages.length]);
+
+    useEffect(() => {
+      if (messagesLoading) return;
+      const el = scrollContainerRef.current;
+      if (!el) return;
+
+      const isInitiallyEmpty = lastMessageCountRef.current === 0;
+      const shouldAutoScroll =
+        pendingAutoScrollRef.current ||
+        isInitiallyEmpty ||
+        !autoScrollDisabledRef.current;
+
+      if (shouldAutoScroll) {
+        el.scrollTop = el.scrollHeight;
       }
 
-      const runIdCandidates = new Set(
-        [event.runId, metadataRunId].filter((id): id is string => Boolean(id)),
-      );
-      const threadIdCandidates = new Set(
-        [eventThreadId ?? externalThreadId].filter((id): id is string =>
-          Boolean(id),
-        ),
-      );
+      pendingAutoScrollRef.current = false;
+      lastMessageCountRef.current = messages.length;
+    }, [messagesLoading, messages.length]);
 
-      const filteredEntries = entries.filter((entry) => {
-        if (
-          threadIdCandidates.size > 0 &&
-          entry.threadId &&
-          !threadIdCandidates.has(entry.threadId)
-        ) {
-          return false;
-        }
-        if (
-          runIdCandidates.size > 0 &&
-          entry.runId &&
-          !runIdCandidates.has(entry.runId)
-        ) {
-          return false;
-        }
-        return true;
-      });
+    useEffect(() => {
+      // Inject scrollbar styles for webkit browsers
+      const styleId = 'shell-scrollbar-styles';
+      if (document.getElementById(styleId)) return;
 
-      const relevantEntries =
-        filteredEntries.length > 0 ? filteredEntries : entries;
-
-      applyReasoningEntries(relevantEntries, {
-        externalThreadId: eventThreadId ?? externalThreadId,
-        runId:
-          event.runId ??
-          metadataRunId ??
-          relevantEntries.find((entry) => entry.runId)?.runId,
-      });
-    },
-    [
-      graphId,
-      selectedThreadId,
-      nodeId,
-      externalThreadId,
-      isDraft,
-      applyReasoningEntries,
-      onExternalThreadIdChange,
-      onMessagesUpdate,
-    ],
-  );
-
-  useEffect(() => {
-    ensureThinkingIndicatorStyles();
-    ensureReasoningAnimationStyles();
-  }, []);
-
-  useEffect(() => {
-    pendingAutoScrollRef.current = true;
-  }, [selectedThreadId, nodeId]);
-
-  useEffect(() => {
-    if (!isPrependingRef.current) return;
-    const el = scrollContainerRef.current;
-    if (el) {
-      const diff = el.scrollHeight - prevScrollHeightRef.current;
-      el.scrollTop = diff + el.scrollTop;
-    }
-    isPrependingRef.current = false;
-  }, [messages.length]);
-
-  useEffect(() => {
-    if (messagesLoading) return;
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    const isInitiallyEmpty = lastMessageCountRef.current === 0;
-    const shouldAutoScroll =
-      pendingAutoScrollRef.current ||
-      isInitiallyEmpty ||
-      !autoScrollDisabledRef.current;
-
-    if (shouldAutoScroll) {
-      el.scrollTop = el.scrollHeight;
-    }
-
-    pendingAutoScrollRef.current = false;
-    lastMessageCountRef.current = messages.length;
-  }, [messagesLoading, messages.length]);
-
-  useEffect(() => {
-    // Inject scrollbar styles for webkit browsers
-    const styleId = 'shell-scrollbar-styles';
-    if (document.getElementById(styleId)) return;
-
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
       .shell-output-container::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -828,349 +833,459 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
         background: #666;
       }
     `;
-    document.head.appendChild(style);
+      document.head.appendChild(style);
 
-    return () => {
-      const existingStyle = document.getElementById(styleId);
-      if (existingStyle) {
-        existingStyle.remove();
-      }
-    };
-  }, []);
+      return () => {
+        const existingStyle = document.getElementById(styleId);
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+      };
+    }, []);
 
-  const handleScroll = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const nearTop = el.scrollTop <= 100;
-    if (
-      nearTop &&
-      hasMoreMessages &&
-      !loadingMore &&
-      typeof onLoadMoreMessages === 'function'
-    ) {
-      prevScrollHeightRef.current = el.scrollHeight;
-      isPrependingRef.current = true;
-      onLoadMoreMessages();
-    }
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 48;
-    autoScrollDisabledRef.current = !nearBottom;
-  }, [hasMoreMessages, loadingMore, onLoadMoreMessages]);
-
-  const formatMessageContent = (content: unknown): string => {
-    if (typeof content === 'string') return content;
-    if (typeof content === 'object' && content !== null)
-      return JSON.stringify(content, null, 2);
-    return String(content ?? '');
-  };
-
-  const isBlankContent = (content: unknown): boolean => {
-    if (content === null || content === undefined) return true;
-    if (typeof content === 'string') {
-      const trimmed = content.trim();
-      // Check if it's empty or an empty array/object string
-      return trimmed.length === 0 || trimmed === '[]' || trimmed === '{}';
-    }
-    return false;
-  };
-
-  const limitConsecutiveNewlines = (value: string): string =>
-    value.replace(/(\r?\n){2,}/g, '\n');
-
-  const createReasoningPreview = (
-    value: string,
-    maxLines = 6,
-  ): { text: string; isTruncated: boolean } => {
-    if (!value) {
-      return { text: '', isTruncated: false };
-    }
-
-    const lines = value.split('\n');
-    const normalized: string[] = [];
-
-    for (const line of lines) {
+    const handleScroll = useCallback(() => {
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const nearTop = el.scrollTop <= 100;
       if (
-        line.trim().length === 0 &&
-        normalized.length > 0 &&
-        normalized[normalized.length - 1].trim().length === 0
+        nearTop &&
+        hasMoreMessages &&
+        !loadingMore &&
+        typeof onLoadMoreMessages === 'function'
       ) {
-        continue;
+        prevScrollHeightRef.current = el.scrollHeight;
+        isPrependingRef.current = true;
+        onLoadMoreMessages();
       }
-      normalized.push(line);
-    }
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 48;
+      autoScrollDisabledRef.current = !nearBottom;
+    }, [hasMoreMessages, loadingMore, onLoadMoreMessages]);
 
-    const isTruncated = normalized.length > maxLines;
-    const truncated = normalized.slice(0, maxLines).join('\n').trim();
-
-    return {
-      text: truncated.length > 0 ? truncated : 'Reasoning hidden.',
-      isTruncated,
+    const formatMessageContent = (content: unknown): string => {
+      if (typeof content === 'string') return content;
+      if (typeof content === 'object' && content !== null)
+        return JSON.stringify(content, null, 2);
+      return String(content ?? '');
     };
-  };
 
-  const parseJsonSafe = (value: string): JsonValue | null => {
-    try {
-      return JSON.parse(value) as JsonValue;
-    } catch {
+    const isBlankContent = (content: unknown): boolean => {
+      if (content === null || content === undefined) return true;
+      if (typeof content === 'string') {
+        const trimmed = content.trim();
+        // Check if it's empty or an empty array/object string
+        return trimmed.length === 0 || trimmed === '[]' || trimmed === '{}';
+      }
+      return false;
+    };
+
+    const limitConsecutiveNewlines = (value: string): string =>
+      value.replace(/(\r?\n){2,}/g, '\n');
+
+    const createReasoningPreview = (
+      value: string,
+      maxLines = 6,
+    ): { text: string; isTruncated: boolean } => {
+      if (!value) {
+        return { text: '', isTruncated: false };
+      }
+
+      const lines = value.split('\n');
+      const normalized: string[] = [];
+
+      for (const line of lines) {
+        if (
+          line.trim().length === 0 &&
+          normalized.length > 0 &&
+          normalized[normalized.length - 1].trim().length === 0
+        ) {
+          continue;
+        }
+        normalized.push(line);
+      }
+
+      const isTruncated = normalized.length > maxLines;
+      const truncated = normalized.slice(0, maxLines).join('\n').trim();
+
+      return {
+        text: truncated.length > 0 ? truncated : 'Reasoning hidden.',
+        isTruncated,
+      };
+    };
+
+    const parseJsonSafe = (value: string): JsonValue | null => {
+      try {
+        return JSON.parse(value) as JsonValue;
+      } catch {
+        return null;
+      }
+    };
+
+    const isToolLikeRole = (role?: string): boolean => {
+      if (!role) return false;
+      return role === 'tool' || role === 'tool-shell';
+    };
+
+    const buildToolCallResultIndex = (
+      allMessages: ThreadMessageDto[],
+    ): Record<string, ThreadMessageDto[]> => {
+      return allMessages.reduce<Record<string, ThreadMessageDto[]>>(
+        (acc, msg) => {
+          if (!isToolLikeRole(msg.message?.role as string)) {
+            return acc;
+          }
+          const toolCallId = getMessageString(msg.message, 'toolCallId');
+          if (!toolCallId) {
+            return acc;
+          }
+          if (!acc[toolCallId]) {
+            acc[toolCallId] = [];
+          }
+          acc[toolCallId].push(msg);
+          return acc;
+        },
+        {},
+      );
+    };
+
+    const getToolMessageKey = (msg?: ThreadMessageDto): string | undefined => {
+      if (!msg) return undefined;
+      if (msg.id) return msg.id;
+      const messageLevelId = getMessageString(msg.message, 'id');
+      if (messageLevelId) return messageLevelId;
+      if (msg.createdAt) return `created-${msg.createdAt}`;
+      const toolCallId = getMessageString(msg.message, 'toolCallId');
+      if (toolCallId) return `toolCall-${toolCallId}`;
+      return undefined;
+    };
+
+    const argsToObject = (
+      args?: string | Record<string, unknown>,
+    ): Record<string, JsonValue> | null => {
+      if (!args) return null;
+      if (typeof args === 'string') {
+        const parsed = parseJsonSafe(args);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          ? (parsed as Record<string, JsonValue>)
+          : null;
+      }
+      if (typeof args === 'object' && !Array.isArray(args)) {
+        return args as Record<string, JsonValue>;
+      }
       return null;
-    }
-  };
-
-  const isToolLikeRole = (role?: string): boolean => {
-    if (!role) return false;
-    return role === 'tool' || role === 'tool-shell';
-  };
-
-  const buildToolCallResultIndex = (
-    allMessages: ThreadMessageDto[],
-  ): Record<string, ThreadMessageDto[]> => {
-    return allMessages.reduce<Record<string, ThreadMessageDto[]>>(
-      (acc, msg) => {
-        if (!isToolLikeRole(msg.message?.role as string)) {
-          return acc;
-        }
-        const toolCallId = getMessageString(msg.message, 'toolCallId');
-        if (!toolCallId) {
-          return acc;
-        }
-        if (!acc[toolCallId]) {
-          acc[toolCallId] = [];
-        }
-        acc[toolCallId].push(msg);
-        return acc;
-      },
-      {},
-    );
-  };
-
-  const getToolMessageKey = (msg?: ThreadMessageDto): string | undefined => {
-    if (!msg) return undefined;
-    if (msg.id) return msg.id;
-    const messageLevelId = getMessageString(msg.message, 'id');
-    if (messageLevelId) return messageLevelId;
-    if (msg.createdAt) return `created-${msg.createdAt}`;
-    const toolCallId = getMessageString(msg.message, 'toolCallId');
-    if (toolCallId) return `toolCall-${toolCallId}`;
-    return undefined;
-  };
-
-  const argsToObject = (
-    args?: string | Record<string, unknown>,
-  ): Record<string, JsonValue> | null => {
-    if (!args) return null;
-    if (typeof args === 'string') {
-      const parsed = parseJsonSafe(args);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? (parsed as Record<string, JsonValue>)
-        : null;
-    }
-    if (typeof args === 'object' && !Array.isArray(args)) {
-      return args as Record<string, JsonValue>;
-    }
-    return null;
-  };
-
-  const extractShellCommandFromArgs = (
-    args?: string | Record<string, unknown>,
-  ): string | undefined => {
-    const obj = argsToObject(args);
-    if (!obj) return undefined;
-    if (typeof obj.command === 'string') return obj.command;
-    if (typeof obj.cmd === 'string') return obj.cmd;
-    return undefined;
-  };
-
-  const renderToolPopoverContent = (
-    value: unknown,
-    toolOptions?: Record<string, JsonValue>,
-  ): React.ReactNode => {
-    let parsed: JsonValue | null = null;
-    if (typeof value === 'string') {
-      parsed = parseJsonSafe(value);
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
-      parsed = value as JsonValue;
-    }
-
-    const containerStyle: React.CSSProperties = { maxWidth: 520 };
-    const innerStyle: React.CSSProperties = {
-      maxHeight: 300,
-      overflow: 'auto',
-      background: '#f5f5f5',
-      border: '1px solid #eee',
-      borderRadius: 6,
-      padding: 12,
-      fontFamily:
-        'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
-      fontSize: 12,
-      whiteSpace: 'pre-wrap',
     };
 
-    const sectionStyle: React.CSSProperties = {
-      marginBottom: 16,
+    const extractShellCommandFromArgs = (
+      args?: string | Record<string, unknown>,
+    ): string | undefined => {
+      const obj = argsToObject(args);
+      if (!obj) return undefined;
+      if (typeof obj.command === 'string') return obj.command;
+      if (typeof obj.cmd === 'string') return obj.cmd;
+      return undefined;
     };
 
-    const sectionTitleStyle: React.CSSProperties = {
-      fontWeight: 'bold',
-      fontSize: 13,
-      marginBottom: 8,
-      color: '#333',
-      borderBottom: '1px solid #ddd',
-      paddingBottom: 4,
-    };
-
-    return (
-      <div style={containerStyle}>
-        {toolOptions && Object.keys(toolOptions).length > 0 && (
-          <div style={sectionStyle}>
-            <div style={sectionTitleStyle}>Tool Options:</div>
-            <div style={innerStyle}>
-              <JsonView value={toolOptions} style={lightTheme} />
-            </div>
-          </div>
-        )}
-
-        <div style={sectionStyle}>
-          <div style={sectionTitleStyle}>Output:</div>
-          <div style={innerStyle}>
-            {parsed ? (
-              <JsonView value={parsed as object} style={lightTheme} />
-            ) : (
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                }}>
-                {String(value ?? '')}
-              </pre>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  type PreparedMessage =
-    | {
-        type: 'system';
-        messages: ThreadMessageDto[];
-        id: string;
-        nodeId?: string;
-        createdAt?: string;
+    const renderToolPopoverContent = (
+      value: unknown,
+      toolOptions?: Record<string, JsonValue>,
+    ): React.ReactNode => {
+      let parsed: JsonValue | null = null;
+      if (typeof value === 'string') {
+        parsed = parseJsonSafe(value);
+      } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+        parsed = value as JsonValue;
       }
-    | {
-        type: 'reasoning';
-        message: ThreadMessageDto;
-        id: string;
-        nodeId?: string;
-        createdAt?: string;
-      }
-    | {
-        type: 'chat';
-        message: ThreadMessageDto;
-        id: string;
-        nodeId?: string;
-        createdAt?: string;
-      }
-    | {
-        type: 'tool';
-        name: string;
-        status: 'calling' | 'executed';
-        result?: unknown;
-        id: string;
-        toolKind?: 'generic' | 'shell';
-        shellCommand?: string;
-        toolOptions?: Record<string, JsonValue>;
-        nodeId?: string;
-        createdAt?: string;
-        roleLabel?: string;
+
+      const containerStyle: React.CSSProperties = { maxWidth: 520 };
+      const innerStyle: React.CSSProperties = {
+        maxHeight: 300,
+        overflow: 'auto',
+        background: '#f5f5f5',
+        border: '1px solid #eee',
+        borderRadius: 6,
+        padding: 12,
+        fontFamily:
+          'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
+        fontSize: 12,
+        whiteSpace: 'pre-wrap',
       };
 
-  const prepareReadyMessages = (
-    msgs: ThreadMessageDto[],
-  ): PreparedMessage[] => {
-    const toolCallResultsById = buildToolCallResultIndex(msgs);
-    const consumedToolCallIds = new Set<string>();
-    const consumedToolMessageKeys = new Set<string>();
+      const sectionStyle: React.CSSProperties = {
+        marginBottom: 16,
+      };
 
-    const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
-      const key = getToolMessageKey(msg);
-      if (key) {
-        consumedToolMessageKeys.add(key);
-      }
+      const sectionTitleStyle: React.CSSProperties = {
+        fontWeight: 'bold',
+        fontSize: 13,
+        marginBottom: 8,
+        color: '#333',
+        borderBottom: '1px solid #ddd',
+        paddingBottom: 4,
+      };
+
+      return (
+        <div style={containerStyle}>
+          {toolOptions && Object.keys(toolOptions).length > 0 && (
+            <div style={sectionStyle}>
+              <div style={sectionTitleStyle}>Tool Options:</div>
+              <div style={innerStyle}>
+                <JsonView value={toolOptions} style={lightTheme} />
+              </div>
+            </div>
+          )}
+
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Output:</div>
+            <div style={innerStyle}>
+              {parsed ? (
+                <JsonView value={parsed as object} style={lightTheme} />
+              ) : (
+                <pre
+                  style={{
+                    margin: 0,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}>
+                  {String(value ?? '')}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      );
     };
 
-    const markToolCallConsumed = (toolCallId?: string) => {
-      if (toolCallId) {
-        consumedToolCallIds.add(toolCallId);
-      }
-    };
+    type PreparedMessage =
+      | {
+          type: 'system';
+          messages: ThreadMessageDto[];
+          id: string;
+          nodeId?: string;
+          createdAt?: string;
+        }
+      | {
+          type: 'reasoning';
+          message: ThreadMessageDto;
+          id: string;
+          nodeId?: string;
+          createdAt?: string;
+        }
+      | {
+          type: 'chat';
+          message: ThreadMessageDto;
+          id: string;
+          nodeId?: string;
+          createdAt?: string;
+        }
+      | {
+          type: 'tool';
+          name: string;
+          status: 'calling' | 'executed';
+          result?: unknown;
+          id: string;
+          toolKind?: 'generic' | 'shell';
+          shellCommand?: string;
+          toolOptions?: Record<string, JsonValue>;
+          nodeId?: string;
+          createdAt?: string;
+          roleLabel?: string;
+        };
 
-    const consumeToolResultById = (
-      toolCallId?: string,
-    ): ThreadMessageDto | undefined => {
-      if (!toolCallId) return undefined;
-      const queue = toolCallResultsById[toolCallId];
-      if (!queue || queue.length === 0) {
-        return undefined;
-      }
-      const next = queue.shift();
-      markToolCallConsumed(toolCallId);
-      markToolMessageConsumed(next);
-      return next;
-    };
+    const prepareReadyMessages = (
+      msgs: ThreadMessageDto[],
+    ): PreparedMessage[] => {
+      const toolCallResultsById = buildToolCallResultIndex(msgs);
+      const consumedToolCallIds = new Set<string>();
+      const consumedToolMessageKeys = new Set<string>();
 
-    const prepared: PreparedMessage[] = [];
-    let i = 0;
+      const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
+        const key = getToolMessageKey(msg);
+        if (key) {
+          consumedToolMessageKeys.add(key);
+        }
+      };
 
-    while (i < msgs.length) {
-      const m = msgs[i];
-      const role = (m.message?.role as string) || '';
+      const markToolCallConsumed = (toolCallId?: string) => {
+        if (toolCallId) {
+          consumedToolCallIds.add(toolCallId);
+        }
+      };
 
-      if (role === 'reasoning') {
-        if (!isBlankContent(m.message?.content)) {
+      const consumeToolResultById = (
+        toolCallId?: string,
+      ): ThreadMessageDto | undefined => {
+        if (!toolCallId) return undefined;
+        const queue = toolCallResultsById[toolCallId];
+        if (!queue || queue.length === 0) {
+          return undefined;
+        }
+        const next = queue.shift();
+        markToolCallConsumed(toolCallId);
+        markToolMessageConsumed(next);
+        return next;
+      };
+
+      const prepared: PreparedMessage[] = [];
+      let i = 0;
+
+      while (i < msgs.length) {
+        const m = msgs[i];
+        const role = (m.message?.role as string) || '';
+
+        if (role === 'reasoning') {
+          if (!isBlankContent(m.message?.content)) {
+            prepared.push({
+              type: 'reasoning',
+              message: m,
+              id: `reasoning-${m.id || m.createdAt}`,
+              nodeId: m.nodeId,
+              createdAt: m.createdAt,
+            });
+          }
+          i++;
+          continue;
+        }
+
+        if (role === 'system') {
+          const sys: ThreadMessageDto[] = [m];
+          let j = i + 1;
+          while (
+            j < msgs.length &&
+            (msgs[j].message?.role as string) === 'system'
+          ) {
+            sys.push(msgs[j]);
+            j++;
+          }
           prepared.push({
-            type: 'reasoning',
-            message: m,
-            id: `reasoning-${m.id || m.createdAt}`,
+            type: 'system',
+            messages: sys,
+            id: `system-${sys[0].id || sys[0].createdAt}`,
+            nodeId: sys[0]?.nodeId,
+            createdAt: sys[0]?.createdAt,
+          });
+          i = j;
+          continue;
+        }
+
+        const messageToolCalls = getMessageValue<ToolCall[]>(
+          m.message,
+          'toolCalls',
+        );
+        if (role === 'ai' && messageToolCalls && messageToolCalls.length > 0) {
+          // Check if we need to display the message content
+          // Display it if content is not blank OR if toolCalls have meaningful data
+          const hasNonBlankContent = !isBlankContent(m.message?.content);
+
+          if (hasNonBlankContent) {
+            prepared.push({
+              type: 'chat',
+              message: m,
+              id: `chat-${m.id || m.createdAt}`,
+              nodeId: m.nodeId,
+              createdAt: m.createdAt,
+            });
+          }
+
+          const followingTools: ThreadMessageDto[] = [];
+          let j = i + 1;
+          while (
+            j < msgs.length &&
+            isToolLikeRole(msgs[j].message?.role as string)
+          ) {
+            followingTools.push(msgs[j]);
+            j++;
+          }
+
+          const toolCalls = messageToolCalls;
+          for (let idx = 0; idx < toolCalls.length; idx++) {
+            const tc = toolCalls[idx];
+            const name = tc.name || tc.function?.name || 'tool';
+            let matched = consumeToolResultById(tc.id);
+            if (!matched) {
+              matched = followingTools.find(
+                (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
+              );
+              if (matched) {
+                markToolCallConsumed(
+                  tc.id || getMessageString(matched.message, 'toolCallId'),
+                );
+                markToolMessageConsumed(matched);
+              }
+            }
+            const resultContent = matched?.message?.content;
+            const toolArgs = tc.function?.arguments ?? tc.args;
+            const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
+            const resultObj =
+              typeof resultContent === 'object' &&
+              resultContent !== null &&
+              !Array.isArray(resultContent)
+                ? (resultContent as ShellResult)
+                : null;
+            const shellCommand = shellCmdFromArgs || resultObj?.command;
+            const isShell = (name || '').toLowerCase() === 'shell';
+            const toolOptions = argsToObject(toolArgs);
+
+            prepared.push({
+              type: 'tool',
+              name: name || 'tool',
+              status: matched ? 'executed' : 'calling',
+              result: resultContent,
+              id: `tool-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
+              toolKind: isShell ? 'shell' : 'generic',
+              shellCommand,
+              toolOptions: toolOptions || undefined,
+              nodeId: matched?.nodeId ?? m.nodeId,
+              createdAt: matched?.createdAt ?? m.createdAt,
+              roleLabel: name || 'tool',
+            });
+          }
+
+          i = i + 1 + followingTools.length;
+          continue;
+        }
+
+        if (isToolLikeRole(role)) {
+          const toolCallId = getMessageString(m.message, 'toolCallId');
+          const messageKey = getToolMessageKey(m);
+          if (
+            (toolCallId && consumedToolCallIds.has(toolCallId)) ||
+            (messageKey && consumedToolMessageKeys.has(messageKey))
+          ) {
+            i++;
+            continue;
+          }
+
+          const name = getMessageString(m.message, 'name') || 'tool';
+          const resultContent = m.message?.content;
+          const resultObj =
+            typeof resultContent === 'object' &&
+            resultContent !== null &&
+            !Array.isArray(resultContent)
+              ? (resultContent as ShellResult)
+              : null;
+          const shellCommand = resultObj?.command;
+          const isShell = (name || '').toLowerCase() === 'shell';
+          // For standalone tools, we don't have access to the original arguments
+          // so we'll leave toolOptions as undefined
+          const toolOptions = undefined;
+
+          prepared.push({
+            type: 'tool',
+            name,
+            status: 'executed',
+            result: resultContent,
+            id: `tool-standalone-${m.id || m.createdAt}`,
+            toolKind: isShell ? 'shell' : 'generic',
+            shellCommand,
+            toolOptions,
             nodeId: m.nodeId,
             createdAt: m.createdAt,
+            roleLabel: name || 'tool',
           });
+          i++;
+          continue;
         }
-        i++;
-        continue;
-      }
 
-      if (role === 'system') {
-        const sys: ThreadMessageDto[] = [m];
-        let j = i + 1;
-        while (
-          j < msgs.length &&
-          (msgs[j].message?.role as string) === 'system'
-        ) {
-          sys.push(msgs[j]);
-          j++;
-        }
-        prepared.push({
-          type: 'system',
-          messages: sys,
-          id: `system-${sys[0].id || sys[0].createdAt}`,
-          nodeId: sys[0]?.nodeId,
-          createdAt: sys[0]?.createdAt,
-        });
-        i = j;
-        continue;
-      }
-
-      const messageToolCalls = getMessageValue<ToolCall[]>(
-        m.message,
-        'toolCalls',
-      );
-      if (role === 'ai' && messageToolCalls && messageToolCalls.length > 0) {
-        // Check if we need to display the message content
-        // Display it if content is not blank OR if toolCalls have meaningful data
-        const hasNonBlankContent = !isBlankContent(m.message?.content);
-
-        if (hasNonBlankContent) {
+        if (!isBlankContent(m.message?.content)) {
           prepared.push({
             type: 'chat',
             message: m,
@@ -1179,718 +1294,729 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
             createdAt: m.createdAt,
           });
         }
-
-        const followingTools: ThreadMessageDto[] = [];
-        let j = i + 1;
-        while (
-          j < msgs.length &&
-          isToolLikeRole(msgs[j].message?.role as string)
-        ) {
-          followingTools.push(msgs[j]);
-          j++;
-        }
-
-        const toolCalls = messageToolCalls;
-        for (let idx = 0; idx < toolCalls.length; idx++) {
-          const tc = toolCalls[idx];
-          const name = tc.name || tc.function?.name || 'tool';
-          let matched = consumeToolResultById(tc.id);
-          if (!matched) {
-            matched = followingTools.find(
-              (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
-            );
-            if (matched) {
-              markToolCallConsumed(
-                tc.id || getMessageString(matched.message, 'toolCallId'),
-              );
-              markToolMessageConsumed(matched);
-            }
-          }
-          const resultContent = matched?.message?.content;
-          const toolArgs = tc.function?.arguments ?? tc.args;
-          const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
-          const resultObj =
-            typeof resultContent === 'object' &&
-            resultContent !== null &&
-            !Array.isArray(resultContent)
-              ? (resultContent as ShellResult)
-              : null;
-          const shellCommand = shellCmdFromArgs || resultObj?.command;
-          const isShell = (name || '').toLowerCase() === 'shell';
-          const toolOptions = argsToObject(toolArgs);
-
-          prepared.push({
-            type: 'tool',
-            name: name || 'tool',
-            status: matched ? 'executed' : 'calling',
-            result: resultContent,
-            id: `tool-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
-            toolKind: isShell ? 'shell' : 'generic',
-            shellCommand,
-            toolOptions: toolOptions || undefined,
-            nodeId: matched?.nodeId ?? m.nodeId,
-            createdAt: matched?.createdAt ?? m.createdAt,
-            roleLabel: name || 'tool',
-          });
-        }
-
-        i = i + 1 + followingTools.length;
-        continue;
+        i++;
       }
 
-      if (isToolLikeRole(role)) {
-        const toolCallId = getMessageString(m.message, 'toolCallId');
-        const messageKey = getToolMessageKey(m);
-        if (
-          (toolCallId && consumedToolCallIds.has(toolCallId)) ||
-          (messageKey && consumedToolMessageKeys.has(messageKey))
-        ) {
-          i++;
-          continue;
-        }
+      return prepared;
+    };
 
-        const name = getMessageString(m.message, 'name') || 'tool';
-        const resultContent = m.message?.content;
+    // Memoize prepared messages with deep comparison to avoid unnecessary recalculations
+    const preparedMessages = useMemo(() => {
+      return prepareReadyMessages(messages);
+    }, [messages]);
+    const isThinkingVisible = isNodeRunning && isAgentNode;
+
+    const STREAMING_REASONING_FLAG = '__streamingReasoning';
+
+    const renderFullHeightState = (content: React.ReactNode) => (
+      <div style={fullHeightColumnStyle}>
+        <div style={centeredStateStyle}>{content}</div>
+      </div>
+    );
+
+    const ReasoningMessage: React.FC<{ message: ThreadMessageDto }> =
+      React.memo(({ message }) => {
+        const content = limitConsecutiveNewlines(
+          formatMessageContent(message.message?.content),
+        );
+        const [baseContent, setBaseContent] = useState(content);
+        const [animatedChunk, setAnimatedChunk] = useState('');
+        const prevContentRef = useRef(content);
+        const timeoutRef = useRef<number | null>(null);
+        const reasoningId = getReasoningIdentifier(message) ?? message.id;
+        const expanded = expandedReasoningIds.has(reasoningId);
+        const [isHovered, setIsHovered] = useState(false);
+        const preview = useMemo(
+          () => createReasoningPreview(baseContent),
+          [baseContent],
+        );
+
+        const additionalKwargs = (message.message?.additionalKwargs ??
+          {}) as Record<string, unknown>;
+        const isStreaming = Boolean(
+          additionalKwargs?.[STREAMING_REASONING_FLAG],
+        );
+
+        useEffect(() => {
+          const prev = prevContentRef.current;
+          if (content === prev) {
+            return;
+          }
+
+          if (content.startsWith(prev)) {
+            const newPart = content.slice(prev.length);
+            if (typeof window === 'undefined') {
+              setBaseContent(content);
+              setAnimatedChunk('');
+            } else {
+              setBaseContent(prev);
+              setAnimatedChunk(newPart);
+              if (timeoutRef.current !== null) {
+                window.clearTimeout(timeoutRef.current);
+              }
+              timeoutRef.current = window.setTimeout(() => {
+                setBaseContent(content);
+                setAnimatedChunk('');
+              }, 650);
+            }
+          } else {
+            setBaseContent(content);
+            setAnimatedChunk('');
+          }
+
+          prevContentRef.current = content;
+        }, [content]);
+
+        useEffect(() => {
+          return () => {
+            if (timeoutRef.current !== null) {
+              if (typeof window !== 'undefined') {
+                window.clearTimeout(timeoutRef.current);
+              }
+              timeoutRef.current = null;
+            }
+          };
+        }, []);
+
+        const handleToggle = () => {
+          toggleReasoningMessage(reasoningId);
+        };
+
+        const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleToggle();
+          }
+        };
+
+        const containerStyle: React.CSSProperties = {
+          fontSize: '12px',
+          color: isHovered ? '#8c8c8c' : '#afafaf',
+          textAlign: 'center',
+          border: 'none',
+          cursor: 'pointer',
+          background: 'transparent',
+          transition: 'color 0.25s ease',
+          animation: isStreaming
+            ? 'messages-tab-reasoning-streaming 2.8s ease-in-out infinite'
+            : undefined,
+          animationFillMode: isStreaming ? 'both' : undefined,
+        };
+
+        const collapsedStyle: React.CSSProperties = {
+          maxHeight: '6.2em',
+          overflow: 'hidden',
+          position: 'relative',
+          cursor: 'pointer',
+          textAlign: 'left',
+        };
+
+        const expandedStyle: React.CSSProperties = {
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          textAlign: 'left',
+        };
+
+        return (
+          <div
+            style={containerStyle}
+            role="button"
+            tabIndex={0}
+            onClick={handleToggle}
+            onKeyDown={handleKeyDown}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}>
+            {expanded ? (
+              <div style={expandedStyle}>
+                <MarkdownContent
+                  content={baseContent}
+                  allowHorizontalScroll={expanded}
+                />
+                {animatedChunk && (
+                  <div
+                    style={{
+                      animation: 'messages-tab-reasoning-appear 0.6s ease',
+                    }}>
+                    <MarkdownContent
+                      content={animatedChunk}
+                      allowHorizontalScroll={expanded}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={collapsedStyle}>
+                <MarkdownContent
+                  content={preview.text}
+                  allowHorizontalScroll={false}
+                />
+                <div style={collapsedGradientStyle} />
+              </div>
+            )}
+            <div
+              style={{
+                marginTop: 2,
+                fontSize: 11,
+                color: '#9a9a9a',
+                fontStyle: 'italic',
+              }}>
+              {isStreaming ? 'still thinking…' : ''}
+            </div>
+          </div>
+        );
+      });
+
+    const ChatBubble: React.FC<{
+      isHuman: boolean;
+      avatarLabel: string;
+      avatarColor: string;
+      children: React.ReactNode;
+      footer?: React.ReactNode;
+      bubbleStyle?: React.CSSProperties;
+      containerStyle?: React.CSSProperties;
+    }> = React.memo(
+      ({
+        isHuman,
+        avatarLabel,
+        avatarColor,
+        children,
+        footer,
+        bubbleStyle,
+        containerStyle,
+      }) => {
+        const baseContainer: React.CSSProperties = {
+          display: 'flex',
+          justifyContent: isHuman ? 'flex-end' : 'flex-start',
+          alignItems: 'flex-start',
+          gap: '8px',
+          width: '100%',
+        };
+
+        const mergedContainer = { ...baseContainer, ...containerStyle };
+
+        const baseBubbleStyle: React.CSSProperties = {
+          backgroundColor: isHuman ? '#f0f8ff' : '#f3f3f3',
+          borderRadius: '5px',
+          padding: '8px 12px',
+          wordBreak: 'break-word',
+          minWidth: '100px',
+          maxWidth: '100%',
+          overflowX: 'auto',
+        };
+
+        const mergedBubbleStyle = { ...baseBubbleStyle, ...bubbleStyle };
+
+        const ContentWrapper = (
+          <div
+            style={{
+              maxWidth: '90%',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: isHuman ? 'flex-end' : 'flex-start',
+            }}>
+            <div style={mergedBubbleStyle}>{children}</div>
+            {footer}
+          </div>
+        );
+
+        return (
+          <div style={mergedContainer}>
+            {!isHuman && (
+              <Avatar
+                style={{ backgroundColor: avatarColor, flexShrink: 0 }}
+                size="small">
+                {avatarLabel}
+              </Avatar>
+            )}
+            {ContentWrapper}
+            {isHuman && (
+              <Avatar
+                style={{ backgroundColor: avatarColor, flexShrink: 0 }}
+                size="small">
+                {avatarLabel}
+              </Avatar>
+            )}
+          </div>
+        );
+      },
+    );
+
+    const [hoveredSystemId, setHoveredSystemId] = useState<string | null>(null);
+
+    const renderSystemGroup = (
+      systemMessages: ThreadMessageDto[],
+      count: number,
+    ) => {
+      const firstMessage = systemMessages[0];
+      const content = formatMessageContent(firstMessage.message?.content);
+      const countSuffix = count > 1 ? ` (${count} system messages)` : '';
+      const fullText = `${content}${countSuffix}`;
+      const groupId = `system-${firstMessage.id || firstMessage.createdAt}`;
+      const expanded = expandedSystemIds.has(groupId);
+
+      const isHovered = hoveredSystemId === groupId;
+      const textContainerStyle: React.CSSProperties = expanded
+        ? {
+            fontSize: '12px',
+            color: isHovered ? '#8c8c8c' : '#afafaf',
+            textAlign: 'center',
+          }
+        : {
+            fontSize: '12px',
+            color: isHovered ? '#8c8c8c' : '#afafaf',
+            textAlign: 'center',
+            maxHeight: '60px',
+            overflow: 'hidden',
+            position: 'relative',
+            cursor: 'pointer',
+          };
+
+      return (
+        <div
+          style={{ width: '100%' }}
+          role="button"
+          tabIndex={0}
+          onClick={() => toggleSystemMessage(groupId)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleSystemMessage(groupId);
+            }
+          }}
+          onMouseEnter={() => setHoveredSystemId(groupId)}
+          onMouseLeave={() =>
+            setHoveredSystemId((prev) => (prev === groupId ? null : prev))
+          }>
+          <div style={textContainerStyle}>
+            <MarkdownContent
+              content={fullText}
+              allowHorizontalScroll={expanded}
+            />
+            {!expanded && (
+              <div style={{ ...collapsedGradientStyle, height: '18px' }} />
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const renderFinishTool = (
+      status: 'calling' | 'executed',
+      resultContent?: unknown,
+      metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
+    ) => {
+      if (status === 'calling') {
+        return undefined;
+      }
+
+      // Extract message and needsMoreInfo flag from result content
+      let finishMessage = 'Task completed.';
+      let needsMoreInfo = false;
+      if (resultContent) {
+        if (typeof resultContent === 'string') {
+          finishMessage = resultContent;
+        } else if (
+          typeof resultContent === 'object' &&
+          resultContent !== null
+        ) {
+          const obj = resultContent as Record<string, unknown>;
+          finishMessage =
+            (typeof obj.message === 'string' ? obj.message : '') ||
+            (typeof obj.content === 'string' ? obj.content : '') ||
+            (typeof obj.result === 'string' ? obj.result : '') ||
+            'Task completed.';
+          needsMoreInfo = Boolean(obj.needsMoreInfo);
+        }
+      }
+
+      const messageColor = needsMoreInfo ? '#faad14' : '#52c41a';
+      const statusTag = needsMoreInfo ? '⚠ Need more info' : '✓ Finished';
+
+      return (
+        <ChatBubble
+          isHuman={false}
+          avatarLabel="AI"
+          avatarColor={messageColor}
+          containerStyle={{ marginBottom: '8px' }}
+          bubbleStyle={{
+            backgroundColor: '#f3f3f3',
+            borderLeft: `3px solid ${messageColor}`,
+          }}
+          footer={renderMetadataText(
+            metadata?.createdAt,
+            metadata?.roleLabel,
+            metadata?.nodeId,
+          )}>
+          <Text
+            type="secondary"
+            style={{
+              fontSize: '11px',
+              marginBottom: '5px',
+              display: 'block',
+              color: messageColor,
+              fontWeight: 'bold',
+            }}>
+            {statusTag}
+          </Text>
+
+          <MarkdownContent
+            content={finishMessage}
+            style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
+          />
+        </ChatBubble>
+      );
+    };
+
+    const renderToolStatusLine = (
+      name: string,
+      status: 'calling' | 'executed',
+      resultContent?: unknown,
+      toolOptions?: Record<string, JsonValue>,
+      metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
+    ) => {
+      const line = (
+        <div
+          style={{
+            cursor:
+              status === 'executed' && resultContent !== undefined
+                ? 'pointer'
+                : 'default',
+          }}
+          aria-label={
+            status === 'executed'
+              ? `View tool result for ${name}`
+              : `Tool ${name} is calling`
+          }
+          tabIndex={
+            status === 'executed' && resultContent !== undefined ? 0 : -1
+          }>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginBottom: '25px',
+            }}>
+            {status === 'calling' && <Spin size="small" />}
+            <Text
+              type="secondary"
+              style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              {toolOptions?.purpose
+                ? `${name} | ${String(toolOptions.purpose)}`
+                : `tool ${name} is ${status === 'calling' ? 'calling...' : 'executed'}`}
+            </Text>
+          </div>
+        </div>
+      );
+
+      let baseLine: React.ReactNode = line;
+      if (status === 'executed' && resultContent !== undefined) {
+        const contentNode = renderToolPopoverContent(
+          resultContent,
+          toolOptions,
+        );
+        baseLine = (
+          <Popover
+            content={contentNode}
+            trigger={['click']}
+            placement="topLeft">
+            {line}
+          </Popover>
+        );
+      }
+
+      // Don't show metadata for tool messages
+      return baseLine;
+    };
+
+    const truncateToLines = (
+      text: string,
+      maxLines: number,
+    ): { truncated: string; full: string; isTruncated: boolean } => {
+      const lines = text.split('\n');
+      const isTruncated = lines.length > maxLines;
+      const truncated = lines.slice(0, maxLines).join('\n');
+      return { truncated, full: text, isTruncated };
+    };
+
+    const ShellToolDisplay: React.FC<{
+      name: string;
+      status: 'calling' | 'executed';
+      resultContent?: unknown;
+      shellCommand?: string;
+      toolOptions?: Record<string, JsonValue>;
+      metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string };
+    }> = React.memo(
+      ({
+        name,
+        status,
+        resultContent,
+        shellCommand,
+        toolOptions,
+        metadata,
+      }) => {
+        const [commandExpanded, setCommandExpanded] = useState(false);
+        const [outputExpanded, setOutputExpanded] = useState(false);
+
         const resultObj =
           typeof resultContent === 'object' &&
           resultContent !== null &&
           !Array.isArray(resultContent)
             ? (resultContent as ShellResult)
             : null;
-        const shellCommand = resultObj?.command;
-        const isShell = (name || '').toLowerCase() === 'shell';
-        // For standalone tools, we don't have access to the original arguments
-        // so we'll leave toolOptions as undefined
-        const toolOptions = undefined;
+        const exitCode = resultObj?.exitCode;
+        const exitCodeStatus = exitCode !== undefined ? exitCode : null;
+        const exitCodeColor =
+          exitCodeStatus === null
+            ? '#9d9d9d'
+            : exitCodeStatus === 0
+              ? '#9d9d9d'
+              : '#ff4d4f'; // Red for non-zero exit codes
+        const tint =
+          exitCodeStatus === null
+            ? '#2b2b2b'
+            : exitCodeStatus === 0
+              ? '#1d2b1f'
+              : '#2b1d1d';
 
-        prepared.push({
-          type: 'tool',
-          name,
-          status: 'executed',
-          result: resultContent,
-          id: `tool-standalone-${m.id || m.createdAt}`,
-          toolKind: isShell ? 'shell' : 'generic',
-          shellCommand,
-          toolOptions,
-          nodeId: m.nodeId,
-          createdAt: m.createdAt,
-          roleLabel: name || 'tool',
-        });
-        i++;
-        continue;
-      }
+        const fullToolNameText = `${name}${toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''}`;
 
-      if (!isBlankContent(m.message?.content)) {
-        prepared.push({
-          type: 'chat',
-          message: m,
-          id: `chat-${m.id || m.createdAt}`,
-          nodeId: m.nodeId,
-          createdAt: m.createdAt,
-        });
-      }
-      i++;
-    }
-
-    return prepared;
-  };
-
-  const preparedMessages = useMemo(
-    () => prepareReadyMessages(messages),
-    [messages],
-  );
-  const isThinkingVisible = isNodeRunning && isAgentNode;
-
-  const STREAMING_REASONING_FLAG = '__streamingReasoning';
-
-  const renderFullHeightState = (content: React.ReactNode) => (
-    <div style={fullHeightColumnStyle}>
-      <div style={centeredStateStyle}>{content}</div>
-    </div>
-  );
-
-  const ReasoningMessage: React.FC<{ message: ThreadMessageDto }> = ({
-    message,
-  }) => {
-    const content = limitConsecutiveNewlines(
-      formatMessageContent(message.message?.content),
-    );
-    const [baseContent, setBaseContent] = useState(content);
-    const [animatedChunk, setAnimatedChunk] = useState('');
-    const prevContentRef = useRef(content);
-    const timeoutRef = useRef<number | null>(null);
-    const reasoningId = getReasoningIdentifier(message) ?? message.id;
-    const expanded = expandedReasoningIds.has(reasoningId);
-    const [isHovered, setIsHovered] = useState(false);
-    const preview = useMemo(
-      () => createReasoningPreview(baseContent),
-      [baseContent],
-    );
-
-    const additionalKwargs = (message.message?.additionalKwargs ??
-      {}) as Record<string, unknown>;
-    const isStreaming = Boolean(additionalKwargs?.[STREAMING_REASONING_FLAG]);
-
-    useEffect(() => {
-      const prev = prevContentRef.current;
-      if (content === prev) {
-        return;
-      }
-
-      if (content.startsWith(prev)) {
-        const newPart = content.slice(prev.length);
-        if (typeof window === 'undefined') {
-          setBaseContent(content);
-          setAnimatedChunk('');
-        } else {
-          setBaseContent(prev);
-          setAnimatedChunk(newPart);
-          if (timeoutRef.current !== null) {
-            window.clearTimeout(timeoutRef.current);
-          }
-          timeoutRef.current = window.setTimeout(() => {
-            setBaseContent(content);
-            setAnimatedChunk('');
-          }, 650);
-        }
-      } else {
-        setBaseContent(content);
-        setAnimatedChunk('');
-      }
-
-      prevContentRef.current = content;
-    }, [content]);
-
-    useEffect(() => {
-      return () => {
-        if (timeoutRef.current !== null) {
-          if (typeof window !== 'undefined') {
-            window.clearTimeout(timeoutRef.current);
-          }
-          timeoutRef.current = null;
-        }
-      };
-    }, []);
-
-    const handleToggle = () => {
-      toggleReasoningMessage(reasoningId);
-    };
-
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        handleToggle();
-      }
-    };
-
-    const containerStyle: React.CSSProperties = {
-      fontSize: '12px',
-      color: isHovered ? '#8c8c8c' : '#afafaf',
-      textAlign: 'center',
-      border: 'none',
-      cursor: 'pointer',
-      background: 'transparent',
-      transition: 'color 0.25s ease',
-      animation: isStreaming
-        ? 'messages-tab-reasoning-streaming 2.8s ease-in-out infinite'
-        : undefined,
-      animationFillMode: isStreaming ? 'both' : undefined,
-    };
-
-    const collapsedStyle: React.CSSProperties = {
-      maxHeight: '6.2em',
-      overflow: 'hidden',
-      position: 'relative',
-      cursor: 'pointer',
-      textAlign: 'left',
-    };
-
-    const expandedStyle: React.CSSProperties = {
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-      textAlign: 'left',
-    };
-
-    return (
-      <div
-        style={containerStyle}
-        role="button"
-        tabIndex={0}
-        onClick={handleToggle}
-        onKeyDown={handleKeyDown}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}>
-        {expanded ? (
-          <div style={expandedStyle}>
-            <MarkdownContent
-              content={baseContent}
-              allowHorizontalScroll={expanded}
-            />
-            {animatedChunk && (
-              <div
-                style={{
-                  animation: 'messages-tab-reasoning-appear 0.6s ease',
-                }}>
-                <MarkdownContent
-                  content={animatedChunk}
-                  allowHorizontalScroll={expanded}
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={collapsedStyle}>
-            <MarkdownContent
-              content={preview.text}
-              allowHorizontalScroll={false}
-            />
-            <div style={collapsedGradientStyle} />
-          </div>
-        )}
-        <div
-          style={{
-            marginTop: 2,
-            fontSize: 11,
-            color: '#9a9a9a',
-            fontStyle: 'italic',
-          }}>
-          {isStreaming ? 'still thinking…' : ''}
-        </div>
-      </div>
-    );
-  };
-
-  const ChatBubble: React.FC<{
-    isHuman: boolean;
-    avatarLabel: string;
-    avatarColor: string;
-    children: React.ReactNode;
-    footer?: React.ReactNode;
-    bubbleStyle?: React.CSSProperties;
-    containerStyle?: React.CSSProperties;
-  }> = ({
-    isHuman,
-    avatarLabel,
-    avatarColor,
-    children,
-    footer,
-    bubbleStyle,
-    containerStyle,
-  }) => {
-    const baseContainer: React.CSSProperties = {
-      display: 'flex',
-      justifyContent: isHuman ? 'flex-end' : 'flex-start',
-      alignItems: 'flex-start',
-      gap: '8px',
-      width: '100%',
-    };
-
-    const mergedContainer = { ...baseContainer, ...containerStyle };
-
-    const baseBubbleStyle: React.CSSProperties = {
-      backgroundColor: isHuman ? '#f0f8ff' : '#f3f3f3',
-      borderRadius: '5px',
-      padding: '8px 12px',
-      wordBreak: 'break-word',
-      minWidth: '100px',
-      maxWidth: '100%',
-      overflowX: 'auto',
-    };
-
-    const mergedBubbleStyle = { ...baseBubbleStyle, ...bubbleStyle };
-
-    const ContentWrapper = (
-      <div
-        style={{
-          maxWidth: '90%',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: isHuman ? 'flex-end' : 'flex-start',
-        }}>
-        <div style={mergedBubbleStyle}>{children}</div>
-        {footer}
-      </div>
-    );
-
-    return (
-      <div style={mergedContainer}>
-        {!isHuman && (
-          <Avatar
-            style={{ backgroundColor: avatarColor, flexShrink: 0 }}
-            size="small">
-            {avatarLabel}
-          </Avatar>
-        )}
-        {ContentWrapper}
-        {isHuman && (
-          <Avatar
-            style={{ backgroundColor: avatarColor, flexShrink: 0 }}
-            size="small">
-            {avatarLabel}
-          </Avatar>
-        )}
-      </div>
-    );
-  };
-
-  const [hoveredSystemId, setHoveredSystemId] = useState<string | null>(null);
-
-  const renderSystemGroup = (
-    systemMessages: ThreadMessageDto[],
-    count: number,
-  ) => {
-    const firstMessage = systemMessages[0];
-    const content = formatMessageContent(firstMessage.message?.content);
-    const countSuffix = count > 1 ? ` (${count} system messages)` : '';
-    const fullText = `${content}${countSuffix}`;
-    const groupId = `system-${firstMessage.id || firstMessage.createdAt}`;
-    const expanded = expandedSystemIds.has(groupId);
-
-    const isHovered = hoveredSystemId === groupId;
-    const textContainerStyle: React.CSSProperties = expanded
-      ? {
-          fontSize: '12px',
-          color: isHovered ? '#8c8c8c' : '#afafaf',
-          textAlign: 'center',
-        }
-      : {
-          fontSize: '12px',
-          color: isHovered ? '#8c8c8c' : '#afafaf',
-          textAlign: 'center',
-          maxHeight: '60px',
-          overflow: 'hidden',
-          position: 'relative',
-          cursor: 'pointer',
-        };
-
-    return (
-      <div
-        style={{ width: '100%' }}
-        role="button"
-        tabIndex={0}
-        onClick={() => toggleSystemMessage(groupId)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            toggleSystemMessage(groupId);
-          }
-        }}
-        onMouseEnter={() => setHoveredSystemId(groupId)}
-        onMouseLeave={() =>
-          setHoveredSystemId((prev) => (prev === groupId ? null : prev))
-        }>
-        <div style={textContainerStyle}>
-          <MarkdownContent
-            content={fullText}
-            allowHorizontalScroll={expanded}
-          />
-          {!expanded && (
-            <div style={{ ...collapsedGradientStyle, height: '18px' }} />
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderFinishTool = (
-    status: 'calling' | 'executed',
-    resultContent?: unknown,
-    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
-  ) => {
-    if (status === 'calling') {
-      return undefined;
-    }
-
-    // Extract message and needsMoreInfo flag from result content
-    let finishMessage = 'Task completed.';
-    let needsMoreInfo = false;
-    if (resultContent) {
-      if (typeof resultContent === 'string') {
-        finishMessage = resultContent;
-      } else if (typeof resultContent === 'object' && resultContent !== null) {
-        const obj = resultContent as Record<string, unknown>;
-        finishMessage =
-          (typeof obj.message === 'string' ? obj.message : '') ||
-          (typeof obj.content === 'string' ? obj.content : '') ||
-          (typeof obj.result === 'string' ? obj.result : '') ||
-          'Task completed.';
-        needsMoreInfo = Boolean(obj.needsMoreInfo);
-      }
-    }
-
-    const messageColor = needsMoreInfo ? '#faad14' : '#52c41a';
-    const statusTag = needsMoreInfo ? '⚠ Need more info' : '✓ Finished';
-
-    return (
-      <ChatBubble
-        isHuman={false}
-        avatarLabel="AI"
-        avatarColor={messageColor}
-        containerStyle={{ marginBottom: '8px' }}
-        bubbleStyle={{
-          backgroundColor: '#f3f3f3',
-          borderLeft: `3px solid ${messageColor}`,
-        }}
-        footer={renderMetadataText(
-          metadata?.createdAt,
-          metadata?.roleLabel,
-          metadata?.nodeId,
-        )}>
-        <Text
-          type="secondary"
-          style={{
-            fontSize: '11px',
-            marginBottom: '5px',
-            display: 'block',
-            color: messageColor,
-            fontWeight: 'bold',
-          }}>
-          {statusTag}
-        </Text>
-
-        <MarkdownContent
-          content={finishMessage}
-          style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
-        />
-      </ChatBubble>
-    );
-  };
-
-  const renderToolStatusLine = (
-    name: string,
-    status: 'calling' | 'executed',
-    resultContent?: unknown,
-    toolOptions?: Record<string, JsonValue>,
-    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
-  ) => {
-    const line = (
-      <div
-        style={{
-          cursor:
-            status === 'executed' && resultContent !== undefined
-              ? 'pointer'
-              : 'default',
-        }}
-        aria-label={
-          status === 'executed'
-            ? `View tool result for ${name}`
-            : `Tool ${name} is calling`
-        }
-        tabIndex={
-          status === 'executed' && resultContent !== undefined ? 0 : -1
-        }>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}>
-          {status === 'calling' && <Spin size="small" />}
-          <Text type="secondary" style={{ fontSize: '12px', color: '#8c8c8c' }}>
-            {toolOptions?.purpose
-              ? `${name} | ${String(toolOptions.purpose)}`
-              : `tool ${name} is ${status === 'calling' ? 'calling...' : 'executed'}`}
-          </Text>
-        </div>
-      </div>
-    );
-
-    let baseLine: React.ReactNode = line;
-    if (status === 'executed' && resultContent !== undefined) {
-      const contentNode = renderToolPopoverContent(resultContent, toolOptions);
-      baseLine = (
-        <Popover content={contentNode} trigger={['click']} placement="topLeft">
-          {line}
-        </Popover>
-      );
-    }
-
-    // Don't show metadata for tool messages
-    return baseLine;
-  };
-
-  const truncateToLines = (
-    text: string,
-    maxLines: number,
-  ): { truncated: string; full: string; isTruncated: boolean } => {
-    const lines = text.split('\n');
-    const isTruncated = lines.length > maxLines;
-    const truncated = lines.slice(0, maxLines).join('\n');
-    return { truncated, full: text, isTruncated };
-  };
-
-  const ShellToolDisplay: React.FC<{
-    name: string;
-    status: 'calling' | 'executed';
-    resultContent?: unknown;
-    shellCommand?: string;
-    toolOptions?: Record<string, JsonValue>;
-    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string };
-  }> = ({
-    name,
-    status,
-    resultContent,
-    shellCommand,
-    toolOptions,
-    metadata,
-  }) => {
-    const [commandExpanded, setCommandExpanded] = useState(false);
-    const [outputExpanded, setOutputExpanded] = useState(false);
-
-    const resultObj =
-      typeof resultContent === 'object' &&
-      resultContent !== null &&
-      !Array.isArray(resultContent)
-        ? (resultContent as ShellResult)
-        : null;
-    const exitCode = resultObj?.exitCode;
-    const exitCodeStatus = exitCode !== undefined ? exitCode : null;
-    const exitCodeColor =
-      exitCodeStatus === null
-        ? '#9d9d9d'
-        : exitCodeStatus === 0
-          ? '#9d9d9d'
-          : '#ff4d4f'; // Red for non-zero exit codes
-    const tint =
-      exitCodeStatus === null
-        ? '#2b2b2b'
-        : exitCodeStatus === 0
-          ? '#1d2b1f'
-          : '#2b1d1d';
-
-    const fullToolNameText = `${name}${toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''}`;
-
-    const toolNameElement = (
-      <div
-        style={{
-          cursor:
-            status === 'executed' && resultContent !== undefined
-              ? 'pointer'
-              : 'default',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-        aria-label={
-          status === 'executed'
-            ? `View shell result for ${name}`
-            : `Shell ${name} is calling`
-        }
-        title={fullToolNameText}>
-        {fullToolNameText}
-      </div>
-    );
-
-    // Get output text
-    const getOutputText = (): string | null => {
-      if (
-        resultObj?.output !== undefined &&
-        typeof resultObj.output === 'string'
-      ) {
-        return resultObj.output;
-      }
-      if (typeof resultContent === 'string') {
-        return resultContent;
-      }
-      if (resultObj && typeof resultObj === 'object') {
-        const displayText =
-          resultObj.output || resultObj.stdout || resultObj.stderr;
-        if (typeof displayText === 'string') {
-          return displayText;
-        }
-      }
-      return null;
-    };
-
-    const outputText = getOutputText();
-    const commandTruncated = shellCommand
-      ? truncateToLines(shellCommand, 3)
-      : null;
-    const outputTruncated = outputText ? truncateToLines(outputText, 3) : null;
-
-    // Don't show metadata for tool messages
-    return (
-      <div style={{ marginBottom: `25px` }}>
-        <div
-          style={{
-            background: '#1e1e1e',
-            borderRadius: 6,
-            border: '1px solid #333',
-            color: '#e8e8e8',
-            fontFamily:
-              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
-            fontSize: 12,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
-            backgroundImage: `linear-gradient(${tint}, ${tint})`,
-            backgroundBlendMode: 'soft-light',
-          }}>
+        const toolNameElement = (
           <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
-              padding: '5px 10px',
-              background: '#1a1a1a',
-            }}>
-            {status === 'executed' && resultContent !== undefined ? (
-              <Popover
-                content={renderToolPopoverContent(resultContent, toolOptions)}
-                trigger={['click']}
-                placement="topLeft">
-                {toolNameElement}
-              </Popover>
-            ) : (
-              toolNameElement
-            )}
-
-            {status === 'calling' ? (
-              <>
-                <Spin size="small" />
-                <span style={{ color: '#c4c4c4' }}>executing…</span>
-              </>
-            ) : (
-              <span
-                style={{
-                  color: exitCodeColor,
-                  whiteSpace: 'nowrap',
-                  fontSize: '11px',
-                }}>
-                executed
-                {exitCodeStatus !== null ? ` | exit ${exitCodeStatus}` : ''}
-              </span>
-            )}
+              cursor:
+                status === 'executed' && resultContent !== undefined
+                  ? 'pointer'
+                  : 'default',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            aria-label={
+              status === 'executed'
+                ? `View shell result for ${name}`
+                : `Shell ${name} is calling`
+            }
+            title={fullToolNameText}>
+            {fullToolNameText}
           </div>
+        );
 
-          {shellCommand && (
-            <div style={{ padding: '5px 10px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <span
+        // Get output text
+        const getOutputText = (): string | null => {
+          if (
+            resultObj?.output !== undefined &&
+            typeof resultObj.output === 'string'
+          ) {
+            return resultObj.output;
+          }
+          if (typeof resultContent === 'string') {
+            return resultContent;
+          }
+          if (resultObj && typeof resultObj === 'object') {
+            const displayText =
+              resultObj.output || resultObj.stdout || resultObj.stderr;
+            if (typeof displayText === 'string') {
+              return displayText;
+            }
+          }
+          return null;
+        };
+
+        const outputText = getOutputText();
+        const commandTruncated = shellCommand
+          ? truncateToLines(shellCommand, 3)
+          : null;
+        const outputTruncated = outputText
+          ? truncateToLines(outputText, 3)
+          : null;
+
+        // Don't show metadata for tool messages
+        return (
+          <div style={{ marginBottom: `25px` }}>
+            <div
+              style={{
+                background: '#1e1e1e',
+                borderRadius: 6,
+                border: '1px solid #333',
+                color: '#e8e8e8',
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
+                fontSize: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
+                backgroundImage: `linear-gradient(${tint}, ${tint})`,
+                backgroundBlendMode: 'soft-light',
+              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  padding: '5px 10px',
+                  background: '#1a1a1a',
+                }}>
+                {status === 'executed' && resultContent !== undefined ? (
+                  <Popover
+                    content={renderToolPopoverContent(
+                      resultContent,
+                      toolOptions,
+                    )}
+                    trigger={['click']}
+                    placement="topLeft">
+                    {toolNameElement}
+                  </Popover>
+                ) : (
+                  toolNameElement
+                )}
+
+                {status === 'calling' ? (
+                  <>
+                    <span style={{ color: '#c4c4c4' }}>executing…</span>
+                  </>
+                ) : (
+                  <span
+                    style={{
+                      color: exitCodeColor,
+                      whiteSpace: 'nowrap',
+                      fontSize: '11px',
+                    }}>
+                    executed
+                    {exitCodeStatus !== null ? ` | exit ${exitCodeStatus}` : ''}
+                  </span>
+                )}
+              </div>
+
+              {shellCommand && (
+                <div style={{ padding: '5px 10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                    <span
+                      style={{
+                        color: '#a0a0a0',
+                        paddingRight: '10px',
+                        flexShrink: 0,
+                      }}>
+                      $
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          maxHeight:
+                            commandExpanded || !commandTruncated?.isTruncated
+                              ? 'none'
+                              : '4.5em',
+                          overflow:
+                            commandExpanded || !commandTruncated?.isTruncated
+                              ? 'visible'
+                              : 'hidden',
+                          position: 'relative',
+                        }}>
+                        <SyntaxHighlighter
+                          language="bash"
+                          style={vscDarkPlus}
+                          customStyle={{
+                            margin: 0,
+                            padding: 0,
+                            background: 'transparent',
+                            fontSize: '12px',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.5',
+                          }}
+                          PreTag="div"
+                          codeTagProps={{
+                            style: {
+                              fontFamily: 'inherit',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              margin: 0,
+                              padding: 0,
+                              lineHeight: '1.5',
+                            },
+                          }}>
+                          {shellCommand}
+                        </SyntaxHighlighter>
+                        {commandTruncated?.isTruncated && !commandExpanded && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: '1.5em',
+                              background:
+                                'linear-gradient(to bottom, transparent, #1e1e1e)',
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        )}
+                      </div>
+                      {commandTruncated?.isTruncated && (
+                        <div
+                          style={{
+                            color: '#1890ff',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            marginTop: '4px',
+                            textDecoration: 'underline',
+                          }}
+                          onClick={() => setCommandExpanded(!commandExpanded)}>
+                          {commandExpanded ? 'Show less' : 'Show more...'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {status === 'executed' && outputText && (
+                <div
                   style={{
-                    color: '#a0a0a0',
-                    paddingRight: '10px',
-                    flexShrink: 0,
+                    borderTop: '1px solid #333',
                   }}>
-                  $
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      maxHeight:
-                        commandExpanded || !commandTruncated?.isTruncated
-                          ? 'none'
-                          : '4.5em',
-                      overflow:
-                        commandExpanded || !commandTruncated?.isTruncated
-                          ? 'visible'
-                          : 'hidden',
-                      position: 'relative',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '5px 10px',
+                      borderBottom: '1px solid #333',
+                      background: '#1a1a1a',
                     }}>
+                    <span style={{ fontSize: '11px', color: '#c4c4c4' }}>
+                      Output
+                    </span>
+                    <CopyOutlined
+                      style={{
+                        color: '#c4c4c4',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                      }}
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(outputText);
+                          message.success('Copied to clipboard');
+                        } catch (err) {
+                          message.error('Failed to copy to clipboard');
+                        }
+                      }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      padding: '5px 10px',
+                      maxHeight: outputExpanded ? '200px' : 'none',
+                      overflowY: outputExpanded ? 'scroll' : 'visible',
+                      overflowX: 'hidden',
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: '#555 #2a2a2a',
+                    }}
+                    className="shell-output-container">
                     <SyntaxHighlighter
                       language="bash"
                       style={vscDarkPlus}
@@ -1899,563 +2025,515 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = ({
                         padding: 0,
                         background: 'transparent',
                         fontSize: '12px',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        lineHeight: '1.5',
                       }}
                       PreTag="div"
-                      codeTagProps={{
-                        style: {
-                          fontFamily: 'inherit',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          margin: 0,
-                          padding: 0,
-                          lineHeight: '1.5',
-                        },
-                      }}>
-                      {shellCommand}
+                      codeTagProps={{ style: { fontFamily: 'inherit' } }}>
+                      {outputExpanded || !outputTruncated?.isTruncated
+                        ? outputText
+                        : outputTruncated.truncated}
                     </SyntaxHighlighter>
-                    {commandTruncated?.isTruncated && !commandExpanded && (
+                    {outputTruncated?.isTruncated && (
                       <div
                         style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          height: '1.5em',
-                          background:
-                            'linear-gradient(to bottom, transparent, #1e1e1e)',
-                          pointerEvents: 'none',
+                          color: '#1890ff',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                          marginTop: '4px',
+                          textDecoration: 'underline',
                         }}
-                      />
+                        onClick={() => setOutputExpanded(!outputExpanded)}>
+                        {outputExpanded ? 'Show less' : 'Show more...'}
+                      </div>
                     )}
                   </div>
-                  {commandTruncated?.isTruncated && (
-                    <div
-                      style={{
-                        color: '#1890ff',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        marginTop: '4px',
-                        textDecoration: 'underline',
-                      }}
-                      onClick={() => setCommandExpanded(!commandExpanded)}>
-                      {commandExpanded ? 'Show less' : 'Show more...'}
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
             </div>
-          )}
-
-          {status === 'executed' && outputText && (
-            <div
-              style={{
-                borderTop: '1px solid #333',
-              }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '5px 10px',
-                  borderBottom: '1px solid #333',
-                  background: '#1a1a1a',
-                }}>
-                <span style={{ fontSize: '11px', color: '#c4c4c4' }}>
-                  Output
-                </span>
-                <CopyOutlined
-                  style={{
-                    color: '#c4c4c4',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                  }}
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(outputText);
-                      message.success('Copied to clipboard');
-                    } catch (err) {
-                      message.error('Failed to copy to clipboard');
-                    }
-                  }}
-                />
-              </div>
-              <div
-                style={{
-                  padding: '5px 10px',
-                  maxHeight: outputExpanded ? '200px' : 'none',
-                  overflowY: outputExpanded ? 'scroll' : 'visible',
-                  overflowX: 'hidden',
-                  scrollbarWidth: 'thin',
-                  scrollbarColor: '#555 #2a2a2a',
-                }}
-                className="shell-output-container">
-                <SyntaxHighlighter
-                  language="bash"
-                  style={vscDarkPlus}
-                  customStyle={{
-                    margin: 0,
-                    padding: 0,
-                    background: 'transparent',
-                    fontSize: '12px',
-                  }}
-                  PreTag="div"
-                  codeTagProps={{ style: { fontFamily: 'inherit' } }}>
-                  {outputExpanded || !outputTruncated?.isTruncated
-                    ? outputText
-                    : outputTruncated.truncated}
-                </SyntaxHighlighter>
-                {outputTruncated?.isTruncated && (
-                  <div
-                    style={{
-                      color: '#1890ff',
-                      cursor: 'pointer',
-                      fontSize: '11px',
-                      marginTop: '4px',
-                      textDecoration: 'underline',
-                    }}
-                    onClick={() => setOutputExpanded(!outputExpanded)}>
-                    {outputExpanded ? 'Show less' : 'Show more...'}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderShellStatusLine = (
-    name: string,
-    status: 'calling' | 'executed',
-    resultContent?: unknown,
-    shellCommand?: string,
-    toolOptions?: Record<string, JsonValue>,
-    metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
-  ) => {
-    return (
-      <ShellToolDisplay
-        name={name}
-        status={status}
-        resultContent={resultContent}
-        shellCommand={shellCommand}
-        toolOptions={toolOptions}
-        metadata={metadata}
-      />
-    );
-  };
-
-  const renderNonAgentNodeInfo = () => {
-    if (isAgentNode) return null;
-
-    return (
-      <div style={{ padding: '16px', textAlign: 'center' }}>
-        <Space direction="vertical" size="large">
-          <ToolOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
-          <div>
-            <Text strong style={{ fontSize: '16px' }}>
-              {nodeTemplateKind || 'Tool'} Node
-            </Text>
-            <br />
-            <Text type="secondary" style={{ fontSize: '14px' }}>
-              This node executes tool calls and doesn't participate in
-              conversations.
-            </Text>
           </div>
-          <div
-            style={{
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #e9ecef',
-              borderRadius: '8px',
-              padding: '12px',
-              textAlign: 'left',
-            }}>
-            <Text strong style={{ fontSize: '13px', color: '#495057' }}>
-              Tool Call Information:
-            </Text>
-            <br />
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              • Tool calls are executed when this node is triggered
-              <br />
-              • Results are passed to connected nodes
-              <br />• Check the execution logs for detailed information
-            </Text>
-          </div>
-        </Space>
-      </div>
+        );
+      },
     );
-  };
 
-  const renderMessage = (message: ThreadMessageDto) => {
-    const role = (message.message?.role as string) || '';
-    const content = formatMessageContent(message.message?.content);
-    const metadataText =
-      formatMetadataLine(message.createdAt, role, message.nodeId) ||
-      (role ? `from ${role}` : undefined);
-
-    if (isToolLikeRole(role)) {
-      const name = getMessageString(message.message, 'name') || 'tool';
-      const resultContent = message.message?.content;
-      // For standalone tools, we don't have access to the original arguments
-      return renderToolStatusLine(name, 'executed', resultContent, undefined);
-    }
-
-    if (isBlankContent(message.message?.content)) return null;
-
-    const isHuman = role === 'human';
-    const avatarColor = isHuman
-      ? '#1890ff'
-      : role === 'ai'
-        ? '#52c41a'
-        : role === 'system'
-          ? '#722ed1'
-          : '#d9d9d9';
-
-    return (
-      <ChatBubble
-        isHuman={isHuman}
-        avatarLabel={isHuman ? 'ME' : 'AI'}
-        avatarColor={avatarColor}
-        footer={
-          metadataText ? (
-            <Text
-              type="secondary"
-              style={{ fontSize: '11px', marginTop: '4px', color: '#8c8c8c' }}>
-              {metadataText}
-            </Text>
-          ) : undefined
-        }>
-        <MarkdownContent
-          content={content}
-          style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
-        />
-      </ChatBubble>
-    );
-  };
-
-  const renderPendingMessage = (message: PendingMessage) => {
-    const isHuman = message.role === 'human';
-    const content = message.content;
-
-    // Determine when the message will be sent
-    const sendTimeText =
-      newMessageMode === 'inject_after_tool_call'
-        ? 'Will be sent after next tool execution'
-        : newMessageMode === 'wait_for_completion'
-          ? 'Will be sent after agent completes current task'
-          : 'Pending';
-
-    return (
-      <ChatBubble
-        isHuman={isHuman}
-        avatarLabel={isHuman ? 'ME' : 'AI'}
-        avatarColor={isHuman ? '#1890ff' : '#52c41a'}
-        containerStyle={{ opacity: 0.6 }}
-        bubbleStyle={{ border: '2px dashed #d9d9d9' }}
-        footer={
-          <Text
-            type="secondary"
-            style={{
-              fontSize: '11px',
-              marginTop: '4px',
-              color: '#8c8c8c',
-              fontStyle: 'italic',
-            }}>
-            {sendTimeText}
-          </Text>
-        }>
-        <MarkdownContent
-          content={content}
-          style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
-        />
-      </ChatBubble>
-    );
-  };
-
-  const formatNodeLabel = (nodeIdentifier?: string): string | undefined => {
-    if (!nodeIdentifier) {
-      return undefined;
-    }
-    const mapped = nodeDisplayNames?.[nodeIdentifier];
-    if (mapped && mapped.trim().length > 0) {
-      return mapped;
-    }
-    if (nodeIdentifier.length <= 10) {
-      return nodeIdentifier;
-    }
-    return `Node ${nodeIdentifier.slice(-6)}`;
-  };
-
-  const formatMetadataLine = (
-    createdAt?: string,
-    roleLabel?: string,
-    sourceNodeId?: string,
-  ): string | undefined => {
-    const datePart = createdAt
-      ? new Date(createdAt).toLocaleString()
-      : undefined;
-    const descriptorParts: string[] = [];
-    if (roleLabel) {
-      descriptorParts.push(`from ${roleLabel}`);
-    }
-    if (showNodeHeadings) {
-      const label = formatNodeLabel(sourceNodeId || nodeId);
-      if (label) {
-        descriptorParts.push(`(${label} node)`);
-      }
-    }
-    const descriptor = descriptorParts.join(' ');
-    const parts = [datePart, descriptor].filter((part) => part && part.length);
-    if (!parts.length) {
-      return undefined;
-    }
-    return parts.join(' | ');
-  };
-
-  const renderMetadataText = (
-    createdAt?: string,
-    roleLabel?: string,
-    sourceNodeId?: string,
-  ): React.ReactNode => {
-    const text = formatMetadataLine(createdAt, roleLabel, sourceNodeId);
-    if (!text) {
-      return null;
-    }
-    return (
-      <Text
-        type="secondary"
-        style={{
-          fontSize: '11px',
-          marginTop: '4px',
-          color: '#8c8c8c',
-          display: 'block',
-        }}>
-        {text}
-      </Text>
-    );
-  };
-
-  const renderPreparedMessages = () => {
-    const rows: React.ReactNode[] = [];
-    let i = 0;
-    const isFinishToolMessage = (
-      msg: PreparedMessage,
-    ): msg is Extract<PreparedMessage, { type: 'tool' }> =>
-      msg.type === 'tool' && (msg.name || '').toLowerCase() === 'finish';
-
-    const pushRow = (
-      key: React.Key,
-      content: React.ReactNode,
-      extraStyle?: React.CSSProperties,
+    const renderShellStatusLine = (
+      name: string,
+      status: 'calling' | 'executed',
+      resultContent?: unknown,
+      shellCommand?: string,
+      toolOptions?: Record<string, JsonValue>,
+      metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
     ) => {
-      rows.push(
-        <div key={key} style={{ ...messageBlockStyle, ...extraStyle }}>
-          {content}
-        </div>,
+      return (
+        <ShellToolDisplay
+          name={name}
+          status={status}
+          resultContent={resultContent}
+          shellCommand={shellCommand}
+          toolOptions={toolOptions}
+          metadata={metadata}
+        />
       );
     };
 
-    while (i < preparedMessages.length) {
-      const item = preparedMessages[i];
+    const renderNonAgentNodeInfo = () => {
+      if (isAgentNode) return null;
 
-      if (item.type === 'system') {
-        pushRow(
-          item.id,
-          renderSystemGroup(item.messages, item.messages.length),
+      return (
+        <div style={{ padding: '16px', textAlign: 'center' }}>
+          <Space direction="vertical" size="large">
+            <ToolOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
+            <div>
+              <Text strong style={{ fontSize: '16px' }}>
+                {nodeTemplateKind || 'Tool'} Node
+              </Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: '14px' }}>
+                This node executes tool calls and doesn't participate in
+                conversations.
+              </Text>
+            </div>
+            <div
+              style={{
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #e9ecef',
+                borderRadius: '8px',
+                padding: '12px',
+                textAlign: 'left',
+              }}>
+              <Text strong style={{ fontSize: '13px', color: '#495057' }}>
+                Tool Call Information:
+              </Text>
+              <br />
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                • Tool calls are executed when this node is triggered
+                <br />
+                • Results are passed to connected nodes
+                <br />• Check the execution logs for detailed information
+              </Text>
+            </div>
+          </Space>
+        </div>
+      );
+    };
+
+    const renderMessage = (message: ThreadMessageDto) => {
+      const role = (message.message?.role as string) || '';
+      const content = formatMessageContent(message.message?.content);
+      const metadataText =
+        formatMetadataLine(message.createdAt, role, message.nodeId) ||
+        (role ? `from ${role}` : undefined);
+
+      if (isToolLikeRole(role)) {
+        const name = getMessageString(message.message, 'name') || 'tool';
+        const resultContent = message.message?.content;
+        // For standalone tools, we don't have access to the original arguments
+        return renderToolStatusLine(name, 'executed', resultContent, undefined);
+      }
+
+      if (isBlankContent(message.message?.content)) return null;
+
+      const isHuman = role === 'human';
+      const avatarColor = isHuman
+        ? '#1890ff'
+        : role === 'ai'
+          ? '#52c41a'
+          : role === 'system'
+            ? '#722ed1'
+            : '#d9d9d9';
+
+      return (
+        <ChatBubble
+          isHuman={isHuman}
+          avatarLabel={isHuman ? 'ME' : 'AI'}
+          avatarColor={avatarColor}
+          footer={
+            metadataText ? (
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: '11px',
+                  marginTop: '4px',
+                  color: '#8c8c8c',
+                }}>
+                {metadataText}
+              </Text>
+            ) : undefined
+          }>
+          <MarkdownContent
+            content={content}
+            style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
+          />
+        </ChatBubble>
+      );
+    };
+
+    const renderPendingMessage = (message: PendingMessage) => {
+      const isHuman = message.role === 'human';
+      const content = message.content;
+
+      // Determine when the message will be sent
+      const sendTimeText =
+        newMessageMode === 'inject_after_tool_call'
+          ? 'Will be sent after next tool execution'
+          : newMessageMode === 'wait_for_completion'
+            ? 'Will be sent after agent completes current task'
+            : 'Pending';
+
+      return (
+        <ChatBubble
+          isHuman={isHuman}
+          avatarLabel={isHuman ? 'ME' : 'AI'}
+          avatarColor={isHuman ? '#1890ff' : '#52c41a'}
+          containerStyle={{ opacity: 0.6 }}
+          bubbleStyle={{ border: '2px dashed #d9d9d9' }}
+          footer={
+            <Text
+              type="secondary"
+              style={{
+                fontSize: '11px',
+                marginTop: '4px',
+                color: '#8c8c8c',
+                fontStyle: 'italic',
+              }}>
+              {sendTimeText}
+            </Text>
+          }>
+          <MarkdownContent
+            content={content}
+            style={{ fontSize: '14px', lineHeight: '1.4', color: '#000000' }}
+          />
+        </ChatBubble>
+      );
+    };
+
+    const formatNodeLabel = (nodeIdentifier?: string): string | undefined => {
+      if (!nodeIdentifier) {
+        return undefined;
+      }
+      const mapped = nodeDisplayNames?.[nodeIdentifier];
+      if (mapped && mapped.trim().length > 0) {
+        return mapped;
+      }
+      if (nodeIdentifier.length <= 10) {
+        return nodeIdentifier;
+      }
+      return `Node ${nodeIdentifier.slice(-6)}`;
+    };
+
+    const formatMetadataLine = (
+      createdAt?: string,
+      roleLabel?: string,
+      sourceNodeId?: string,
+    ): string | undefined => {
+      const datePart = createdAt
+        ? new Date(createdAt).toLocaleString()
+        : undefined;
+      const descriptorParts: string[] = [];
+      if (roleLabel) {
+        descriptorParts.push(`from ${roleLabel}`);
+      }
+      if (showNodeHeadings) {
+        const label = formatNodeLabel(sourceNodeId || nodeId);
+        if (label) {
+          descriptorParts.push(`(${label} node)`);
+        }
+      }
+      const descriptor = descriptorParts.join(' ');
+      const parts = [datePart, descriptor].filter(
+        (part) => part && part.length,
+      );
+      if (!parts.length) {
+        return undefined;
+      }
+      return parts.join(' | ');
+    };
+
+    const renderMetadataText = (
+      createdAt?: string,
+      roleLabel?: string,
+      sourceNodeId?: string,
+    ): React.ReactNode => {
+      const text = formatMetadataLine(createdAt, roleLabel, sourceNodeId);
+      if (!text) {
+        return null;
+      }
+      return (
+        <Text
+          type="secondary"
+          style={{
+            fontSize: '11px',
+            marginTop: '4px',
+            color: '#8c8c8c',
+            display: 'block',
+          }}>
+          {text}
+        </Text>
+      );
+    };
+
+    const renderPreparedMessages = () => {
+      const rows: React.ReactNode[] = [];
+      let i = 0;
+      const isFinishToolMessage = (
+        msg: PreparedMessage,
+      ): msg is Extract<PreparedMessage, { type: 'tool' }> =>
+        msg.type === 'tool' && (msg.name || '').toLowerCase() === 'finish';
+
+      const pushRow = (
+        key: React.Key,
+        content: React.ReactNode,
+        extraStyle?: React.CSSProperties,
+      ) => {
+        rows.push(
+          <div key={key} style={{ ...messageBlockStyle, ...extraStyle }}>
+            {content}
+          </div>,
         );
-        i++;
-        continue;
-      }
+      };
 
-      if (item.type === 'reasoning') {
-        pushRow(item.id, <ReasoningMessage message={item.message} />);
-        i++;
-        continue;
-      }
+      while (i < preparedMessages.length) {
+        const item = preparedMessages[i];
 
-      if (item.type === 'chat') {
-        pushRow(item.id, renderMessage(item.message));
-        i++;
-        continue;
-      }
-
-      if (item.type === 'tool') {
-        if (isFinishToolMessage(item)) {
+        if (item.type === 'system') {
           pushRow(
-            item.id || `finish-${i}`,
-            renderFinishTool(item.status, item.result, {
-              nodeId: item.nodeId,
-              createdAt: item.createdAt,
-              roleLabel: 'ai',
-            }),
+            item.id,
+            renderSystemGroup(item.messages, item.messages.length),
           );
           i++;
           continue;
         }
 
-        const group: Array<Extract<PreparedMessage, { type: 'tool' }>> = [item];
-        let j = i + 1;
-        while (
-          j < preparedMessages.length &&
-          preparedMessages[j].type === 'tool' &&
-          !isFinishToolMessage(preparedMessages[j])
-        ) {
-          group.push(
-            preparedMessages[j] as Extract<PreparedMessage, { type: 'tool' }>,
-          );
-          j++;
+        if (item.type === 'reasoning') {
+          pushRow(item.id, <ReasoningMessage message={item.message} />);
+          i++;
+          continue;
         }
 
-        pushRow(
-          `tool-stack-${i}`,
-          <div style={{ display: 'flex', flexDirection: 'column', rowGap: 2 }}>
-            {group.map((t, idx) => (
-              <div key={t.id || `tool-${i}-${idx}`}>
-                {t.toolKind === 'shell'
-                  ? renderShellStatusLine(
-                      t.name,
-                      t.status,
-                      t.result,
-                      t.shellCommand,
-                      t.toolOptions,
-                      {
-                        nodeId: t.nodeId,
-                        createdAt: t.createdAt,
-                        roleLabel: t.roleLabel ?? t.name,
-                      },
-                    )
-                  : renderToolStatusLine(
-                      t.name,
-                      t.status,
-                      t.result,
-                      t.toolOptions,
-                    )}
-              </div>
-            ))}
-          </div>,
-        );
+        if (item.type === 'chat') {
+          pushRow(item.id, renderMessage(item.message));
+          i++;
+          continue;
+        }
 
-        i = j;
-        continue;
+        if (item.type === 'tool') {
+          if (isFinishToolMessage(item)) {
+            pushRow(
+              item.id || `finish-${i}`,
+              renderFinishTool(item.status, item.result, {
+                nodeId: item.nodeId,
+                createdAt: item.createdAt,
+                roleLabel: 'ai',
+              }),
+            );
+            i++;
+            continue;
+          }
+
+          const group: Array<Extract<PreparedMessage, { type: 'tool' }>> = [
+            item,
+          ];
+          let j = i + 1;
+          while (
+            j < preparedMessages.length &&
+            preparedMessages[j].type === 'tool' &&
+            !isFinishToolMessage(preparedMessages[j])
+          ) {
+            group.push(
+              preparedMessages[j] as Extract<PreparedMessage, { type: 'tool' }>,
+            );
+            j++;
+          }
+
+          pushRow(
+            `tool-stack-${i}`,
+            <div
+              style={{ display: 'flex', flexDirection: 'column', rowGap: 2 }}>
+              {group.map((t, idx) => (
+                <div key={t.id || `tool-${i}-${idx}`}>
+                  {t.toolKind === 'shell'
+                    ? renderShellStatusLine(
+                        t.name,
+                        t.status,
+                        t.result,
+                        t.shellCommand,
+                        t.toolOptions,
+                        {
+                          nodeId: t.nodeId,
+                          createdAt: t.createdAt,
+                          roleLabel: t.roleLabel ?? t.name,
+                        },
+                      )
+                    : renderToolStatusLine(
+                        t.name,
+                        t.status,
+                        t.result,
+                        t.toolOptions,
+                      )}
+                </div>
+              ))}
+            </div>,
+          );
+
+          i = j;
+          continue;
+        }
+
+        i++;
       }
 
-      i++;
+      return rows;
+    };
+
+    if (!selectedThreadId) {
+      return renderFullHeightState(
+        <Text type="secondary">
+          Select a thread from the header to view messages.
+        </Text>,
+      );
     }
 
-    return rows;
-  };
+    if (!isAgentNode) {
+      return (
+        <div style={fullHeightColumnStyle}>
+          <div
+            style={{
+              ...scrollContainerStyle,
+              overflowX: 'auto',
+            }}>
+            {renderNonAgentNodeInfo()}
+          </div>
+        </div>
+      );
+    }
 
-  if (!selectedThreadId) {
-    return renderFullHeightState(
-      <Text type="secondary">
-        Select a thread from the header to view messages.
-      </Text>,
-    );
-  }
+    if (messagesLoading) {
+      return renderFullHeightState(
+        <Space direction="vertical" align="center" size="small">
+          <Spin />
+          <Text type="secondary">Loading messages...</Text>
+        </Space>,
+      );
+    }
 
-  if (!isAgentNode) {
+    if (messages.length === 0) {
+      return renderFullHeightState(
+        <Text type="secondary">No messages found for this thread.</Text>,
+      );
+    }
+
     return (
       <div style={fullHeightColumnStyle}>
         <div
-          style={{
-            ...scrollContainerStyle,
-            overflowX: 'auto',
-          }}>
-          {renderNonAgentNodeInfo()}
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          style={scrollContainerStyle}>
+          {loadingMore && (
+            <div
+              style={{
+                padding: '8px 12px',
+                textAlign: 'center',
+                fontSize: '12px',
+                color: '#8c8c8c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}>
+              <Spin size="small" />
+              <Text
+                type="secondary"
+                style={{ fontSize: '12px', color: '#8c8c8c' }}>
+                Loading more messages...
+              </Text>
+            </div>
+          )}
+
+          {renderPreparedMessages()}
+          {isThinkingVisible && !messagesLoading && (
+            <div
+              style={{
+                textAlign: 'center',
+                animation:
+                  'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
+              }}>
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: '#8c8c8c',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  lineHeight: '1.5',
+                  wordBreak: 'break-word',
+                  width: '100%',
+                }}>
+                Agent is thinking...
+              </div>
+            </div>
+          )}
+          {pendingMessages && pendingMessages.length > 0 && (
+            <div
+              style={{
+                borderTop: '1px solid #ebebeb',
+                paddingTop: '10px',
+                marginTop: '8px',
+              }}>
+              {pendingMessages.map((msg, idx) => (
+                <div
+                  key={`pending-${msg.content}-${idx}`}
+                  style={messageBlockStyle}>
+                  {renderPendingMessage(msg)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
-  }
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison to prevent rerenders when unrelated props change
+    // Only rerender if messages or loading states change
+    // Note: We compare array lengths and references - if messages array reference
+    // changes, it means new messages were added/updated, so we should rerender
+    const messagesEqual =
+      prevProps.messages === nextProps.messages ||
+      (prevProps.messages.length === nextProps.messages.length &&
+        prevProps.messages.every(
+          (msg, idx) => msg.id === nextProps.messages[idx]?.id,
+        ));
 
-  if (messagesLoading) {
-    return renderFullHeightState(
-      <Space direction="vertical" align="center" size="small">
-        <Spin />
-        <Text type="secondary">Loading messages...</Text>
-      </Space>,
+    const pendingMessagesEqual =
+      prevProps.pendingMessages === nextProps.pendingMessages ||
+      (prevProps.pendingMessages?.length ===
+        nextProps.pendingMessages?.length &&
+        prevProps.pendingMessages?.every(
+          (msg, idx) =>
+            msg.content === nextProps.pendingMessages?.[idx]?.content &&
+            msg.role === nextProps.pendingMessages?.[idx]?.role,
+        ));
+
+    return (
+      messagesEqual &&
+      prevProps.messagesLoading === nextProps.messagesLoading &&
+      prevProps.selectedThreadId === nextProps.selectedThreadId &&
+      prevProps.nodeId === nextProps.nodeId &&
+      prevProps.isAgentNode === nextProps.isAgentNode &&
+      prevProps.hasMoreMessages === nextProps.hasMoreMessages &&
+      prevProps.loadingMore === nextProps.loadingMore &&
+      prevProps.isNodeRunning === nextProps.isNodeRunning &&
+      pendingMessagesEqual &&
+      prevProps.newMessageMode === nextProps.newMessageMode &&
+      prevProps.graphId === nextProps.graphId &&
+      prevProps.externalThreadId === nextProps.externalThreadId &&
+      prevProps.isDraft === nextProps.isDraft &&
+      prevProps.onLoadMoreMessages === nextProps.onLoadMoreMessages &&
+      prevProps.onMessagesUpdate === nextProps.onMessagesUpdate
     );
-  }
-
-  if (messages.length === 0) {
-    return renderFullHeightState(
-      <Text type="secondary">No messages found for this thread.</Text>,
-    );
-  }
-
-  return (
-    <div style={fullHeightColumnStyle}>
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        style={scrollContainerStyle}>
-        {loadingMore && (
-          <div
-            style={{
-              padding: '8px 12px',
-              textAlign: 'center',
-              fontSize: '12px',
-              color: '#8c8c8c',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            }}>
-            <Spin size="small" />
-            <Text
-              type="secondary"
-              style={{ fontSize: '12px', color: '#8c8c8c' }}>
-              Loading more messages...
-            </Text>
-          </div>
-        )}
-
-        {renderPreparedMessages()}
-        {isThinkingVisible && !messagesLoading && (
-          <div
-            style={{
-              textAlign: 'center',
-              animation:
-                'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
-            }}>
-            <div
-              style={{
-                fontSize: '12px',
-                color: '#8c8c8c',
-                textAlign: 'center',
-                cursor: 'pointer',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                lineHeight: '1.5',
-                wordBreak: 'break-word',
-                width: '100%',
-              }}>
-              Agent is thinking...
-            </div>
-          </div>
-        )}
-        {pendingMessages && pendingMessages.length > 0 && (
-          <div
-            style={{
-              borderTop: '1px solid #ebebeb',
-              paddingTop: '10px',
-              marginTop: '8px',
-            }}>
-            {pendingMessages.map((msg, idx) => (
-              <div key={`pending-${idx}`} style={messageBlockStyle}>
-                {renderPendingMessage(msg)}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+  },
+);
 
 export default ThreadMessagesView;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Handle, NodeProps, Position, useStore } from '@xyflow/react';
 import { Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
@@ -50,7 +50,7 @@ interface CustomNodeProps extends NodeProps {
   compiledNodesLoading?: boolean;
 }
 
-export const CustomNode = ({
+export const CustomNode = React.memo(({
   id: nodeId,
   data,
   selected,
@@ -537,4 +537,23 @@ export const CustomNode = ({
       )}
     </Card>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary rerenders
+  // Only rerender if relevant props change
+  // Note: We compare data.label and data.template instead of the whole data object
+  // since the data object reference changes frequently but content may not
+  const prevData = prevProps.data as unknown as GraphNodeData;
+  const nextData = nextProps.data as unknown as GraphNodeData;
+  
+  return (
+    prevProps.id === nextProps.id &&
+    prevProps.selected === nextProps.selected &&
+    prevData?.label === nextData?.label &&
+    prevData?.template === nextData?.template &&
+    prevProps.graphStatus === nextProps.graphStatus &&
+    prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
+    prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
+    prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
+    prevProps.templates?.length === nextProps.templates?.length
+  );
+});

@@ -1,5 +1,5 @@
 // NodeEditSidebar.tsx
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Button,
   Card,
@@ -72,6 +72,13 @@ interface NodeEditSidebarProps {
   graphId?: string;
   compiledNode?: GraphNodeWithStatusDto;
   compiledNodesLoading?: boolean;
+  sharedMessages?: ThreadMessageDto[];
+  sharedExternalThreadId?: string;
+  onUpdateSharedMessages?: (
+    threadId: string,
+    updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
+    nodeId?: string,
+  ) => void;
 }
 
 const KeyValuePairsInput = ({
@@ -164,7 +171,7 @@ const KeyValuePairsInput = ({
   );
 };
 
-export const NodeEditSidebar = ({
+export const NodeEditSidebar = React.memo(({
   node,
   visible,
   onClose,
@@ -176,6 +183,9 @@ export const NodeEditSidebar = ({
   graphId,
   compiledNode,
   compiledNodesLoading,
+  sharedMessages = [],
+  sharedExternalThreadId,
+  onUpdateSharedMessages,
 }: NodeEditSidebarProps) => {
   const [form] = Form.useForm();
   const [nodeName, setNodeName] = useState('');
@@ -433,7 +443,7 @@ export const NodeEditSidebar = ({
         setMessages([]);
         setHasMoreMessages(true);
         setCurrentOffset(0);
-        setExternalThreadId(undefined);
+        setExternalThreadId(sharedExternalThreadId);
         return;
       }
 
@@ -449,14 +459,22 @@ export const NodeEditSidebar = ({
         const responseExternalThreadId = newMessages.find(
           (m) => m.externalThreadId,
         )?.externalThreadId;
-        if (responseExternalThreadId) {
-          setExternalThreadId(responseExternalThreadId);
+        
+        // Update shared state
+        if (onUpdateSharedMessages) {
+          onUpdateSharedMessages(selectedThreadId, () => newMessages, node.id);
         }
-        // Replace messages entirely when loading for a specific node
-        // (not merge, to avoid showing messages from previously selected nodes)
+        
+        // Also update local state for immediate display
         setMessages(newMessages);
         setHasMoreMessages(newMessages.length === 50);
         setCurrentOffset(50);
+        
+        if (responseExternalThreadId) {
+          setExternalThreadId(responseExternalThreadId);
+        } else if (sharedExternalThreadId) {
+          setExternalThreadId(sharedExternalThreadId);
+        }
       } catch (error) {
         console.error('Error loading messages:', error);
         message.error('Failed to load messages');
@@ -468,31 +486,46 @@ export const NodeEditSidebar = ({
     };
 
     loadMessages();
-  }, [selectedThreadId, node?.id, isAgentNode]);
+  }, [selectedThreadId, node?.id, isAgentNode, sharedExternalThreadId, onUpdateSharedMessages]);
 
-  useWebSocketEvent(
-    'agent.message',
-    (notification) => {
-      const event = notification as AgentMessageNotification;
-
-      if (!isAgentNode || !visible) return;
-      if (!graphId || event.graphId !== graphId) return;
-      if (!node?.id || event.nodeId !== node.id) return;
-      if (!selectedThreadId || event.internalThreadId !== selectedThreadId)
-        return;
-
-      const incomingMessage = event.data;
-
-      if (incomingMessage.externalThreadId) {
-        setExternalThreadId(incomingMessage.externalThreadId);
-      }
-
-      setMessages((prev) =>
-        mergeMessagesReplacingStreaming(prev, [incomingMessage]),
-      );
-    },
-    [graphId, isAgentNode, node?.id, selectedThreadId, visible],
-  );
+  // Use shared messages from props instead of WebSocket listener
+  // The WebSocket listener is now handled at GraphPage level
+  useEffect(() => {
+    if (!isAgentNode || !visible || !selectedThreadId) return;
+    
+    // Sync shared messages to local state, merging to preserve reasoning updates
+    if (sharedMessages && sharedMessages.length > 0) {
+      setMessages((prev) => {
+        // Create a map of shared messages by ID for quick lookup
+        const sharedById = new Map(sharedMessages.map(msg => [msg.id, msg]));
+        const result: ThreadMessageDto[] = [];
+        const processedIds = new Set<string>();
+        
+        // First, add all shared messages (which includes reasoning updates)
+        sharedMessages.forEach(msg => {
+          result.push(msg);
+          processedIds.add(msg.id);
+        });
+        
+        // Then add any local messages that aren't in shared state (like optimistic messages)
+        prev.forEach(localMsg => {
+          if (!processedIds.has(localMsg.id)) {
+            result.push(localMsg);
+            processedIds.add(localMsg.id);
+          }
+        });
+        
+        // Sort chronologically
+        return sortMessagesChronologically(result);
+      });
+    }
+  }, [sharedMessages, isAgentNode, visible, selectedThreadId]);
+  
+  useEffect(() => {
+    if (sharedExternalThreadId && !externalThreadId) {
+      setExternalThreadId(sharedExternalThreadId);
+    }
+  }, [sharedExternalThreadId, externalThreadId]);
 
   // Sync externalThreadId from compiledNode metadata
   useEffect(() => {
@@ -513,7 +546,7 @@ export const NodeEditSidebar = ({
     visible,
   ]);
 
-  const loadMoreMessages = async () => {
+  const loadMoreMessages = useCallback(async () => {
     if (
       !selectedThreadId ||
       !node?.id ||
@@ -550,9 +583,24 @@ export const NodeEditSidebar = ({
     } finally {
       setLoadingMoreMessages(false);
     }
-  };
+  }, [selectedThreadId, node?.id, isAgentNode, loadingMoreMessages, hasMoreMessages, currentOffset]);
 
-  const refreshMessages = async () => {
+  // Memoized callback to update messages and shared state
+  const handleMessagesUpdate = useCallback(
+    (updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[]) => {
+      setMessages((prev) => {
+        const updated = updater(prev);
+        // Also update shared state if available (for reasoning messages and other updates)
+        if (onUpdateSharedMessages && selectedThreadId) {
+          onUpdateSharedMessages(selectedThreadId, () => updated, node?.id);
+        }
+        return updated;
+      });
+    },
+    [selectedThreadId, node?.id, onUpdateSharedMessages],
+  );
+
+  const refreshMessages = useCallback(async () => {
     if (!selectedThreadId || !node?.id || !isAgentNode) {
       return;
     }
@@ -581,9 +629,9 @@ export const NodeEditSidebar = ({
     } finally {
       setMessagesLoading(false);
     }
-  };
+  }, [selectedThreadId, node?.id, isAgentNode]);
 
-  const autoSaveNodeChanges = async () => {
+  const autoSaveNodeChanges = useCallback(async () => {
     if (!node) return;
 
     try {
@@ -707,9 +755,9 @@ export const NodeEditSidebar = ({
     } catch (error) {
       console.error('Auto-save failed:', error);
     }
-  };
+  }, [node, nodeName, formFields, form, onSave]);
 
-  const handleFormChange = (
+  const handleFormChange = useCallback((
     changedValues: Record<string, unknown>,
     allValues: Record<string, unknown>,
   ) => {
@@ -723,11 +771,11 @@ export const NodeEditSidebar = ({
       // Auto-save changes immediately
       autoSaveNodeChanges();
     }
-  };
+  }, [initialFormValues, autoSaveNodeChanges]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     onClose();
-  };
+  }, [onClose]);
 
   const handleNameEdit = () => {
     setIsEditingName(true);
@@ -997,10 +1045,9 @@ export const NodeEditSidebar = ({
     );
   };
 
-  const renderMessagesTabContent = () => {
-    // Extract pending messages from compiledNode's additionalNodeMetadata
-    const pendingMessages = compiledNode?.additionalNodeMetadata
-      ?.pendingMessages as
+  // Memoize pending messages and newMessageMode to prevent recalculation
+  const pendingMessages = useMemo(() => {
+    return compiledNode?.additionalNodeMetadata?.pendingMessages as
       | Array<{
           content: string;
           role: 'human' | 'ai';
@@ -1012,13 +1059,17 @@ export const NodeEditSidebar = ({
           createdAt?: string;
         }>
       | undefined;
+  }, [compiledNode?.additionalNodeMetadata?.pendingMessages]);
 
-    // Extract newMessageMode from node config
-    const newMessageMode = (compiledNode?.config as Record<string, unknown>)
+  const newMessageMode = useMemo(() => {
+    return (compiledNode?.config as Record<string, unknown>)
       ?.newMessageMode as
       | 'inject_after_tool_call'
       | 'wait_for_completion'
       | undefined;
+  }, [compiledNode?.config]);
+
+  const renderMessagesTabContent = useCallback(() => {
 
     return (
       <div
@@ -1079,12 +1130,29 @@ export const NodeEditSidebar = ({
             graphId={graphId}
             externalThreadId={externalThreadId}
             onExternalThreadIdChange={setExternalThreadId}
-            onMessagesUpdate={setMessages}
+            onMessagesUpdate={handleMessagesUpdate}
           />
         </div>
       </div>
     );
-  };
+  }, [
+    messages,
+    messagesLoading,
+    selectedThreadId,
+    node?.id,
+    isAgentNode,
+    nodeData?.templateKind,
+    loadMoreMessages,
+    hasMoreMessages,
+    loadingMoreMessages,
+    isGraphRunning,
+    compiledNode?.status,
+    pendingMessages,
+    newMessageMode,
+    graphId,
+    externalThreadId,
+    refreshMessages,
+  ]);
 
   const tabItems = isAgentNode
     ? [
@@ -1372,4 +1440,24 @@ export const NodeEditSidebar = ({
       </Modal>
     </Sider>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent rerenders when viewport changes
+  // Only rerender if relevant props actually change
+  // Note: We compare node data properties instead of the whole object
+  const prevNodeData = prevProps.node?.data as unknown as GraphNodeData;
+  const nextNodeData = nextProps.node?.data as unknown as GraphNodeData;
+  
+  return (
+    prevProps.visible === nextProps.visible &&
+    prevProps.node?.id === nextProps.node?.id &&
+    prevNodeData?.label === nextNodeData?.label &&
+    prevNodeData?.template === nextNodeData?.template &&
+    prevProps.graphStatus === nextProps.graphStatus &&
+    prevProps.selectedThreadId === nextProps.selectedThreadId &&
+    prevProps.graphId === nextProps.graphId &&
+    prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
+    prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
+    prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
+    prevProps.templates?.length === nextProps.templates?.length
+  );
+});
