@@ -417,20 +417,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const pendingAutoScrollRef = useRef<boolean>(false);
     const autoScrollDisabledRef = useRef<boolean>(false);
     const lastMessageCountRef = useRef<number>(0);
-    const [expandedSystemIds, setExpandedSystemIds] = useState<Set<string>>(
-      () => new Set(),
-    );
-    const toggleSystemMessage = useCallback((id: string) => {
-      setExpandedSystemIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
-    }, []);
 
     const [expandedReasoningIds, setExpandedReasoningIds] = useState<
       Set<string>
@@ -1542,8 +1528,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       },
     );
 
-    const [hoveredSystemId, setHoveredSystemId] = useState<string | null>(null);
-
     const renderSystemGroup = (
       systemMessages: ThreadMessageDto[],
       count: number,
@@ -1552,50 +1536,20 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       const content = formatMessageContent(firstMessage.message?.content);
       const countSuffix = count > 1 ? ` (${count} system messages)` : '';
       const fullText = `${content}${countSuffix}`;
-      const groupId = `system-${firstMessage.id || firstMessage.createdAt}`;
-      const expanded = expandedSystemIds.has(groupId);
 
-      const isHovered = hoveredSystemId === groupId;
-      const textContainerStyle: React.CSSProperties = expanded
-        ? {
-            fontSize: '12px',
-            color: isHovered ? '#8c8c8c' : '#afafaf',
-            textAlign: 'center',
-          }
-        : {
-            fontSize: '12px',
-            color: isHovered ? '#8c8c8c' : '#afafaf',
-            textAlign: 'center',
-            maxHeight: '60px',
-            overflow: 'hidden',
-            position: 'relative',
-            cursor: 'pointer',
-          };
+      const textContainerStyle: React.CSSProperties = {
+        fontSize: '12px',
+        color: '#afafaf',
+        textAlign: 'center',
+      };
 
       return (
-        <div
-          style={{ width: '100%' }}
-          role="button"
-          tabIndex={0}
-          onClick={() => toggleSystemMessage(groupId)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              toggleSystemMessage(groupId);
-            }
-          }}
-          onMouseEnter={() => setHoveredSystemId(groupId)}
-          onMouseLeave={() =>
-            setHoveredSystemId((prev) => (prev === groupId ? null : prev))
-          }>
+        <div style={{ width: '100%' }}>
           <div style={textContainerStyle}>
             <MarkdownContent
               content={fullText}
-              allowHorizontalScroll={expanded}
+              allowHorizontalScroll={true}
             />
-            {!expanded && (
-              <div style={{ ...collapsedGradientStyle, height: '18px' }} />
-            )}
           </div>
         </div>
       );
@@ -1697,7 +1651,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              marginBottom: '25px',
             }}>
             {status === 'calling' && <Spin size="small" />}
             <Text
@@ -1835,7 +1788,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
         // Don't show metadata for tool messages
         return (
-          <div style={{ marginBottom: `25px` }}>
+          <div>
             <div
               style={{
                 background: '#1e1e1e',
@@ -2315,7 +2268,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'tool') {
-          if (isFinishToolMessage(item)) {
+          // Check for finish tool message directly instead of using type guard
+          if (item.name && item.name.toLowerCase() === 'finish') {
             pushRow(
               item.id || `finish-${i}`,
               renderFinishTool(item.status, item.result, {
@@ -2328,52 +2282,36 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             continue;
           }
 
-          const group: Array<Extract<PreparedMessage, { type: 'tool' }>> = [
-            item,
-          ];
-          let j = i + 1;
-          while (
-            j < preparedMessages.length &&
-            preparedMessages[j].type === 'tool' &&
-            !isFinishToolMessage(preparedMessages[j])
-          ) {
-            group.push(
-              preparedMessages[j] as Extract<PreparedMessage, { type: 'tool' }>,
+          if (item.toolKind === 'shell') {
+            pushRow(
+              item.id || `shell-${i}`,
+              renderShellStatusLine(
+                item.name,
+                item.status,
+                item.result,
+                item.shellCommand,
+                item.toolOptions,
+                {
+                  nodeId: item.nodeId,
+                  createdAt: item.createdAt,
+                  roleLabel: item.roleLabel ?? item.name,
+                },
+              ),
             );
-            j++;
+            i++;
+            continue;
           }
 
           pushRow(
-            `tool-stack-${i}`,
-            <div
-              style={{ display: 'flex', flexDirection: 'column', rowGap: 2 }}>
-              {group.map((t, idx) => (
-                <div key={t.id || `tool-${i}-${idx}`}>
-                  {t.toolKind === 'shell'
-                    ? renderShellStatusLine(
-                        t.name,
-                        t.status,
-                        t.result,
-                        t.shellCommand,
-                        t.toolOptions,
-                        {
-                          nodeId: t.nodeId,
-                          createdAt: t.createdAt,
-                          roleLabel: t.roleLabel ?? t.name,
-                        },
-                      )
-                    : renderToolStatusLine(
-                        t.name,
-                        t.status,
-                        t.result,
-                        t.toolOptions,
-                      )}
-                </div>
-              ))}
-            </div>,
+            item.id || `generic-tool-${i}`,
+            renderToolStatusLine(
+              item.name,
+              item.status,
+              item.result,
+              item.toolOptions,
+            ),
           );
-
-          i = j;
+          i++;
           continue;
         }
 
@@ -2510,11 +2448,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       prevProps.pendingMessages === nextProps.pendingMessages ||
       (prevProps.pendingMessages?.length ===
         nextProps.pendingMessages?.length &&
-        prevProps.pendingMessages?.every(
+        (prevProps.pendingMessages?.every(
           (msg, idx) =>
             msg.content === nextProps.pendingMessages?.[idx]?.content &&
             msg.role === nextProps.pendingMessages?.[idx]?.role,
-        ));
+        ) ??
+          false));
 
     return (
       messagesEqual &&

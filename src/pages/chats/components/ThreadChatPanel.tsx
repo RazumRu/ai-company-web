@@ -855,12 +855,12 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   );
 
   // Memoize input change handler to prevent recreation
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessageInput(e.target.value);
   }, []);
 
   // Memoize input enter handler
-  const handleInputEnter = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleInputEnter = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (!e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -880,7 +880,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             gap: 12,
           }}>
           <Dropdown
@@ -899,13 +899,14 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
                 'Select trigger'}
             </Button>
           </Dropdown>
-          <Input
+          <Input.TextArea
             placeholder="Type your message..."
             value={messageInput}
             onChange={handleInputChange}
             onPressEnter={handleInputEnter}
             disabled={sendingMessage || !selectedTriggerId}
-            style={{ flex: 1 }}
+            autoSize={{ minRows: 1, maxRows: 5 }}
+            style={{ flex: 1, resize: 'none', outline: 'none' }}
           />
           <Button
             type="primary"

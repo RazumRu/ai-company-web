@@ -1313,6 +1313,16 @@ export const GraphPage = () => {
           return node;
         });
         nodesRef.current = updatedNodes;
+        
+        // Update selectedNode if it's the node being saved
+        setSelectedNode((prevSelectedNode) => {
+          if (prevSelectedNode?.id === nodeId) {
+            const updatedSelectedNode = updatedNodes.find((n) => n.id === nodeId);
+            return updatedSelectedNode || prevSelectedNode;
+          }
+          return prevSelectedNode;
+        });
+        
         setHasUnsavedChanges(true);
         setHasStructuralChanges(true);
         if (id) {

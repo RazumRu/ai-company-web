@@ -1417,6 +1417,8 @@ export const NodeEditSidebar = React.memo(({
                   expandedTextarea.fieldKey,
                   expandedTextarea.value,
                 );
+                // Manually trigger save since setFieldValue doesn't trigger onValuesChange
+                autoSaveNodeChanges();
                 setExpandedTextarea(null);
               }
             }}>
@@ -1447,11 +1449,17 @@ export const NodeEditSidebar = React.memo(({
   const prevNodeData = prevProps.node?.data as unknown as GraphNodeData;
   const nextNodeData = nextProps.node?.data as unknown as GraphNodeData;
   
+  // Compare config using JSON.stringify to detect changes
+  const prevConfig = prevNodeData?.config;
+  const nextConfig = nextNodeData?.config;
+  const configEqual = JSON.stringify(prevConfig) === JSON.stringify(nextConfig);
+  
   return (
     prevProps.visible === nextProps.visible &&
     prevProps.node?.id === nextProps.node?.id &&
     prevNodeData?.label === nextNodeData?.label &&
     prevNodeData?.template === nextNodeData?.template &&
+    configEqual &&
     prevProps.graphStatus === nextProps.graphStatus &&
     prevProps.selectedThreadId === nextProps.selectedThreadId &&
     prevProps.graphId === nextProps.graphId &&

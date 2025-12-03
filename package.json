@@ -51,7 +51,7 @@
     "vite": "^4.5.14"
   },
   "scripts": {
-    "dev": "refine dev",
+    "dev": "refine dev --port 5174",
     "build": "tsc && refine build",
     "lint:fix": "prettier --write . && pnpm eslint \"src/**/*.{js,ts,tsx}\" --fix",
     "start": "refine start",
