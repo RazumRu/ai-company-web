@@ -88,12 +88,10 @@ export interface ThreadMessagesViewProps {
   isNodeRunning?: boolean;
   pendingMessages?: PendingMessage[];
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
-  // Props for reasoning message handling
   graphId?: string;
   externalThreadId?: string;
   onExternalThreadIdChange?: (externalThreadId: string | undefined) => void;
   isDraft?: boolean;
-  // Callback to update messages when reasoning chunks are processed
   onMessagesUpdate?: (
     updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
   ) => void;
@@ -433,7 +431,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       });
     }, []);
 
-    // Build reasoning thread message
     const buildReasoningThreadMessage = useCallback(
       (
         entry: ReasoningChunkEntry,
@@ -506,7 +503,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       [selectedThreadId, nodeId, externalThreadId],
     );
 
-    // Apply reasoning entries to messages
     const applyReasoningEntries = useCallback(
       (
         entries: ReasoningChunkEntry[],
@@ -563,8 +559,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               JSON.stringify(existingAdditional) !==
               JSON.stringify(nextAdditional);
 
-            // Always update streaming reasoning messages, even if content appears the same
-            // This ensures we capture incremental updates during streaming
             const isStreamingMessage = Boolean(
               nextAdditional[STREAMING_REASONING_FLAG],
             );
@@ -593,7 +587,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       [buildReasoningThreadMessage, isDraft, onMessagesUpdate],
     );
 
-    // Handle graph.node.update events for reasoning chunks
     useWebSocketEvent(
       'graph.node.update',
       (notification) => {
@@ -601,7 +594,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
         if (isDraft || !graphId || !selectedThreadId) return;
         if (event.graphId !== graphId) return;
-        // If nodeId is provided (graph page), filter by nodeId
         if (nodeId && event.nodeId !== nodeId) return;
 
         const additionalMetadata = event.data?.additionalNodeMetadata;
@@ -623,8 +615,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             ? event.data.metadata.runId
             : undefined;
 
-        // Check if this event is for the current thread
-        // Match by external thread ID, internal thread ID, or if both are missing
         const threadMatches =
           eventThreadId === externalThreadId ||
           eventInternalThreadId === selectedThreadId ||
@@ -672,8 +662,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           return;
         }
 
-        // If we matched by internal thread ID, we should process the event
-        // even if external thread IDs don't match (they might not be set yet)
         const matchedByInternalId = eventInternalThreadId === selectedThreadId;
 
         if (
@@ -796,7 +784,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     }, [messagesLoading, messages.length]);
 
     useEffect(() => {
-      // Inject scrollbar styles for webkit browsers
       const styleId = 'shell-scrollbar-styles';
       if (document.getElementById(styleId)) return;
 
@@ -858,7 +845,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       if (content === null || content === undefined) return true;
       if (typeof content === 'string') {
         const trimmed = content.trim();
-        // Check if it's empty or an empty array/object string
         return trimmed.length === 0 || trimmed === '[]' || trimmed === '{}';
       }
       return false;
@@ -1157,8 +1143,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           'toolCalls',
         );
         if (role === 'ai' && messageToolCalls && messageToolCalls.length > 0) {
-          // Check if we need to display the message content
-          // Display it if content is not blank OR if toolCalls have meaningful data
           const hasNonBlankContent = !isBlankContent(m.message?.content);
 
           if (hasNonBlankContent) {
@@ -1250,8 +1234,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               : null;
           const shellCommand = resultObj?.command;
           const isShell = (name || '').toLowerCase() === 'shell';
-          // For standalone tools, we don't have access to the original arguments
-          // so we'll leave toolOptions as undefined
           const toolOptions = undefined;
 
           prepared.push({
@@ -1286,13 +1268,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       return prepared;
     };
 
-    // Memoize prepared messages with deep comparison to avoid unnecessary recalculations
     const preparedMessages = useMemo(() => {
       return prepareReadyMessages(messages);
     }, [messages]);
     const isThinkingVisible = isNodeRunning && isAgentNode;
-
-    const STREAMING_REASONING_FLAG = '__streamingReasoning';
 
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
@@ -1546,10 +1525,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       return (
         <div style={{ width: '100%' }}>
           <div style={textContainerStyle}>
-            <MarkdownContent
-              content={fullText}
-              allowHorizontalScroll={true}
-            />
+            <MarkdownContent content={fullText} allowHorizontalScroll={true} />
           </div>
         </div>
       );
@@ -1564,7 +1540,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         return undefined;
       }
 
-      // Extract message and needsMoreInfo flag from result content
       let finishMessage = 'Task completed.';
       let needsMoreInfo = false;
       if (resultContent) {
@@ -1680,7 +1655,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         );
       }
 
-      // Don't show metadata for tool messages
       return baseLine;
     };
 
@@ -1726,7 +1700,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             ? '#9d9d9d'
             : exitCodeStatus === 0
               ? '#9d9d9d'
-              : '#ff4d4f'; // Red for non-zero exit codes
+              : '#ff4d4f';
         const tint =
           exitCodeStatus === null
             ? '#2b2b2b'
@@ -1757,7 +1731,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           </div>
         );
 
-        // Get output text
         const getOutputText = (): string | null => {
           if (
             resultObj?.output !== undefined &&
@@ -1786,7 +1759,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           ? truncateToLines(outputText, 3)
           : null;
 
-        // Don't show metadata for tool messages
         return (
           <div>
             <div
@@ -2078,7 +2050,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       if (isToolLikeRole(role)) {
         const name = getMessageString(message.message, 'name') || 'tool';
         const resultContent = message.message?.content;
-        // For standalone tools, we don't have access to the original arguments
         return renderToolStatusLine(name, 'executed', resultContent, undefined);
       }
 
@@ -2123,7 +2094,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       const isHuman = message.role === 'human';
       const content = message.content;
 
-      // Determine when the message will be sent
       const sendTimeText =
         newMessageMode === 'inject_after_tool_call'
           ? 'Will be sent after next tool execution'
@@ -2226,10 +2196,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const renderPreparedMessages = () => {
       const rows: React.ReactNode[] = [];
       let i = 0;
-      const isFinishToolMessage = (
-        msg: PreparedMessage,
-      ): msg is Extract<PreparedMessage, { type: 'tool' }> =>
-        msg.type === 'tool' && (msg.name || '').toLowerCase() === 'finish';
 
       const pushRow = (
         key: React.Key,
@@ -2268,7 +2234,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'tool') {
-          // Check for finish tool message directly instead of using type guard
           if (item.name && item.name.toLowerCase() === 'finish') {
             pushRow(
               item.id || `finish-${i}`,
@@ -2433,10 +2398,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    // Custom comparison to prevent rerenders when unrelated props change
-    // Only rerender if messages or loading states change
-    // Note: We compare array lengths and references - if messages array reference
-    // changes, it means new messages were added/updated, so we should rerender
     const messagesEqual =
       prevProps.messages === nextProps.messages ||
       (prevProps.messages.length === nextProps.messages.length &&

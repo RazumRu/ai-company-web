@@ -1,5 +1,10 @@
-// NodeEditSidebar.tsx
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   Button,
   Card,
@@ -171,213 +176,230 @@ const KeyValuePairsInput = ({
   );
 };
 
-export const NodeEditSidebar = React.memo(({
-  node,
-  visible,
-  onClose,
-  onSave,
-  templates,
-  graphStatus,
-  onTriggerClick,
-  selectedThreadId,
-  graphId,
-  compiledNode,
-  compiledNodesLoading,
-  sharedMessages = [],
-  sharedExternalThreadId,
-  onUpdateSharedMessages,
-}: NodeEditSidebarProps) => {
-  const [form] = Form.useForm();
-  const [nodeName, setNodeName] = useState('');
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editingName, setEditingName] = useState('');
-  const [formFields, setFormFields] = useState<FormField[]>([]);
-  const [expandedTextarea, setExpandedTextarea] = useState<{
-    fieldKey: string;
-    value: string;
-  } | null>(null);
-  const [initialFormValues, setInitialFormValues] = useState<
-    Record<string, unknown>
-  >({});
-  const [activeTab, setActiveTab] = useState('options');
-  const [messages, setMessages] = useState<ThreadMessageDto[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const [externalThreadId, setExternalThreadId] = useState<string | undefined>(
-    undefined,
-  );
-  const [liteLlmModels, setLiteLlmModels] = useState<LiteLlmModelDto[]>([]);
-  const [litellmModelsLoading, setLitellmModelsLoading] = useState(false);
+export const NodeEditSidebar = React.memo(
+  ({
+    node,
+    visible,
+    onClose,
+    onSave,
+    templates,
+    graphStatus,
+    onTriggerClick,
+    selectedThreadId,
+    graphId,
+    compiledNode,
+    compiledNodesLoading,
+    sharedMessages = [],
+    sharedExternalThreadId,
+    onUpdateSharedMessages,
+  }: NodeEditSidebarProps) => {
+    const [form] = Form.useForm();
+    const [nodeName, setNodeName] = useState('');
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editingName, setEditingName] = useState('');
+    const [formFields, setFormFields] = useState<FormField[]>([]);
+    const [expandedTextarea, setExpandedTextarea] = useState<{
+      fieldKey: string;
+      value: string;
+    } | null>(null);
+    const [initialFormValues, setInitialFormValues] = useState<
+      Record<string, unknown>
+    >({});
+    const [activeTab, setActiveTab] = useState('options');
+    const [messages, setMessages] = useState<ThreadMessageDto[]>([]);
+    const [messagesLoading, setMessagesLoading] = useState(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [loadingMoreMessages, setLoadingMoreMessages] = useState(false);
+    const [currentOffset, setCurrentOffset] = useState(0);
+    const [externalThreadId, setExternalThreadId] = useState<
+      string | undefined
+    >(undefined);
+    const [liteLlmModels, setLiteLlmModels] = useState<LiteLlmModelDto[]>([]);
+    const [litellmModelsLoading, setLitellmModelsLoading] = useState(false);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const hasLiteLlmSelectField = useMemo(
-    () =>
-      formFields.some(
-        (field) => field['x-ui:litellm-models-list-select'] === true,
-      ),
-    [formFields],
-  );
+    const hasLiteLlmSelectField = useMemo(
+      () =>
+        formFields.some(
+          (field) => field['x-ui:litellm-models-list-select'] === true,
+        ),
+      [formFields],
+    );
 
-  const nodeData = node?.data as unknown as GraphNodeData;
-  const templateSchema = nodeData?.templateSchema;
-  const templateKindLower = (nodeData?.templateKind || '').toLowerCase();
-  const isAgentNode = templateKindLower === 'simpleagent';
-  const isGraphRunning = graphStatus === GraphDtoStatusEnum.Running;
-  const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
-    templateKindLower,
-  );
+    const nodeData = node?.data as unknown as GraphNodeData;
+    const templateSchema = nodeData?.templateSchema;
+    const templateKindLower = (nodeData?.templateKind || '').toLowerCase();
+    const isAgentNode = templateKindLower === 'simpleagent';
+    const isGraphRunning = graphStatus === GraphDtoStatusEnum.Running;
+    const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
+      templateKindLower,
+    );
 
-  const statusTagColorMap: Record<string, string> = {
-    running: 'green',
-    idle: 'blue',
-    starting: 'geekblue',
-    stopped: 'red',
-  };
+    const statusTagColorMap: Record<string, string> = {
+      running: 'green',
+      idle: 'blue',
+      starting: 'geekblue',
+      stopped: 'red',
+    };
 
-  const rawStatus = compiledNode?.status;
+    const rawStatus = compiledNode?.status;
 
-  const statusLabel = !isGraphRunning
-    ? 'Not running'
-    : compiledNodesLoading
-      ? 'Loading...'
-      : rawStatus
-        ? `${rawStatus.charAt(0).toUpperCase()}${rawStatus.slice(1)}`
-        : 'Unknown';
+    const statusLabel = !isGraphRunning
+      ? 'Not running'
+      : compiledNodesLoading
+        ? 'Loading...'
+        : rawStatus
+          ? `${rawStatus.charAt(0).toUpperCase()}${rawStatus.slice(1)}`
+          : 'Unknown';
 
-  const statusTagColor = !isGraphRunning
-    ? 'default'
-    : compiledNodesLoading
-      ? 'geekblue'
-      : statusTagColorMap[rawStatus ?? ''] || 'default';
+    const statusTagColor = !isGraphRunning
+      ? 'default'
+      : compiledNodesLoading
+        ? 'geekblue'
+        : statusTagColorMap[rawStatus ?? ''] || 'default';
 
-  const normalizeJsonViewValue = (value: unknown): object | undefined => {
-    if (value === undefined) {
-      return undefined;
-    }
-    if (value !== null && typeof value === 'object') {
-      return value as object;
-    }
-    return { value } as Record<string, unknown>;
-  };
-
-  const metadataJsonValue = normalizeJsonViewValue(compiledNode?.metadata);
-  const configJsonValue = normalizeJsonViewValue(compiledNode?.config);
-  const hasInfoData = Boolean(metadataJsonValue || configJsonValue);
-
-  const infoContent = (
-    <div style={{ maxWidth: 360 }}>
-      {compiledNodesLoading && (
-        <Text
-          type="secondary"
-          style={{
-            display: 'block',
-            marginBottom: hasInfoData ? 8 : 0,
-          }}>
-          Loading latest node information...
-        </Text>
-      )}
-      {metadataJsonValue && (
-        <div style={{ marginBottom: configJsonValue ? 16 : 0 }}>
-          <Text strong style={{ display: 'block', marginBottom: 8 }}>
-            Metadata
-          </Text>
-          <div
-            style={{
-              maxHeight: 240,
-              overflow: 'auto',
-              border: '1px solid #f0f0f0',
-              borderRadius: 6,
-              padding: 8,
-              background: '#fafafa',
-            }}>
-            <JsonView value={metadataJsonValue as object} style={lightTheme} />
-          </div>
-        </div>
-      )}
-      {configJsonValue && (
-        <div>
-          <Text strong style={{ display: 'block', marginBottom: 8 }}>
-            Configuration
-          </Text>
-          <div
-            style={{
-              maxHeight: 240,
-              overflow: 'auto',
-              border: '1px solid #f0f0f0',
-              borderRadius: 6,
-              padding: 8,
-              background: '#fafafa',
-            }}>
-            <JsonView value={configJsonValue as object} style={lightTheme} />
-          </div>
-        </div>
-      )}
-      {!compiledNodesLoading && !hasInfoData && (
-        <Text type="secondary">No metadata or configuration available.</Text>
-      )}
-    </div>
-  );
-
-  useEffect(() => {
-    setExternalThreadId(undefined);
-  }, [selectedThreadId, node?.id]);
-
-  useEffect(() => {
-    if (!hasLiteLlmSelectField) {
-      return;
-    }
-    if (liteLlmModels.length > 0) {
-      return;
-    }
-
-    let isActive = true;
-
-    const fetchLiteLlmModels = async () => {
-      try {
-        setLitellmModelsLoading(true);
-        const response = await litellmApi.listModels();
-        if (!isActive) {
-          return;
-        }
-        setLiteLlmModels(response.data ?? []);
-      } catch (error) {
-        if (!isActive) {
-          return;
-        }
-        console.error('Failed to load LiteLLM models:', error);
-        message.error('Failed to load LiteLLM models');
-      } finally {
-        if (isActive) {
-          setLitellmModelsLoading(false);
-        }
+    const normalizeJsonViewValue = (value: unknown): object | undefined => {
+      if (value === undefined) {
+        return undefined;
       }
+      if (value !== null && typeof value === 'object') {
+        return value as object;
+      }
+      return { value } as Record<string, unknown>;
     };
 
-    fetchLiteLlmModels();
+    const metadataJsonValue = normalizeJsonViewValue(compiledNode?.metadata);
+    const configJsonValue = normalizeJsonViewValue(compiledNode?.config);
+    const hasInfoData = Boolean(metadataJsonValue || configJsonValue);
 
-    return () => {
-      isActive = false;
-    };
-  }, [hasLiteLlmSelectField, liteLlmModels.length]);
+    const infoContent = (
+      <div style={{ maxWidth: 360 }}>
+        {compiledNodesLoading && (
+          <Text
+            type="secondary"
+            style={{
+              display: 'block',
+              marginBottom: hasInfoData ? 8 : 0,
+            }}>
+            Loading latest node information...
+          </Text>
+        )}
+        {metadataJsonValue && (
+          <div style={{ marginBottom: configJsonValue ? 16 : 0 }}>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              Metadata
+            </Text>
+            <div
+              style={{
+                maxHeight: 240,
+                overflow: 'auto',
+                border: '1px solid #f0f0f0',
+                borderRadius: 6,
+                padding: 8,
+                background: '#fafafa',
+              }}>
+              <JsonView
+                value={metadataJsonValue as object}
+                style={lightTheme}
+              />
+            </div>
+          </div>
+        )}
+        {configJsonValue && (
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>
+              Configuration
+            </Text>
+            <div
+              style={{
+                maxHeight: 240,
+                overflow: 'auto',
+                border: '1px solid #f0f0f0',
+                borderRadius: 6,
+                padding: 8,
+                background: '#fafafa',
+              }}>
+              <JsonView value={configJsonValue as object} style={lightTheme} />
+            </div>
+          </div>
+        )}
+        {!compiledNodesLoading && !hasInfoData && (
+          <Text type="secondary">No metadata or configuration available.</Text>
+        )}
+      </div>
+    );
 
-  useEffect(() => {
-    if (externalThreadId) return;
-    const derived = messages.find(
-      (msg) => msg.externalThreadId,
-    )?.externalThreadId;
-    if (derived) {
-      setExternalThreadId(derived);
-    }
-  }, [externalThreadId, messages]);
+    useEffect(() => {
+      return () => {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+      };
+    }, []);
 
-  useEffect(() => {
-    if (node) {
-      const nodeData = node.data;
-      setNodeName((nodeData.label as string) || '');
-      setEditingName((nodeData.label as string) || '');
+    useEffect(() => {
+      setExternalThreadId(undefined);
+    }, [selectedThreadId, node?.id]);
 
-      const currentNodeIsAgent = nodeData?.templateKind === 'simpleAgent';
+    useEffect(() => {
+      if (!hasLiteLlmSelectField) {
+        return;
+      }
+      if (liteLlmModels.length > 0) {
+        return;
+      }
+
+      let isActive = true;
+
+      const fetchLiteLlmModels = async () => {
+        try {
+          setLitellmModelsLoading(true);
+          const response = await litellmApi.listModels();
+          if (!isActive) {
+            return;
+          }
+          setLiteLlmModels(response.data ?? []);
+        } catch (error) {
+          if (!isActive) {
+            return;
+          }
+          console.error('Failed to load LiteLLM models:', error);
+          message.error('Failed to load LiteLLM models');
+        } finally {
+          if (isActive) {
+            setLitellmModelsLoading(false);
+          }
+        }
+      };
+
+      fetchLiteLlmModels();
+
+      return () => {
+        isActive = false;
+      };
+    }, [hasLiteLlmSelectField, liteLlmModels.length]);
+
+    useEffect(() => {
+      if (externalThreadId) return;
+      const derived = messages.find(
+        (msg) => msg.externalThreadId,
+      )?.externalThreadId;
+      if (derived) {
+        setExternalThreadId(derived);
+      }
+    }, [externalThreadId, messages]);
+
+    useEffect(() => {
+      if (!node) {
+        form.resetFields();
+        setFormFields([]);
+        setInitialFormValues({});
+        return;
+      }
+
+      const currentNodeData = node.data as unknown as GraphNodeData;
+      const currentNodeIsAgent =
+        currentNodeData?.templateKind === 'simpleAgent';
       const availableTabs = ['options'];
       if (currentNodeIsAgent) {
         availableTabs.push('messages');
@@ -387,7 +409,7 @@ export const NodeEditSidebar = React.memo(({
         setActiveTab('options');
       }
 
-      const template = templates.find((t) => t.id === nodeData.template);
+      const template = templates.find((t) => t.id === currentNodeData.template);
 
       if (template?.schema?.properties) {
         const fields: FormField[] = [];
@@ -420,7 +442,9 @@ export const NodeEditSidebar = React.memo(({
             initialValues[field.key] = field.const;
           } else {
             initialValues[field.key] =
-              (nodeData.config as Record<string, unknown>)?.[field.key] ??
+              (currentNodeData.config as Record<string, unknown>)?.[
+                field.key
+              ] ??
               field.default ??
               '';
           }
@@ -428,25 +452,193 @@ export const NodeEditSidebar = React.memo(({
 
         form.resetFields();
         form.setFieldsValue(initialValues);
+        const currentValuesNow = form.getFieldsValue(true);
+        setInitialFormValues(currentValuesNow);
       } else {
         setFormFields([]);
+        form.resetFields();
+        setInitialFormValues({});
       }
 
-      const currentValuesNow = form.getFieldsValue(true);
-      setInitialFormValues(currentValuesNow);
-    }
-  }, [node, form, templates]);
+      const label = (currentNodeData.label as string) || '';
+      setNodeName(label);
+      setEditingName(label);
+    }, [node?.id, templates, form]);
 
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!selectedThreadId || !node?.id || !isAgentNode) {
-        setMessages([]);
-        setHasMoreMessages(true);
-        setCurrentOffset(0);
+    useEffect(() => {
+      const loadMessages = async () => {
+        if (!selectedThreadId || !node?.id || !isAgentNode) {
+          setMessages([]);
+          setHasMoreMessages(true);
+          setCurrentOffset(0);
+          setExternalThreadId(sharedExternalThreadId);
+          return;
+        }
+
+        try {
+          setMessagesLoading(true);
+          const response = await threadsApi.getThreadMessages(
+            selectedThreadId,
+            node.id,
+            50,
+            0,
+          );
+          const newMessages = response.data?.reverse() || [];
+          const responseExternalThreadId = newMessages.find(
+            (m) => m.externalThreadId,
+          )?.externalThreadId;
+
+          if (onUpdateSharedMessages) {
+            onUpdateSharedMessages(
+              selectedThreadId,
+              () => newMessages,
+              node.id,
+            );
+          }
+
+          setMessages(newMessages);
+          setHasMoreMessages(newMessages.length === 50);
+          setCurrentOffset(50);
+
+          if (responseExternalThreadId) {
+            setExternalThreadId(responseExternalThreadId);
+          } else if (sharedExternalThreadId) {
+            setExternalThreadId(sharedExternalThreadId);
+          }
+        } catch (error) {
+          console.error('Error loading messages:', error);
+          message.error('Failed to load messages');
+          setMessages([]);
+          setHasMoreMessages(false);
+        } finally {
+          setMessagesLoading(false);
+        }
+      };
+
+      loadMessages();
+    }, [
+      selectedThreadId,
+      node?.id,
+      isAgentNode,
+      sharedExternalThreadId,
+      onUpdateSharedMessages,
+    ]);
+
+    useEffect(() => {
+      if (!isAgentNode || !visible || !selectedThreadId) return;
+
+      if (sharedMessages && sharedMessages.length > 0) {
+        setMessages((prev) => {
+          const sharedById = new Map(
+            sharedMessages.map((msg) => [msg.id, msg]),
+          );
+          const result: ThreadMessageDto[] = [];
+          const processedIds = new Set<string>();
+
+          sharedMessages.forEach((msg) => {
+            result.push(msg);
+            processedIds.add(msg.id);
+          });
+
+          prev.forEach((localMsg) => {
+            if (!processedIds.has(localMsg.id)) {
+              result.push(localMsg);
+              processedIds.add(localMsg.id);
+            }
+          });
+
+          return sortMessagesChronologically(result);
+        });
+      }
+    }, [sharedMessages, isAgentNode, visible, selectedThreadId]);
+
+    useEffect(() => {
+      if (sharedExternalThreadId && !externalThreadId) {
         setExternalThreadId(sharedExternalThreadId);
+      }
+    }, [sharedExternalThreadId, externalThreadId]);
+
+    useEffect(() => {
+      if (!isAgentNode || !visible || !compiledNode) return;
+
+      const metadataThreadId =
+        typeof compiledNode?.metadata?.threadId === 'string'
+          ? compiledNode.metadata.threadId
+          : undefined;
+
+      if (metadataThreadId && !externalThreadId) {
+        setExternalThreadId(metadataThreadId);
+      }
+    }, [
+      compiledNode?.metadata?.threadId,
+      externalThreadId,
+      isAgentNode,
+      visible,
+    ]);
+
+    const loadMoreMessages = useCallback(async () => {
+      if (
+        !selectedThreadId ||
+        !node?.id ||
+        !isAgentNode ||
+        loadingMoreMessages ||
+        !hasMoreMessages
+      ) {
         return;
       }
 
+      try {
+        setLoadingMoreMessages(true);
+        const response = await threadsApi.getThreadMessages(
+          selectedThreadId,
+          node.id,
+          50,
+          currentOffset,
+        );
+        const newMessages = response.data?.reverse() || [];
+
+        if (newMessages.length > 0) {
+          setMessages((prev) => {
+            const merged = mergeMessagesReplacingStreaming(prev, newMessages);
+            return merged;
+          });
+          setCurrentOffset((prev) => prev + newMessages.length);
+          setHasMoreMessages(newMessages.length === 50);
+        } else {
+          setHasMoreMessages(false);
+        }
+      } catch (error) {
+        console.error('Error loading more messages:', error);
+        message.error('Failed to load more messages');
+      } finally {
+        setLoadingMoreMessages(false);
+      }
+    }, [
+      selectedThreadId,
+      node?.id,
+      isAgentNode,
+      loadingMoreMessages,
+      hasMoreMessages,
+      currentOffset,
+    ]);
+
+    const handleMessagesUpdate = useCallback(
+      (updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[]) => {
+        setMessages((prev) => {
+          const updated = updater(prev);
+          if (onUpdateSharedMessages && selectedThreadId) {
+            onUpdateSharedMessages(selectedThreadId, () => updated, node?.id);
+          }
+          return updated;
+        });
+      },
+      [selectedThreadId, node?.id, onUpdateSharedMessages],
+    );
+
+    const refreshMessages = useCallback(async () => {
+      if (!selectedThreadId || !node?.id || !isAgentNode) {
+        return;
+      }
       try {
         setMessagesLoading(true);
         const response = await threadsApi.getThreadMessages(
@@ -459,930 +651,719 @@ export const NodeEditSidebar = React.memo(({
         const responseExternalThreadId = newMessages.find(
           (m) => m.externalThreadId,
         )?.externalThreadId;
-        
-        // Update shared state
-        if (onUpdateSharedMessages) {
-          onUpdateSharedMessages(selectedThreadId, () => newMessages, node.id);
+        if (responseExternalThreadId) {
+          setExternalThreadId(responseExternalThreadId);
         }
-        
-        // Also update local state for immediate display
         setMessages(newMessages);
         setHasMoreMessages(newMessages.length === 50);
         setCurrentOffset(50);
-        
-        if (responseExternalThreadId) {
-          setExternalThreadId(responseExternalThreadId);
-        } else if (sharedExternalThreadId) {
-          setExternalThreadId(sharedExternalThreadId);
-        }
       } catch (error) {
-        console.error('Error loading messages:', error);
-        message.error('Failed to load messages');
-        setMessages([]);
-        setHasMoreMessages(false);
+        console.error('Error refreshing messages:', error);
+        message.error('Failed to refresh messages');
       } finally {
         setMessagesLoading(false);
       }
+    }, [selectedThreadId, node?.id, isAgentNode]);
+
+    const autoSaveNodeChanges = useCallback(async () => {
+      if (!node) return;
+
+      try {
+        const configValues: Record<string, unknown> = {};
+
+        formFields.forEach((field) => {
+          const key = field.key;
+
+          if (field.isConst) {
+            configValues[key] = field.const as unknown;
+            return;
+          }
+
+          const rawValue = form.getFieldValue(key);
+
+          const isEmptyString =
+            typeof rawValue === 'string' && rawValue.trim() === '';
+          const isEmptyArray = Array.isArray(rawValue) && rawValue.length === 0;
+          const isEmptyObject =
+            field.type === 'object' &&
+            rawValue &&
+            typeof rawValue === 'object' &&
+            !Array.isArray(rawValue) &&
+            Object.keys(rawValue as object).length === 0;
+
+          const isTrulyEmpty =
+            rawValue === null ||
+            rawValue === undefined ||
+            isEmptyString ||
+            isEmptyArray ||
+            isEmptyObject;
+
+          if (isTrulyEmpty && field.type !== 'boolean') {
+            return;
+          }
+
+          let processedValue: unknown = rawValue;
+
+          switch (field.type) {
+            case 'number':
+            case 'integer': {
+              if (typeof rawValue === 'string') {
+                const num = Number(rawValue);
+                if (Number.isNaN(num)) {
+                  return;
+                }
+                processedValue =
+                  field.type === 'integer' ? Math.trunc(num) : num;
+              } else if (typeof rawValue === 'number') {
+                processedValue =
+                  field.type === 'integer' ? Math.trunc(rawValue) : rawValue;
+              } else {
+                return;
+              }
+              break;
+            }
+            case 'array': {
+              if (typeof rawValue === 'string') {
+                processedValue = rawValue
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter((line) => line !== '');
+              } else if (Array.isArray(rawValue)) {
+                processedValue = rawValue;
+              } else if (rawValue == null) {
+                return;
+              }
+              break;
+            }
+            case 'object': {
+              if (typeof rawValue === 'string') {
+                try {
+                  const parsed = JSON.parse(rawValue);
+                  processedValue = parsed;
+                } catch {
+                  return;
+                }
+              } else if (
+                rawValue &&
+                typeof rawValue === 'object' &&
+                !Array.isArray(rawValue)
+              ) {
+                processedValue = rawValue;
+              } else if (rawValue == null) {
+                return;
+              }
+              break;
+            }
+            case 'boolean': {
+              processedValue = Boolean(rawValue);
+              break;
+            }
+            case 'string':
+            default: {
+              if (typeof rawValue === 'string') {
+                const trimmed = rawValue.trim();
+                if (trimmed === '') {
+                  return;
+                }
+                processedValue = trimmed;
+              } else {
+                processedValue = rawValue;
+              }
+            }
+          }
+
+          configValues[key] = processedValue;
+        });
+
+        onSave(node.id, {
+          name: nodeName,
+          config: configValues,
+        });
+
+        const currentValues = form.getFieldsValue(true);
+        setInitialFormValues(currentValues);
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      }
+    }, [node, nodeName, formFields, form, onSave]);
+
+    const handleFormChange = useCallback(
+      (
+        changedValues: Record<string, unknown>,
+        allValues: Record<string, unknown>,
+      ) => {
+        const hasRealChanges = Object.keys(changedValues).some((key) => {
+          const currentValue = allValues[key];
+          const initialValue = initialFormValues[key];
+          return JSON.stringify(currentValue) !== JSON.stringify(initialValue);
+        });
+
+        if (!hasRealChanges) {
+          return;
+        }
+
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+
+        saveTimeoutRef.current = setTimeout(() => {
+          autoSaveNodeChanges();
+        }, 500);
+      },
+      [initialFormValues, autoSaveNodeChanges],
+    );
+
+    const handleClose = useCallback(() => {
+      onClose();
+    }, [onClose]);
+
+    const handleNameEdit = () => {
+      setIsEditingName(true);
+      setEditingName(nodeName);
     };
 
-    loadMessages();
-  }, [selectedThreadId, node?.id, isAgentNode, sharedExternalThreadId, onUpdateSharedMessages]);
+    const handleNameSave = () => {
+      if (editingName !== nodeName) {
+        setNodeName(editingName);
+        if (node) {
+          onSave(node.id, {
+            name: editingName,
+          });
+        }
+      }
+      setIsEditingName(false);
+    };
 
-  // Use shared messages from props instead of WebSocket listener
-  // The WebSocket listener is now handled at GraphPage level
-  useEffect(() => {
-    if (!isAgentNode || !visible || !selectedThreadId) return;
-    
-    // Sync shared messages to local state, merging to preserve reasoning updates
-    if (sharedMessages && sharedMessages.length > 0) {
-      setMessages((prev) => {
-        // Create a map of shared messages by ID for quick lookup
-        const sharedById = new Map(sharedMessages.map(msg => [msg.id, msg]));
-        const result: ThreadMessageDto[] = [];
-        const processedIds = new Set<string>();
-        
-        // First, add all shared messages (which includes reasoning updates)
-        sharedMessages.forEach(msg => {
-          result.push(msg);
-          processedIds.add(msg.id);
-        });
-        
-        // Then add any local messages that aren't in shared state (like optimistic messages)
-        prev.forEach(localMsg => {
-          if (!processedIds.has(localMsg.id)) {
-            result.push(localMsg);
-            processedIds.add(localMsg.id);
-          }
-        });
-        
-        // Sort chronologically
-        return sortMessagesChronologically(result);
-      });
-    }
-  }, [sharedMessages, isAgentNode, visible, selectedThreadId]);
-  
-  useEffect(() => {
-    if (sharedExternalThreadId && !externalThreadId) {
-      setExternalThreadId(sharedExternalThreadId);
-    }
-  }, [sharedExternalThreadId, externalThreadId]);
+    const handleNameCancel = () => {
+      setEditingName(nodeName);
+      setIsEditingName(false);
+    };
 
-  // Sync externalThreadId from compiledNode metadata
-  useEffect(() => {
-    if (!isAgentNode || !visible || !compiledNode) return;
+    const renderFormField = (field: FormField) => {
+      const {
+        key,
+        name,
+        description,
+        type,
+        required,
+        isConst,
+        const: constValue,
+        enum: enumValues,
+      } = field;
 
-    const metadataThreadId =
-      typeof compiledNode?.metadata?.threadId === 'string'
-        ? compiledNode.metadata.threadId
+      const rules = required
+        ? [{ required: true, message: `${name} is required` }]
         : undefined;
 
-    if (metadataThreadId && !externalThreadId) {
-      setExternalThreadId(metadataThreadId);
-    }
-  }, [
-    compiledNode?.metadata?.threadId,
-    externalThreadId,
-    isAgentNode,
-    visible,
-  ]);
+      const descriptionNode = description ? (
+        <Text
+          type="secondary"
+          style={{
+            fontSize: 12,
+            fontWeight: 'normal',
+          }}>
+          {description}
+        </Text>
+      ) : undefined;
 
-  const loadMoreMessages = useCallback(async () => {
-    if (
-      !selectedThreadId ||
-      !node?.id ||
-      !isAgentNode ||
-      loadingMoreMessages ||
-      !hasMoreMessages
-    ) {
-      return;
-    }
+      const commonProps = {
+        name: key,
+        label: name,
+        required,
+        rules,
+        extra: descriptionNode,
+        style: {
+          marginBottom: '10px',
+        },
+      } as const;
 
-    try {
-      setLoadingMoreMessages(true);
-      const response = await threadsApi.getThreadMessages(
-        selectedThreadId,
-        node.id,
-        50,
-        currentOffset,
-      );
-      const newMessages = response.data?.reverse() || [];
-
-      if (newMessages.length > 0) {
-        setMessages((prev) => {
-          const merged = mergeMessagesReplacingStreaming(prev, newMessages);
-          return merged;
-        });
-        setCurrentOffset((prev) => prev + newMessages.length);
-        setHasMoreMessages(newMessages.length === 50);
-      } else {
-        setHasMoreMessages(false);
+      if (isConst) {
+        return (
+          <Form.Item key={key} {...commonProps} initialValue={constValue}>
+            <Input disabled size="middle" value={String(constValue)} />
+          </Form.Item>
+        );
       }
-    } catch (error) {
-      console.error('Error loading more messages:', error);
-      message.error('Failed to load more messages');
-    } finally {
-      setLoadingMoreMessages(false);
-    }
-  }, [selectedThreadId, node?.id, isAgentNode, loadingMoreMessages, hasMoreMessages, currentOffset]);
 
-  // Memoized callback to update messages and shared state
-  const handleMessagesUpdate = useCallback(
-    (updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[]) => {
-      setMessages((prev) => {
-        const updated = updater(prev);
-        // Also update shared state if available (for reasoning messages and other updates)
-        if (onUpdateSharedMessages && selectedThreadId) {
-          onUpdateSharedMessages(selectedThreadId, () => updated, node?.id);
-        }
-        return updated;
-      });
-    },
-    [selectedThreadId, node?.id, onUpdateSharedMessages],
-  );
+      const shouldUseLiteLlmModelsSelect =
+        (field as SchemaProperty)['x-ui:litellm-models-list-select'] === true;
 
-  const refreshMessages = useCallback(async () => {
-    if (!selectedThreadId || !node?.id || !isAgentNode) {
-      return;
-    }
-    try {
-      setMessagesLoading(true);
-      const response = await threadsApi.getThreadMessages(
-        selectedThreadId,
-        node.id,
-        50,
-        0,
-      );
-      const newMessages = response.data?.reverse() || [];
-      const responseExternalThreadId = newMessages.find(
-        (m) => m.externalThreadId,
-      )?.externalThreadId;
-      if (responseExternalThreadId) {
-        setExternalThreadId(responseExternalThreadId);
+      if (shouldUseLiteLlmModelsSelect) {
+        return (
+          <Form.Item key={key} {...commonProps}>
+            <Select
+              placeholder={`Select ${name.toLowerCase()}`}
+              size="middle"
+              allowClear={!required}
+              showSearch
+              loading={litellmModelsLoading}
+              notFoundContent={
+                litellmModelsLoading
+                  ? 'Loading models...'
+                  : 'No models available'
+              }
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toString()
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              options={liteLlmModels.map((model) => ({
+                label: model.ownedBy
+                  ? `${model.id} (${model.ownedBy})`
+                  : model.id,
+                value: model.id,
+              }))}
+            />
+          </Form.Item>
+        );
       }
-      // Replace messages entirely when refreshing
-      setMessages(newMessages);
-      setHasMoreMessages(newMessages.length === 50);
-      setCurrentOffset(50);
-    } catch (error) {
-      console.error('Error refreshing messages:', error);
-      message.error('Failed to refresh messages');
-    } finally {
-      setMessagesLoading(false);
-    }
-  }, [selectedThreadId, node?.id, isAgentNode]);
 
-  const autoSaveNodeChanges = useCallback(async () => {
-    if (!node) return;
-
-    try {
-      const configValues: Record<string, unknown> = {};
-
-      formFields.forEach((field) => {
-        const key = field.key;
-
-        // Always include constant values
-        if (field.isConst) {
-          configValues[key] = field.const as unknown;
-          return;
-        }
-
-        const rawValue = form.getFieldValue(key);
-
-        // For non-constant fields, determine emptiness precisely
-        const isEmptyString =
-          typeof rawValue === 'string' && rawValue.trim() === '';
-        const isEmptyArray = Array.isArray(rawValue) && rawValue.length === 0;
-        const isEmptyObject =
-          field.type === 'object' &&
-          rawValue &&
-          typeof rawValue === 'object' &&
-          !Array.isArray(rawValue) &&
-          Object.keys(rawValue as object).length === 0;
-
-        const isTrulyEmpty =
-          rawValue === null ||
-          rawValue === undefined ||
-          isEmptyString ||
-          isEmptyArray ||
-          isEmptyObject;
-
-        // For booleans, false is a valid value and should not be treated as empty
-        if (isTrulyEmpty && field.type !== 'boolean') {
-          return;
-        }
-
-        let processedValue: unknown = rawValue;
-
-        switch (field.type) {
-          case 'number':
-          case 'integer': {
-            if (typeof rawValue === 'string') {
-              const num = Number(rawValue);
-              if (Number.isNaN(num)) {
-                return; // skip invalid number
+      if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
+        return (
+          <Form.Item key={key} {...commonProps}>
+            <Select
+              placeholder={`Select ${name.toLowerCase()}`}
+              size="middle"
+              allowClear={!required}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toString()
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
-              processedValue = field.type === 'integer' ? Math.trunc(num) : num;
-            } else if (typeof rawValue === 'number') {
-              processedValue =
-                field.type === 'integer' ? Math.trunc(rawValue) : rawValue;
-            } else {
-              return; // unsupported type for number
-            }
-            break;
-          }
-          case 'array': {
-            if (typeof rawValue === 'string') {
-              processedValue = rawValue
-                .split('\n')
-                .map((line) => line.trim())
-                .filter((line) => line !== '');
-            } else if (Array.isArray(rawValue)) {
-              processedValue = rawValue;
-            } else if (rawValue == null) {
-              return;
-            }
-            break;
-          }
-          case 'object': {
-            if (typeof rawValue === 'string') {
-              try {
-                const parsed = JSON.parse(rawValue);
-                processedValue = parsed;
-              } catch {
-                // If JSON is invalid, skip saving this field
-                return;
-              }
-            } else if (
-              rawValue &&
-              typeof rawValue === 'object' &&
-              !Array.isArray(rawValue)
-            ) {
-              processedValue = rawValue;
-            } else if (rawValue == null) {
-              return;
-            }
-            break;
-          }
-          case 'boolean': {
-            // Preserve exact boolean value including false
-            processedValue = Boolean(rawValue);
-            break;
-          }
-          case 'string':
-          default: {
-            if (typeof rawValue === 'string') {
-              const trimmed = rawValue.trim();
-              if (trimmed === '') {
-                return;
-              }
-              processedValue = trimmed;
-            } else {
-              processedValue = rawValue;
-            }
-          }
-        }
-
-        configValues[key] = processedValue;
-      });
-
-      onSave(node.id, {
-        name: nodeName,
-        config: configValues,
-      });
-
-      const currentValues = form.getFieldsValue(true);
-      setInitialFormValues(currentValues);
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    }
-  }, [node, nodeName, formFields, form, onSave]);
-
-  const handleFormChange = useCallback((
-    changedValues: Record<string, unknown>,
-    allValues: Record<string, unknown>,
-  ) => {
-    const hasRealChanges = Object.keys(changedValues).some((key) => {
-      const currentValue = allValues[key];
-      const initialValue = initialFormValues[key];
-      return JSON.stringify(currentValue) !== JSON.stringify(initialValue);
-    });
-
-    if (hasRealChanges) {
-      // Auto-save changes immediately
-      autoSaveNodeChanges();
-    }
-  }, [initialFormValues, autoSaveNodeChanges]);
-
-  const handleClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
-  const handleNameEdit = () => {
-    setIsEditingName(true);
-    setEditingName(nodeName);
-  };
-
-  const handleNameSave = () => {
-    if (editingName !== nodeName) {
-      setNodeName(editingName);
-      // Auto-save name changes immediately
-      if (node) {
-        onSave(node.id, {
-          name: editingName,
-        });
+              options={enumValues.map((value) => ({
+                label: String(value),
+                value: value,
+              }))}
+            />
+          </Form.Item>
+        );
       }
-    }
-    setIsEditingName(false);
-  };
 
-  const handleNameCancel = () => {
-    setEditingName(nodeName);
-    setIsEditingName(false);
-  };
+      const shouldUseTextarea =
+        (field as SchemaProperty)['x-ui:textarea'] === true;
 
-  const renderFormField = (field: FormField) => {
-    const {
-      key,
-      name,
-      description,
-      type,
-      required,
-      isConst,
-      const: constValue,
-      enum: enumValues,
-    } = field;
-
-    const rules = required
-      ? [{ required: true, message: `${name} is required` }]
-      : undefined;
-
-    const descriptionNode = description ? (
-      <Text
-        type="secondary"
-        style={{
-          fontSize: 12,
-          fontWeight: 'normal',
-        }}>
-        {description}
-      </Text>
-    ) : undefined;
-
-    const commonProps = {
-      name: key,
-      label: name,
-      required,
-      rules,
-      extra: descriptionNode,
-      style: {
-        marginBottom: '10px',
-      },
-    } as const;
-
-    if (isConst) {
-      return (
-        <Form.Item key={key} {...commonProps} initialValue={constValue}>
-          <Input disabled size="middle" value={String(constValue)} />
-        </Form.Item>
-      );
-    }
-
-    const shouldUseLiteLlmModelsSelect =
-      (field as SchemaProperty)['x-ui:litellm-models-list-select'] === true;
-
-    if (shouldUseLiteLlmModelsSelect) {
-      return (
-        <Form.Item key={key} {...commonProps}>
-          <Select
-            placeholder={`Select ${name.toLowerCase()}`}
-            size="middle"
-            allowClear={!required}
-            showSearch
-            loading={litellmModelsLoading}
-            notFoundContent={
-              litellmModelsLoading ? 'Loading models...' : 'No models available'
-            }
-            filterOption={(input, option) =>
-              (option?.label ?? '')
-                .toString()
-                .toLowerCase()
-                .includes(input.toLowerCase())
-            }
-            options={liteLlmModels.map((model) => ({
-              label: model.ownedBy
-                ? `${model.id} (${model.ownedBy})`
-                : model.id,
-              value: model.id,
-            }))}
-          />
-        </Form.Item>
-      );
-    }
-
-    // Handle enum fields with Select dropdown
-    if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
-      return (
-        <Form.Item key={key} {...commonProps}>
-          <Select
-            placeholder={`Select ${name.toLowerCase()}`}
-            size="middle"
-            allowClear={!required}
-            showSearch
-            filterOption={(input, option) =>
-              (option?.label ?? '')
-                .toString()
-                .toLowerCase()
-                .includes(input.toLowerCase())
-            }
-            options={enumValues.map((value) => ({
-              label: String(value),
-              value: value,
-            }))}
-          />
-        </Form.Item>
-      );
-    }
-
-    const shouldUseTextarea =
-      (field as SchemaProperty)['x-ui:textarea'] === true;
-
-    switch (type) {
-      case 'string':
-        if (shouldUseTextarea) {
-          return (
-            <Form.Item
-              key={key}
-              label={name}
-              required={required}
-              rules={rules}
-              extra={descriptionNode}
-              style={{ marginBottom: '10px' }}>
-              <div style={{ position: 'relative' }}>
-                <Form.Item name={key} noStyle>
-                  <Input.TextArea
-                    placeholder={`Enter ${name.toLowerCase()}`}
-                    rows={4}
-                    size="middle"
-                    style={{ paddingRight: '32px' }}
+      switch (type) {
+        case 'string':
+          if (shouldUseTextarea) {
+            return (
+              <Form.Item
+                key={key}
+                label={name}
+                required={required}
+                rules={rules}
+                extra={descriptionNode}
+                style={{ marginBottom: '10px' }}>
+                <div style={{ position: 'relative' }}>
+                  <Form.Item name={key} noStyle>
+                    <Input.TextArea
+                      placeholder={`Enter ${name.toLowerCase()}`}
+                      rows={4}
+                      size="middle"
+                      style={{ paddingRight: '32px' }}
+                    />
+                  </Form.Item>
+                  <Button
+                    type="text"
+                    icon={<ExpandOutlined />}
+                    size="small"
+                    style={{
+                      position: 'absolute',
+                      right: '4px',
+                      top: '4px',
+                      zIndex: 1,
+                    }}
+                    onClick={() => {
+                      const currentValue = form.getFieldValue(key) || '';
+                      setExpandedTextarea({
+                        fieldKey: key,
+                        value: currentValue,
+                      });
+                    }}
                   />
-                </Form.Item>
-                <Button
-                  type="text"
-                  icon={<ExpandOutlined />}
-                  size="small"
-                  style={{
-                    position: 'absolute',
-                    right: '4px',
-                    top: '4px',
-                    zIndex: 1,
-                  }}
-                  onClick={() => {
-                    const currentValue = form.getFieldValue(key) || '';
-                    setExpandedTextarea({ fieldKey: key, value: currentValue });
-                  }}
-                />
-              </div>
+                </div>
+              </Form.Item>
+            );
+          }
+
+          return (
+            <Form.Item key={key} {...commonProps}>
+              <Input
+                placeholder={`Enter ${name.toLowerCase()}`}
+                size="middle"
+              />
             </Form.Item>
           );
-        }
 
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <Input placeholder={`Enter ${name.toLowerCase()}`} size="middle" />
-          </Form.Item>
-        );
+        case 'number':
+          return (
+            <Form.Item key={key} {...commonProps}>
+              <InputNumber
+                style={{ width: '100%' }}
+                placeholder={`Enter ${name.toLowerCase()}`}
+                size="middle"
+              />
+            </Form.Item>
+          );
 
-      case 'number':
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <InputNumber
-              style={{ width: '100%' }}
-              placeholder={`Enter ${name.toLowerCase()}`}
-              size="middle"
-            />
-          </Form.Item>
-        );
+        case 'boolean':
+          return (
+            <Form.Item key={key} {...commonProps} valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          );
 
-      case 'boolean':
-        return (
-          <Form.Item key={key} {...commonProps} valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        );
+        case 'array':
+          return (
+            <Form.Item key={key} {...commonProps}>
+              <Input.TextArea
+                placeholder={`Enter ${name.toLowerCase()} (one per line)`}
+                rows={3}
+                size="middle"
+              />
+            </Form.Item>
+          );
 
-      case 'array':
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <Input.TextArea
-              placeholder={`Enter ${name.toLowerCase()} (one per line)`}
-              rows={3}
-              size="middle"
-            />
-          </Form.Item>
-        );
+        case 'object':
+          return (
+            <Form.Item key={key} {...commonProps}>
+              <KeyValuePairsInput />
+            </Form.Item>
+          );
 
-      case 'object':
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <KeyValuePairsInput />
-          </Form.Item>
-        );
-
-      default:
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <Input placeholder={`Enter ${name.toLowerCase()}`} size="middle" />
-          </Form.Item>
-        );
-    }
-  };
-
-  const isTriggerNode = nodeData?.templateKind === 'trigger';
-  const canTrigger = isTriggerNode && isGraphRunning;
-
-  const renderOptionsTabContent = () => {
-    return (
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-        <div
-          style={{
-            flexShrink: 0,
-            padding: '8px 4px 0 4px',
-          }}>
-          <Title level={5} style={{ marginBottom: 8 }}>
-            Configuration
-          </Title>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: 'auto',
-            padding: '0 4px 8px 4px',
-          }}>
-          {formFields.length > 0 ? (
-            <Form
-              form={form}
-              layout="vertical"
-              size="small"
-              style={{ marginTop: 0 }}
-              labelCol={{ style: { paddingBottom: 4 } }}
-              onValuesChange={handleFormChange}>
-              {formFields.map(renderFormField)}
-            </Form>
-          ) : (
-            <Text type="secondary">
-              No configuration options available for this template.
-            </Text>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Memoize pending messages and newMessageMode to prevent recalculation
-  const pendingMessages = useMemo(() => {
-    return compiledNode?.additionalNodeMetadata?.pendingMessages as
-      | Array<{
-          content: string;
-          role: 'human' | 'ai';
-          additionalKwargs?: {
-            run_id?: string;
-            created_at?: string;
-            [key: string]: unknown;
-          };
-          createdAt?: string;
-        }>
-      | undefined;
-  }, [compiledNode?.additionalNodeMetadata?.pendingMessages]);
-
-  const newMessageMode = useMemo(() => {
-    return (compiledNode?.config as Record<string, unknown>)
-      ?.newMessageMode as
-      | 'inject_after_tool_call'
-      | 'wait_for_completion'
-      | undefined;
-  }, [compiledNode?.config]);
-
-  const renderMessagesTabContent = useCallback(() => {
-
-    return (
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-        <div
-          style={{
-            flexShrink: 0,
-            padding: '8px 0 8px 0',
-            marginBottom: 0,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-          <Title level={5} style={{ margin: 0 }}>
-            Messages
-          </Title>
-          <Button
-            size="small"
-            icon={<ReloadOutlined />}
-            onClick={refreshMessages}
-            loading={messagesLoading}
-            style={{
-              border: 'none',
-            }}
-            disabled={!selectedThreadId || !node?.id || !isAgentNode}></Button>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: 'hidden',
-          }}>
-          <ThreadMessagesView
-            messages={messages}
-            messagesLoading={messagesLoading}
-            selectedThreadId={selectedThreadId}
-            nodeId={node?.id}
-            isAgentNode={isAgentNode}
-            nodeTemplateKind={nodeData?.templateKind}
-            onLoadMoreMessages={loadMoreMessages}
-            hasMoreMessages={hasMoreMessages}
-            loadingMore={loadingMoreMessages}
-            isNodeRunning={
-              isGraphRunning &&
-              (typeof compiledNode?.status === 'string'
-                ? compiledNode.status.toLowerCase() === 'running'
-                : true)
-            }
-            pendingMessages={pendingMessages}
-            newMessageMode={newMessageMode}
-            graphId={graphId}
-            externalThreadId={externalThreadId}
-            onExternalThreadIdChange={setExternalThreadId}
-            onMessagesUpdate={handleMessagesUpdate}
-          />
-        </div>
-      </div>
-    );
-  }, [
-    messages,
-    messagesLoading,
-    selectedThreadId,
-    node?.id,
-    isAgentNode,
-    nodeData?.templateKind,
-    loadMoreMessages,
-    hasMoreMessages,
-    loadingMoreMessages,
-    isGraphRunning,
-    compiledNode?.status,
-    pendingMessages,
-    newMessageMode,
-    graphId,
-    externalThreadId,
-    refreshMessages,
-  ]);
-
-  const tabItems = isAgentNode
-    ? [
-        { key: 'options', label: 'Options' },
-        { key: 'messages', label: 'Messages' },
-      ]
-    : [{ key: 'options', label: 'Options' }];
-
-  if (!visible) {
-    return null;
-  }
-
-  return (
-    <Sider
-      width={400}
-      style={{
-        background: '#fff',
-        borderLeft: '1px solid #f0f0f0',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-      <div
-        style={{
-          padding: '16px',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-        }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16,
-            paddingBottom: 16,
-            borderBottom: '1px solid #f0f0f0',
-            flexShrink: 0,
-          }}>
-          <Title level={4} style={{ margin: 0 }}>
-            Edit Node
-          </Title>
-          <Space>
-            {isTriggerNode && (
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                disabled={!canTrigger}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onTriggerClick?.(node?.id || '');
-                }}
-                size="small">
-                Trigger
-              </Button>
-            )}
-            <Button
-              onClick={handleClose}
-              icon={<CloseOutlined />}
-              size="small"></Button>
-          </Space>
-        </div>
-
-        <div style={{ flexShrink: 0, marginBottom: 16 }}>
-          {isEditingName ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        default:
+          return (
+            <Form.Item key={key} {...commonProps}>
               <Input
-                value={editingName}
-                onChange={(e) => setEditingName(e.target.value)}
-                onPressEnter={handleNameSave}
-                onBlur={handleNameSave}
-                autoFocus
-                style={{ flex: 1 }}
+                placeholder={`Enter ${name.toLowerCase()}`}
+                size="middle"
               />
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                onClick={handleNameSave}
-                size="small"
-              />
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                onClick={handleNameCancel}
-                size="small"
-              />
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-              }}>
-              <Text
-                strong
-                style={{
-                  flex: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  display: 'block',
-                }}>
-                {nodeName}
-              </Text>
-              <Popover
-                content={infoContent}
-                trigger="click"
-                placement="bottomRight">
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<InfoCircleOutlined />}
-                  aria-label="View node metadata and configuration"
-                />
-              </Popover>
-              <Button
-                type="text"
-                icon={<EditOutlined />}
-                onClick={handleNameEdit}
-                size="small"
-              />
-            </div>
-          )}
+            </Form.Item>
+          );
+      }
+    };
 
-          <div>
-            <Text strong>Template:</Text> {nodeData?.template}
-          </div>
-          <div>
-            <Text strong>Kind:</Text> {nodeData?.templateKind}
-          </div>
-          {showNodeStatus && (
-            <div
-              style={{
-                marginTop: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                flexWrap: 'wrap',
-              }}>
-              <Space size={6} wrap align="center">
-                <Text strong>Status:</Text>
-                <Tag
-                  color={statusTagColor}
-                  style={{ margin: 0, fontSize: 12 }}
-                  bordered={statusTagColor === 'default'}>
-                  {statusLabel}
-                </Tag>
-                {compiledNode?.error && (
-                  <Tooltip title={compiledNode.error} placement="top">
-                    <ExclamationCircleOutlined
-                      style={{ color: '#ff4d4f', fontSize: 14 }}
-                    />
-                  </Tooltip>
-                )}
-              </Space>
-            </div>
-          )}
-        </div>
+    const isTriggerNode = nodeData?.templateKind === 'trigger';
+    const canTrigger = isTriggerNode && isGraphRunning;
 
+    const renderOptionsTabContent = () => {
+      return (
         <div
           style={{
             flex: 1,
             minHeight: 0,
-            overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
           }}>
-          {tabItems.length > 1 && (
-            <div
+          <div
+            style={{
+              flexShrink: 0,
+              padding: '8px 4px 0 4px',
+            }}>
+            <Title level={5} style={{ marginBottom: 8 }}>
+              Configuration
+            </Title>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: 'auto',
+              padding: '0 4px 8px 4px',
+            }}>
+            {formFields.length > 0 ? (
+              <Form
+                form={form}
+                layout="vertical"
+                size="small"
+                style={{ marginTop: 0 }}
+                labelCol={{ style: { paddingBottom: 4 } }}
+                onValuesChange={handleFormChange}>
+                {formFields.map(renderFormField)}
+              </Form>
+            ) : (
+              <Text type="secondary">
+                No configuration options available for this template.
+              </Text>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const pendingMessages = useMemo(() => {
+      return compiledNode?.additionalNodeMetadata?.pendingMessages as
+        | Array<{
+            content: string;
+            role: 'human' | 'ai';
+            additionalKwargs?: {
+              run_id?: string;
+              created_at?: string;
+              [key: string]: unknown;
+            };
+            createdAt?: string;
+          }>
+        | undefined;
+    }, [compiledNode?.additionalNodeMetadata?.pendingMessages]);
+
+    const newMessageMode = useMemo(() => {
+      return (compiledNode?.config as Record<string, unknown>)
+        ?.newMessageMode as
+        | 'inject_after_tool_call'
+        | 'wait_for_completion'
+        | undefined;
+    }, [compiledNode?.config]);
+
+    const renderMessagesTabContent = useCallback(() => {
+      return (
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+          <div
+            style={{
+              flexShrink: 0,
+              padding: '8px 0 8px 0',
+              marginBottom: 0,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+            <Title level={5} style={{ margin: 0 }}>
+              Messages
+            </Title>
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={refreshMessages}
+              loading={messagesLoading}
               style={{
-                flexShrink: 0,
-                display: 'flex',
-              }}>
-              <div
-                role="tablist"
-                aria-label="Node editor tabs"
-                style={{
-                  background: '#f2f2f7',
-                  borderRadius: 999,
-                  padding: 4,
-                  display: 'flex',
-                  gap: 6,
-                  width: '100%',
-                }}>
-                {tabItems.map((tab, index) => {
-                  const isActive = activeTab === tab.key;
-                  return (
-                    <button
-                      key={tab.key}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => setActiveTab(tab.key)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'ArrowRight') {
-                          event.preventDefault();
-                          const nextKey =
-                            tabItems[(index + 1) % tabItems.length]?.key ??
-                            tab.key;
-                          setActiveTab(nextKey);
-                        } else if (event.key === 'ArrowLeft') {
-                          event.preventDefault();
-                          const prevKey =
-                            tabItems[
-                              (index - 1 + tabItems.length) % tabItems.length
-                            ]?.key ?? tab.key;
-                          setActiveTab(prevKey);
-                        }
-                      }}
-                      style={{
-                        border: 'none',
-                        background: isActive ? '#ffffff' : 'transparent',
-                        padding: '4px 0',
-                        borderRadius: 999,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        color: isActive ? '#111' : '#555',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        flex: 1,
-                      }}>
-                      {tab.label}
-                    </button>
-                  );
-                })}
+                border: 'none',
+              }}
+              disabled={
+                !selectedThreadId || !node?.id || !isAgentNode
+              }></Button>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: 'hidden',
+            }}>
+            <ThreadMessagesView
+              messages={messages}
+              messagesLoading={messagesLoading}
+              selectedThreadId={selectedThreadId}
+              nodeId={node?.id}
+              isAgentNode={isAgentNode}
+              nodeTemplateKind={nodeData?.templateKind}
+              onLoadMoreMessages={loadMoreMessages}
+              hasMoreMessages={hasMoreMessages}
+              loadingMore={loadingMoreMessages}
+              isNodeRunning={
+                isGraphRunning &&
+                (typeof compiledNode?.status === 'string'
+                  ? compiledNode.status.toLowerCase() === 'running'
+                  : true)
+              }
+              pendingMessages={pendingMessages}
+              newMessageMode={newMessageMode}
+              graphId={graphId}
+              externalThreadId={externalThreadId}
+              onExternalThreadIdChange={setExternalThreadId}
+              onMessagesUpdate={handleMessagesUpdate}
+            />
+          </div>
+        </div>
+      );
+    }, [
+      messages,
+      messagesLoading,
+      selectedThreadId,
+      node?.id,
+      isAgentNode,
+      nodeData?.templateKind,
+      loadMoreMessages,
+      hasMoreMessages,
+      loadingMoreMessages,
+      isGraphRunning,
+      compiledNode?.status,
+      pendingMessages,
+      newMessageMode,
+      graphId,
+      externalThreadId,
+      refreshMessages,
+      handleMessagesUpdate,
+    ]);
+
+    const tabItems = isAgentNode
+      ? [
+          { key: 'options', label: 'Options' },
+          { key: 'messages', label: 'Messages' },
+        ]
+      : [{ key: 'options', label: 'Options' }];
+
+    if (!visible) {
+      return null;
+    }
+
+    return (
+      <Sider
+        width={400}
+        style={{
+          background: '#fff',
+          borderLeft: '1px solid #f0f0f0',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+        <div
+          style={{
+            padding: '16px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 16,
+              paddingBottom: 16,
+              borderBottom: '1px solid #f0f0f0',
+              flexShrink: 0,
+            }}>
+            <Title level={4} style={{ margin: 0 }}>
+              Edit Node
+            </Title>
+            <Space>
+              {isTriggerNode && (
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  disabled={!canTrigger}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onTriggerClick?.(node?.id || '');
+                  }}
+                  size="small">
+                  Trigger
+                </Button>
+              )}
+              <Button
+                onClick={handleClose}
+                icon={<CloseOutlined />}
+                size="small"></Button>
+            </Space>
+          </div>
+
+          <div style={{ flexShrink: 0, marginBottom: 16 }}>
+            {isEditingName ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Input
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onPressEnter={handleNameSave}
+                  onBlur={handleNameSave}
+                  autoFocus
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  type="text"
+                  icon={<CheckOutlined />}
+                  onClick={handleNameSave}
+                  size="small"
+                />
+                <Button
+                  type="text"
+                  icon={<CloseOutlined />}
+                  onClick={handleNameCancel}
+                  size="small"
+                />
               </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                }}>
+                <Text
+                  strong
+                  style={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    display: 'block',
+                  }}>
+                  {nodeName}
+                </Text>
+                <Popover
+                  content={infoContent}
+                  trigger="click"
+                  placement="bottomRight">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<InfoCircleOutlined />}
+                    aria-label="View node metadata and configuration"
+                  />
+                </Popover>
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  onClick={handleNameEdit}
+                  size="small"
+                />
+              </div>
+            )}
+
+            <div>
+              <Text strong>Template:</Text> {nodeData?.template}
             </div>
-          )}
+            <div>
+              <Text strong>Kind:</Text> {nodeData?.templateKind}
+            </div>
+            {showNodeStatus && (
+              <div
+                style={{
+                  marginTop: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                }}>
+                <Space size={6} wrap align="center">
+                  <Text strong>Status:</Text>
+                  <Tag
+                    color={statusTagColor}
+                    style={{ margin: 0, fontSize: 12 }}
+                    bordered={statusTagColor === 'default'}>
+                    {statusLabel}
+                  </Tag>
+                  {compiledNode?.error && (
+                    <Tooltip title={compiledNode.error} placement="top">
+                      <ExclamationCircleOutlined
+                        style={{ color: '#ff4d4f', fontSize: 14 }}
+                      />
+                    </Tooltip>
+                  )}
+                </Space>
+              </div>
+            )}
+          </div>
 
           <div
             style={{
@@ -1392,80 +1373,147 @@ export const NodeEditSidebar = React.memo(({
               display: 'flex',
               flexDirection: 'column',
             }}>
-            {activeTab === 'options'
-              ? renderOptionsTabContent()
-              : renderMessagesTabContent()}
+            {tabItems.length > 1 && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                }}>
+                <div
+                  role="tablist"
+                  aria-label="Node editor tabs"
+                  style={{
+                    background: '#f2f2f7',
+                    borderRadius: 999,
+                    padding: 4,
+                    display: 'flex',
+                    gap: 6,
+                    width: '100%',
+                  }}>
+                  {tabItems.map((tab, index) => {
+                    const isActive = activeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => setActiveTab(tab.key)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'ArrowRight') {
+                            event.preventDefault();
+                            const nextKey =
+                              tabItems[(index + 1) % tabItems.length]?.key ??
+                              tab.key;
+                            setActiveTab(nextKey);
+                          } else if (event.key === 'ArrowLeft') {
+                            event.preventDefault();
+                            const prevKey =
+                              tabItems[
+                                (index - 1 + tabItems.length) % tabItems.length
+                              ]?.key ?? tab.key;
+                            setActiveTab(prevKey);
+                          }
+                        }}
+                        style={{
+                          border: 'none',
+                          background: isActive ? '#ffffff' : 'transparent',
+                          padding: '4px 0',
+                          borderRadius: 999,
+                          fontWeight: 600,
+                          fontSize: 13,
+                          color: isActive ? '#111' : '#555',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          flex: 1,
+                        }}>
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
+              {activeTab === 'options'
+                ? renderOptionsTabContent()
+                : renderMessagesTabContent()}
+            </div>
           </div>
         </div>
-      </div>
 
-      <Modal
-        title="Edit Text"
-        open={!!expandedTextarea}
-        onCancel={() => setExpandedTextarea(null)}
-        width={800}
-        footer={[
-          <Button key="cancel" onClick={() => setExpandedTextarea(null)}>
-            Cancel
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            onClick={() => {
-              if (expandedTextarea) {
-                form.setFieldValue(
-                  expandedTextarea.fieldKey,
-                  expandedTextarea.value,
-                );
-                // Manually trigger save since setFieldValue doesn't trigger onValuesChange
-                autoSaveNodeChanges();
-                setExpandedTextarea(null);
+        <Modal
+          title="Edit Text"
+          open={!!expandedTextarea}
+          onCancel={() => setExpandedTextarea(null)}
+          width={800}
+          footer={[
+            <Button key="cancel" onClick={() => setExpandedTextarea(null)}>
+              Cancel
+            </Button>,
+            <Button
+              key="save"
+              type="primary"
+              onClick={() => {
+                if (expandedTextarea) {
+                  form.setFieldValue(
+                    expandedTextarea.fieldKey,
+                    expandedTextarea.value,
+                  );
+                  autoSaveNodeChanges();
+                  setExpandedTextarea(null);
+                }
+              }}>
+              Save
+            </Button>,
+          ]}>
+          {expandedTextarea && (
+            <Input.TextArea
+              value={expandedTextarea.value}
+              onChange={(e) =>
+                setExpandedTextarea({
+                  ...expandedTextarea,
+                  value: e.target.value,
+                })
               }
-            }}>
-            Save
-          </Button>,
-        ]}>
-        {expandedTextarea && (
-          <Input.TextArea
-            value={expandedTextarea.value}
-            onChange={(e) =>
-              setExpandedTextarea({
-                ...expandedTextarea,
-                value: e.target.value,
-              })
-            }
-            rows={20}
-            style={{ fontFamily: 'monospace' }}
-            placeholder="Enter your text here..."
-          />
-        )}
-      </Modal>
-    </Sider>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison to prevent rerenders when viewport changes
-  // Only rerender if relevant props actually change
-  // Note: We compare node data properties instead of the whole object
-  const prevNodeData = prevProps.node?.data as unknown as GraphNodeData;
-  const nextNodeData = nextProps.node?.data as unknown as GraphNodeData;
-  
-  // Compare config using JSON.stringify to detect changes
-  const prevConfig = prevNodeData?.config;
-  const nextConfig = nextNodeData?.config;
-  const configEqual = JSON.stringify(prevConfig) === JSON.stringify(nextConfig);
-  
-  return (
-    prevProps.visible === nextProps.visible &&
-    prevProps.node?.id === nextProps.node?.id &&
-    prevNodeData?.label === nextNodeData?.label &&
-    prevNodeData?.template === nextNodeData?.template &&
-    configEqual &&
-    prevProps.graphStatus === nextProps.graphStatus &&
-    prevProps.selectedThreadId === nextProps.selectedThreadId &&
-    prevProps.graphId === nextProps.graphId &&
-    prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
-    prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
-    prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
-    prevProps.templates?.length === nextProps.templates?.length
-  );
-});
+              rows={20}
+              style={{ fontFamily: 'monospace' }}
+              placeholder="Enter your text here..."
+            />
+          )}
+        </Modal>
+      </Sider>
+    );
+  },
+  (prevProps, nextProps) => {
+    const prevNodeData = prevProps.node?.data as unknown as GraphNodeData;
+    const nextNodeData = nextProps.node?.data as unknown as GraphNodeData;
+
+    const prevConfig = prevNodeData?.config;
+    const nextConfig = nextNodeData?.config;
+    const configEqual =
+      JSON.stringify(prevConfig) === JSON.stringify(nextConfig);
+
+    return (
+      prevProps.visible === nextProps.visible &&
+      prevProps.node?.id === nextProps.node?.id &&
+      prevNodeData?.label === nextNodeData?.label &&
+      prevNodeData?.template === nextNodeData?.template &&
+      configEqual &&
+      prevProps.graphStatus === nextProps.graphStatus &&
+      prevProps.selectedThreadId === nextProps.selectedThreadId &&
+      prevProps.graphId === nextProps.graphId &&
+      prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
+      prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
+      prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
+      prevProps.templates?.length === nextProps.templates?.length
+    );
+  },
+);

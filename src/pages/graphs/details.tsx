@@ -86,6 +86,7 @@ import type {
   GraphNode,
   GraphNodeData,
   NodeMetadata,
+  SchemaProperty,
 } from './types';
 
 const { Header, Sider, Content } = Layout;
@@ -281,7 +282,6 @@ export const GraphPage = () => {
   const [triggerNodeName, setTriggerNodeName] = useState<string | null>(null);
   const [triggerLoading, setTriggerLoading] = useState(false);
   const triggerStartedRef = useRef(false);
-  // Stores externalThreadId to match against thread.update socket event
   const pendingThreadSelectionRef = useRef<string | null>(null);
 
   const [isEditingName, setIsEditingName] = useState(false);
@@ -308,24 +308,18 @@ export const GraphPage = () => {
   >({});
   const [compiledNodesLoading, setCompiledNodesLoading] = useState(false);
 
-  // Shared messages state: { [threadId]: { [nodeId?]: ThreadMessageDto[] } }
-  // If nodeId is undefined, it means all messages for the thread
   const [sharedMessages, setSharedMessages] = useState<
     Record<string, Record<string | 'all', ThreadMessageDto[]>>
   >({});
 
-  // Shared external thread IDs: { [threadId]: externalThreadId }
   const [sharedExternalThreadIds, setSharedExternalThreadIds] = useState<
     Record<string, string | undefined>
   >({});
 
-  // Update shared messages helper
   const updateSharedMessages = useCallback(
     (
       threadId: string,
-      updater: (
-        prev: ThreadMessageDto[],
-      ) => ThreadMessageDto[],
+      updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
       nodeId?: string,
     ) => {
       setSharedMessages((prev) => {
@@ -590,7 +584,6 @@ export const GraphPage = () => {
           ? options.threadId
           : selectedThreadId;
 
-      // Get the external thread ID to pass to the API
       const selectedThread = threads.find((t) => t.id === threadIdToUse);
       const externalThreadId = selectedThread?.externalThreadId;
 
@@ -942,12 +935,10 @@ export const GraphPage = () => {
     handleOpenRevisionDiff,
   ]);
 
-  // WebSocket integration for real-time updates
   const { isConnected } = useWebSocket({
     autoConnect: true,
     graphId: id,
     handlers: {
-      // Handle graph state changes
       'graph.update': (notification) => {
         const data = notification as GraphUpdateNotification;
         if (data.graphId !== id) return;
@@ -973,7 +964,6 @@ export const GraphPage = () => {
         });
       },
 
-      // Handle agent messages - update shared state for all listeners
       'agent.message': (notification) => {
         const data = notification as AgentMessageNotification;
         if (data.graphId !== id) return;
@@ -983,19 +973,20 @@ export const GraphPage = () => {
         const nodeId = data.nodeId;
         const incomingMessage = data.data;
 
-        // Update shared messages for both 'all' (thread-level) and node-specific
         updateSharedMessages(threadId, (prev) => {
           return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
         });
 
-        // If nodeId exists, also update node-specific messages
         if (nodeId) {
-          updateSharedMessages(threadId, (prev) => {
-            return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
-          }, nodeId);
+          updateSharedMessages(
+            threadId,
+            (prev) => {
+              return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
+            },
+            nodeId,
+          );
         }
 
-        // Update external thread ID if present
         if (incomingMessage.externalThreadId) {
           setSharedExternalThreadIds((prev) => ({
             ...prev,
@@ -1004,7 +995,6 @@ export const GraphPage = () => {
         }
       },
 
-      // Handle thread creation
       'thread.create': (notification) => {
         const data = notification as ThreadCreateNotification;
         if (data.graphId !== id) return;
@@ -1047,7 +1037,6 @@ export const GraphPage = () => {
         })();
       },
 
-      // Handle thread updates
       'thread.update': (notification) => {
         const data = notification as ThreadUpdateNotification;
         if (data.graphId !== id) return;
@@ -1081,7 +1070,6 @@ export const GraphPage = () => {
         triggerStartedRef.current = false;
       },
 
-      // Handle thread deletions
       'thread.delete': (notification) => {
         const data = notification as ThreadDeleteNotification;
         if (data.graphId !== id) return;
@@ -1105,12 +1093,10 @@ export const GraphPage = () => {
         triggerStartedRef.current = false;
       },
 
-      // Handle node status updates
       'graph.node.update': (notification) => {
         const data = notification as GraphNodeUpdateNotification;
         if (data.graphId !== id) return;
 
-        // Update compiled nodes map with new status
         setCompiledNodesMap((prev) => {
           const existing = prev[data.nodeId];
           const nextStatus = data.data.status;
@@ -1231,11 +1217,6 @@ export const GraphPage = () => {
     },
   });
 
-  // Show connection status feedback
-  useEffect(() => {
-    // Connection status is tracked but not logged
-  }, [isConnected, id]);
-
   useEffect(() => {
     if (!loading) {
       const t = requestAnimationFrame(() => {
@@ -1299,30 +1280,18 @@ export const GraphPage = () => {
     ) => {
       setNodes((prevNodes) => {
         const updatedNodes = prevNodes.map((node) => {
-          if (node.id === nodeId) {
-            const nodeData = node.data;
-            return {
-              ...node,
-              data: {
-                ...nodeData,
-                label: updates.name ?? nodeData.label,
-                config: updates.config ?? nodeData.config,
-              },
-            };
-          }
-          return node;
+          if (node.id !== nodeId) return node;
+          const nodeData = node.data;
+          return {
+            ...node,
+            data: {
+              ...nodeData,
+              label: updates.name ?? nodeData.label,
+              config: updates.config ?? nodeData.config,
+            },
+          };
         });
         nodesRef.current = updatedNodes;
-        
-        // Update selectedNode if it's the node being saved
-        setSelectedNode((prevSelectedNode) => {
-          if (prevSelectedNode?.id === nodeId) {
-            const updatedSelectedNode = updatedNodes.find((n) => n.id === nodeId);
-            return updatedSelectedNode || prevSelectedNode;
-          }
-          return prevSelectedNode;
-        });
-        
         setHasUnsavedChanges(true);
         setHasStructuralChanges(true);
         if (id) {
@@ -1427,11 +1396,28 @@ export const GraphPage = () => {
 
     setSaving(true);
     try {
-      const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => ({
-        id: node.id,
-        template: node.data.template as string,
-        config: node.data.config as Record<string, unknown>,
-      }));
+      const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => {
+        const template = templatesById[node.data.template as string];
+        const nodeConfig = node.data.config as Record<string, unknown>;
+        
+        // Merge const values from template schema into config
+        const mergedConfig = { ...nodeConfig };
+        if (template?.schema?.properties) {
+          Object.entries(template.schema.properties).forEach(([key, prop]) => {
+            const schemaProp = prop as SchemaProperty;
+            if (schemaProp.const !== undefined) {
+              // Always include const values, even if they're not in the current config
+              mergedConfig[key] = schemaProp.const;
+            }
+          });
+        }
+        
+        return {
+          id: node.id,
+          template: node.data.template as string,
+          config: mergedConfig,
+        };
+      });
 
       const apiEdges: CreateGraphDtoSchemaEdgesInner[] = edges.map((edge) => ({
         from: edge.source,
@@ -1467,8 +1453,6 @@ export const GraphPage = () => {
       const updatedGraph = response.data.graph;
       const revision = response.data.revision;
 
-      // If a revision was created, add it to the revisions list immediately
-      // (This provides instant feedback instead of waiting for WebSocket)
       if (revision) {
         upsertRevision(revision);
       }
@@ -1480,9 +1464,6 @@ export const GraphPage = () => {
       if (id) {
         GraphStorageService.clearGraphState(id);
       }
-      setNodes(nodes);
-      setEdges(edges);
-      setViewport(viewport);
       setGraph(updatedGraph);
       setEditingName(updatedGraph.name);
       userInteractedRef.current = false;
@@ -1521,14 +1502,12 @@ export const GraphPage = () => {
           executeTriggerDto,
         );
 
-        // response.data.externalThreadId is the externalThreadId from LangChain
         const returnedExternalThreadId = response.data?.externalThreadId;
         const currentExternalThreadId = threadForExecution?.externalThreadId;
         const shouldSelectNewThread =
           returnedExternalThreadId &&
           returnedExternalThreadId !== currentExternalThreadId;
 
-        // Store externalThreadId to match against thread.update socket event
         triggerStartedRef.current = Boolean(shouldSelectNewThread);
         pendingThreadSelectionRef.current = shouldSelectNewThread
           ? returnedExternalThreadId
@@ -1553,7 +1532,7 @@ export const GraphPage = () => {
         setTriggerLoading(false);
       }
     },
-    [triggerNodeId, id, threads, hasUnsavedChanges, handleSave],
+    [triggerNodeId, id, threads, hasUnsavedChanges],
   );
 
   const handleViewportChange = useCallback(
@@ -1607,16 +1586,22 @@ export const GraphPage = () => {
   );
 
   const handleNodesChange = useCallback(
-    (changes: Parameters<typeof onNodesChange>[0]) => {
+    (changes: NodeChange[]) => {
+      const isDragging = changes.some(
+        (change) =>
+          change.type === 'position' &&
+          (change as Extract<NodeChange, { type: 'position' }>).dragging,
+      );
+
       onNodesChange(changes);
-      if (isHydratingRef.current) {
-        return;
-      }
-      if (!userInteractedRef.current) {
-        return;
-      }
+
+      if (isHydratingRef.current) return;
+      if (!userInteractedRef.current) return;
+      if (isDragging) return;
+
       setHasUnsavedChanges(true);
       setHasPositionChanges(true);
+
       if (id) {
         setTimeout(() => {
           GraphStorageService.saveGraphState(id, {
@@ -1681,7 +1666,6 @@ export const GraphPage = () => {
       const updatedGraph = response.data.graph;
       const revision = response.data.revision;
 
-      // If a revision was created, add it to the revisions list immediately
       if (revision) {
         upsertRevision(revision);
       }
@@ -1737,7 +1721,6 @@ export const GraphPage = () => {
           threadId: selectedThreadId,
         });
 
-        // Check if the graph run returned an error status
         if (updatedGraph.status === GraphDtoStatusEnum.Error) {
           message.error('Graph execution failed');
           setGraphError('Graph execution failed');

@@ -14,7 +14,6 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useMemo, useRef } from 'react';
-import type { ReactFlowInstance } from '@xyflow/react';
 import { CustomNode } from './CustomNode';
 import type { GraphNode, GraphEdge, GraphNodeData } from '../types';
 import {
@@ -355,7 +354,9 @@ export const GraphCanvas = ({
         nodeTypes={nodeTypes}
         fitView={!initialViewport}
         deleteKeyCode={['Delete', 'Backspace']}
-        defaultViewport={initialViewport}>
+        defaultViewport={initialViewport}
+        minZoom={0.1}
+        maxZoom={4}>
         <Controls />
         <MiniMap />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
