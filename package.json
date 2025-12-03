@@ -51,11 +51,11 @@
     "vite": "^4.5.14"
   },
   "scripts": {
-    "dev": "refine dev --port 5174",
-    "build": "tsc && refine build",
-    "lint:fix": "prettier --write . && pnpm eslint \"src/**/*.{js,ts,tsx}\" --fix",
-    "start": "refine start",
-    "refine": "refine",
+    "dev": "pnpm refine dev --port 5174",
+    "build": "pnpm tsc && pnpm refine build",
+    "lint:fix": "pnpm prettier --write . && pnpm eslint \"src/**/*.{js,ts,tsx}\" --fix",
+    "start": "pnpm refine start",
+    "refine": "pnpm refine",
     "up-versions": "./scripts/up-versions.sh",
     "generate:api": "SWAGGER_URL=http://localhost:5000/swagger-api-json ./scripts/generate-api.sh"
   },
