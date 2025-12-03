@@ -31,7 +31,12 @@ import {
   WarningFilled,
   XFilled,
 } from '@ant-design/icons';
-import { useEdgesState, useNodesState, Viewport } from '@xyflow/react';
+import {
+  NodeChange,
+  useEdgesState,
+  useNodesState,
+  Viewport,
+} from '@xyflow/react';
 import { isAxiosError } from 'axios';
 import {
   graphRevisionsApi,
@@ -1399,7 +1404,7 @@ export const GraphPage = () => {
       const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => {
         const template = templatesById[node.data.template as string];
         const nodeConfig = node.data.config as Record<string, unknown>;
-        
+
         // Merge const values from template schema into config
         const mergedConfig = { ...nodeConfig };
         if (template?.schema?.properties) {
@@ -1411,7 +1416,7 @@ export const GraphPage = () => {
             }
           });
         }
-        
+
         return {
           id: node.id,
           template: node.data.template as string,
