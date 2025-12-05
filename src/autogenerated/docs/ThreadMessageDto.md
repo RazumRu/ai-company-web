@@ -1,16 +1,17 @@
 # ThreadMessageDto
 
+
 ## Properties
 
-| Name                 | Type                                                      | Description | Notes                  |
-| -------------------- | --------------------------------------------------------- | ----------- | ---------------------- |
-| **id**               | **string**                                                |             | [default to undefined] |
-| **threadId**         | **string**                                                |             | [default to undefined] |
-| **nodeId**           | **string**                                                |             | [default to undefined] |
-| **externalThreadId** | **string**                                                |             | [default to undefined] |
-| **createdAt**        | **string**                                                |             | [default to undefined] |
-| **updatedAt**        | **string**                                                |             | [default to undefined] |
-| **message**          | [**ThreadMessageDtoMessage**](ThreadMessageDtoMessage.md) |             | [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**id** | **string** |  | [default to undefined]
+**threadId** | **string** |  | [default to undefined]
+**nodeId** | **string** |  | [default to undefined]
+**externalThreadId** | **string** |  | [default to undefined]
+**createdAt** | **string** |  | [default to undefined]
+**updatedAt** | **string** |  | [default to undefined]
+**message** | [**ThreadMessageDtoMessage**](ThreadMessageDtoMessage.md) |  | [default to undefined]
 
 ## Example
 
@@ -18,13 +19,13 @@
 import { ThreadMessageDto } from './api';
 
 const instance: ThreadMessageDto = {
-  id,
-  threadId,
-  nodeId,
-  externalThreadId,
-  createdAt,
-  updatedAt,
-  message,
+    id,
+    threadId,
+    nodeId,
+    externalThreadId,
+    createdAt,
+    updatedAt,
+    message,
 };
 ```
 

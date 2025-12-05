@@ -1,11 +1,12 @@
 # CreateGraphDtoSchema
 
+
 ## Properties
 
-| Name      | Type                                                                                 | Description | Notes                             |
-| --------- | ------------------------------------------------------------------------------------ | ----------- | --------------------------------- |
-| **nodes** | [**Array&lt;CreateGraphDtoSchemaNodesInner&gt;**](CreateGraphDtoSchemaNodesInner.md) |             | [default to undefined]            |
-| **edges** | [**Array&lt;CreateGraphDtoSchemaEdgesInner&gt;**](CreateGraphDtoSchemaEdgesInner.md) |             | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**nodes** | [**Array&lt;CreateGraphDtoSchemaNodesInner&gt;**](CreateGraphDtoSchemaNodesInner.md) |  | [default to undefined]
+**edges** | [**Array&lt;CreateGraphDtoSchemaEdgesInner&gt;**](CreateGraphDtoSchemaEdgesInner.md) |  | [optional] [default to undefined]
 
 ## Example
 
@@ -13,8 +14,8 @@
 import { CreateGraphDtoSchema } from './api';
 
 const instance: CreateGraphDtoSchema = {
-  nodes,
-  edges,
+    nodes,
+    edges,
 };
 ```
 

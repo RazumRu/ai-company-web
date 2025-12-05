@@ -4,10 +4,10 @@ Schema submitted by the client
 
 ## Properties
 
-| Name      | Type                                                                                 | Description | Notes                             |
-| --------- | ------------------------------------------------------------------------------------ | ----------- | --------------------------------- |
-| **nodes** | [**Array&lt;CreateGraphDtoSchemaNodesInner&gt;**](CreateGraphDtoSchemaNodesInner.md) |             | [default to undefined]            |
-| **edges** | [**Array&lt;CreateGraphDtoSchemaEdgesInner&gt;**](CreateGraphDtoSchemaEdgesInner.md) |             | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**nodes** | [**Array&lt;CreateGraphDtoSchemaNodesInner&gt;**](CreateGraphDtoSchemaNodesInner.md) |  | [default to undefined]
+**edges** | [**Array&lt;CreateGraphDtoSchemaEdgesInner&gt;**](CreateGraphDtoSchemaEdgesInner.md) |  | [optional] [default to undefined]
 
 ## Example
 
@@ -15,8 +15,8 @@ Schema submitted by the client
 import { UpdateGraphResponseDtoRevisionClientSchema } from './api';
 
 const instance: UpdateGraphResponseDtoRevisionClientSchema = {
-  nodes,
-  edges,
+    nodes,
+    edges,
 };
 ```
 

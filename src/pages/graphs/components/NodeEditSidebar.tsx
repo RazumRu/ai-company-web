@@ -29,11 +29,14 @@ import {
   EditOutlined,
   ExclamationCircleOutlined,
   ExpandOutlined,
+  FileTextOutlined,
   InfoCircleOutlined,
   PlayCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
 import type {
@@ -234,6 +237,34 @@ export const NodeEditSidebar = React.memo(
     const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
       templateKindLower,
     );
+    const [instructionsVisible, setInstructionsVisible] = useState(false);
+    const agentInstructionsText = useMemo(() => {
+      const instructions = compiledNode?.additionalNodeMetadata?.instructions;
+      if (instructions === undefined || instructions === null) {
+        return '';
+      }
+      if (typeof instructions === 'string') {
+        return instructions;
+      }
+      if (Array.isArray(instructions)) {
+        return instructions.map((item) => String(item)).join('\n\n');
+      }
+      try {
+        return JSON.stringify(instructions, null, 2);
+      } catch {
+        return String(instructions);
+      }
+    }, [compiledNode?.additionalNodeMetadata?.instructions]);
+    const instructionsAvailable = Boolean(agentInstructionsText);
+    const instructionsButtonDisabled =
+      !isGraphRunning || compiledNodesLoading || !instructionsAvailable;
+    const instructionsTooltip = !isGraphRunning
+      ? 'Start the graph to view live instructions'
+      : compiledNodesLoading
+        ? 'Loading instructions...'
+        : instructionsAvailable
+          ? 'View current agent instructions'
+          : 'Instructions are not available for this node yet';
 
     const statusTagColorMap: Record<string, string> = {
       running: 'green',
@@ -1062,9 +1093,17 @@ export const NodeEditSidebar = React.memo(
               flexShrink: 0,
               padding: '8px 4px 0 4px',
             }}>
-            <Title level={5} style={{ marginBottom: 8 }}>
-              Configuration
-            </Title>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}>
+              <Title level={5} style={{ margin: 0 }}>
+                Configuration
+              </Title>
+            </div>
           </div>
 
           <div
@@ -1297,7 +1336,7 @@ export const NodeEditSidebar = React.memo(
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12,
+                  gap: 4,
                 }}>
                 <Text
                   strong
@@ -1310,6 +1349,18 @@ export const NodeEditSidebar = React.memo(
                   }}>
                   {nodeName}
                 </Text>
+                {isAgentNode && (
+                  <Tooltip title={instructionsTooltip} placement="bottom">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<FileTextOutlined />}
+                      disabled={instructionsButtonDisabled}
+                      onClick={() => setInstructionsVisible(true)}
+                      aria-label="View agent instructions"
+                    />
+                  </Tooltip>
+                )}
                 <Popover
                   content={infoContent}
                   trigger="click"
@@ -1330,11 +1381,12 @@ export const NodeEditSidebar = React.memo(
               </div>
             )}
 
-            <div>
-              <Text strong>Template:</Text> {nodeData?.template}
-            </div>
-            <div>
-              <Text strong>Kind:</Text> {nodeData?.templateKind}
+            <div
+              style={{
+                fontSize: '11px',
+                color: '#bfbfbf',
+              }}>
+              {nodeData?.template} ({nodeData?.templateKind})
             </div>
             {showNodeStatus && (
               <div
@@ -1345,8 +1397,7 @@ export const NodeEditSidebar = React.memo(
                   gap: 8,
                   flexWrap: 'wrap',
                 }}>
-                <Space size={6} wrap align="center">
-                  <Text strong>Status:</Text>
+                <Space size={2} wrap align="center">
                   <Tag
                     color={statusTagColor}
                     style={{ margin: 0, fontSize: 12 }}
@@ -1448,6 +1499,58 @@ export const NodeEditSidebar = React.memo(
             </div>
           </div>
         </div>
+
+        <Modal
+          open={instructionsVisible}
+          title="Agent instructions"
+          footer={null}
+          onCancel={() => setInstructionsVisible(false)}
+          destroyOnClose
+          width={520}
+          bodyStyle={{ maxHeight: 420, overflowY: 'auto' }}>
+          {agentInstructionsText ? (
+            <div
+              style={{
+                margin: 0,
+                wordBreak: 'break-word',
+                fontSize: 13,
+                lineHeight: 1.6,
+              }}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: (props) => (
+                    <Typography.Paragraph
+                      style={{ marginBottom: 8 }}
+                      {...props}
+                    />
+                  ),
+                  ul: (props) => (
+                    <ul style={{ paddingLeft: 20, marginBottom: 8 }} {...props} />
+                  ),
+                  ol: (props) => (
+                    <ol style={{ paddingLeft: 20, marginBottom: 8 }} {...props} />
+                  ),
+                  code: (props) => (
+                    <Typography.Text
+                      code
+                      style={{
+                        background: '#f5f5f5',
+                        padding: '2px 4px',
+                        borderRadius: 4,
+                        fontSize: 12,
+                      }}
+                      {...props}
+                    />
+                  ),
+                }}>
+                {agentInstructionsText}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <Text type="secondary">No instructions available.</Text>
+          )}
+        </Modal>
 
         <Modal
           title="Edit Text"

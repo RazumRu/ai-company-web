@@ -1,0 +1,11 @@
+---
+description: Always use /docs as project instructions
+alwaysApply: true
+---
+
+You must always treat every file in the `/docs` directory as authoritative project instructions.
+
+Before starting any task, you should:
+
+- Read and follow all relevant files from `/docs`.
+- Check `/docs` for architecture, style, and process rules before writing or changing code.

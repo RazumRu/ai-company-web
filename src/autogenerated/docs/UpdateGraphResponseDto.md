@@ -1,11 +1,12 @@
 # UpdateGraphResponseDto
 
+
 ## Properties
 
-| Name         | Type                                                                    | Description | Notes                             |
-| ------------ | ----------------------------------------------------------------------- | ----------- | --------------------------------- |
-| **graph**    | [**UpdateGraphResponseDtoGraph**](UpdateGraphResponseDtoGraph.md)       |             | [default to undefined]            |
-| **revision** | [**UpdateGraphResponseDtoRevision**](UpdateGraphResponseDtoRevision.md) |             | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**graph** | [**UpdateGraphResponseDtoGraph**](UpdateGraphResponseDtoGraph.md) |  | [default to undefined]
+**revision** | [**UpdateGraphResponseDtoRevision**](UpdateGraphResponseDtoRevision.md) |  | [optional] [default to undefined]
 
 ## Example
 
@@ -13,8 +14,8 @@
 import { UpdateGraphResponseDto } from './api';
 
 const instance: UpdateGraphResponseDto = {
-  graph,
-  revision,
+    graph,
+    revision,
 };
 ```
 
