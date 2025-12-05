@@ -1526,10 +1526,16 @@ export const NodeEditSidebar = React.memo(
                     />
                   ),
                   ul: (props) => (
-                    <ul style={{ paddingLeft: 20, marginBottom: 8 }} {...props} />
+                    <ul
+                      style={{ paddingLeft: 20, marginBottom: 8 }}
+                      {...props}
+                    />
                   ),
                   ol: (props) => (
-                    <ol style={{ paddingLeft: 20, marginBottom: 8 }} {...props} />
+                    <ol
+                      style={{ paddingLeft: 20, marginBottom: 8 }}
+                      {...props}
+                    />
                   ),
                   code: (props) => (
                     <Typography.Text

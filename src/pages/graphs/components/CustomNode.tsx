@@ -50,431 +50,459 @@ interface CustomNodeProps extends NodeProps {
   compiledNodesLoading?: boolean;
 }
 
-export const CustomNode = React.memo(({
-  id: nodeId,
-  data,
-  selected,
-  templates = [],
-  isConnectable = true,
-  graphStatus,
-  onTriggerClick,
-  compiledNode,
-  compiledNodesLoading,
-}: CustomNodeProps) => {
-  const nodeData = data as unknown as GraphNodeData;
-  const allNodes = useStore((s) => s.nodes) as GraphNode[];
-  const allEdges = useStore((s) => s.edges) as GraphEdge[];
-  const nodeTemplate = templates?.find((t) => t.id === nodeData.template);
+export const CustomNode = React.memo(
+  ({
+    id: nodeId,
+    data,
+    selected,
+    templates = [],
+    isConnectable = true,
+    graphStatus,
+    onTriggerClick,
+    compiledNode,
+    compiledNodesLoading,
+  }: CustomNodeProps) => {
+    const nodeData = data as unknown as GraphNodeData;
+    const allNodes = useStore((s) => s.nodes) as GraphNode[];
+    const allEdges = useStore((s) => s.edges) as GraphEdge[];
+    const nodeTemplate = templates?.find((t) => t.id === nodeData.template);
 
-  useEffect(() => {
-    ensureNodeStatusPulseStyle();
-  }, []);
+    useEffect(() => {
+      ensureNodeStatusPulseStyle();
+    }, []);
 
-  const getKindColor = (kind?: string) => {
-    const map: Record<string, string> = {
-      runtime: 'blue',
-      tool: 'green',
-      simpleagent: 'orange',
-      trigger: 'red',
-      resource: 'purple',
-      default: 'gray',
+    const getKindColor = (kind?: string) => {
+      const map: Record<string, string> = {
+        runtime: 'blue',
+        tool: 'green',
+        simpleagent: 'orange',
+        trigger: 'red',
+        resource: 'purple',
+        default: 'gray',
+      };
+      return map[kind?.toLowerCase() || 'default'] || 'gray';
     };
-    return map[kind?.toLowerCase() || 'default'] || 'gray';
-  };
 
-  const getMetadataProperties = () => {
-    if (!nodeData.templateSchema?.properties)
-      return [] as { key: string; value: unknown; title: string }[];
-    return Object.entries(nodeData.templateSchema.properties)
-      .filter(([, prop]) => prop['x-ui:show-on-node'] === true)
-      .map(([key, prop]) => ({
-        key,
-        value: nodeData.config[key] ?? prop.const ?? prop.default ?? '',
-        title: prop.title ?? key,
-      }))
-      .filter(
-        (x) => x.value !== undefined && x.value !== null && x.value !== '',
+    const getMetadataProperties = () => {
+      if (!nodeData.templateSchema?.properties)
+        return [] as { key: string; value: unknown; title: string }[];
+      return Object.entries(nodeData.templateSchema.properties)
+        .filter(([, prop]) => prop['x-ui:show-on-node'] === true)
+        .map(([key, prop]) => ({
+          key,
+          value: nodeData.config[key] ?? prop.const ?? prop.default ?? '',
+          title: prop.title ?? key,
+        }))
+        .filter(
+          (x) => x.value !== undefined && x.value !== null && x.value !== '',
+        );
+    };
+
+    const metadataProperties = getMetadataProperties();
+
+    const validationErrors =
+      templates.length > 0 && allNodes.length > 0 && allEdges.length > 0
+        ? GraphValidationService.getNodeValidationErrors(
+            nodeId,
+            allNodes,
+            allEdges,
+            templates,
+          )
+        : [];
+    const hasValidationErrors = validationErrors.length > 0;
+
+    const inputRules =
+      templates.length > 0 && nodeId
+        ? GraphValidationService.getAvailableConnectionTypes(
+            {
+              id: nodeId,
+              data: nodeData as unknown as Record<string, unknown>,
+              position: { x: 0, y: 0 },
+              type: 'custom',
+            } satisfies GraphNode,
+            templates,
+          )
+        : [];
+
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const contentRef = useRef<HTMLDivElement | null>(null);
+    const [contentH, setContentH] = useState(80);
+    useEffect(() => {
+      if (!contentRef.current) return;
+      const ro = new ResizeObserver((e) =>
+        setContentH(e[0]?.contentRect.height || 80),
       );
-  };
+      ro.observe(contentRef.current);
+      return () => ro.disconnect();
+    }, []);
 
-  const metadataProperties = getMetadataProperties();
+    const targets = useMemo(() => inputRules, [inputRules]);
 
-  const validationErrors =
-    templates.length > 0 && allNodes.length > 0 && allEdges.length > 0
-      ? GraphValidationService.getNodeValidationErrors(
-          nodeId,
-          allNodes,
-          allEdges,
-          templates,
-        )
-      : [];
-  const hasValidationErrors = validationErrors.length > 0;
+    const outMissing =
+      inputRules.some((r) => r.required) &&
+      !allEdges.some((e) => e.source === nodeId);
 
-  const inputRules =
-    templates.length > 0 && nodeId
-      ? GraphValidationService.getAvailableConnectionTypes(
-          {
-            id: nodeId,
-            data: nodeData as unknown as Record<string, unknown>,
-            position: { x: 0, y: 0 },
-            type: 'custom',
-          } satisfies GraphNode,
-          templates,
-        )
-      : [];
-
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const [contentH, setContentH] = useState(80);
-  useEffect(() => {
-    if (!contentRef.current) return;
-    const ro = new ResizeObserver((e) =>
-      setContentH(e[0]?.contentRect.height || 80),
-    );
-    ro.observe(contentRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  const targets = useMemo(() => inputRules, [inputRules]);
-
-  const outMissing =
-    inputRules.some((r) => r.required) &&
-    !allEdges.some((e) => e.source === nodeId);
-
-  // Check if this is a trigger node and if graph is running
-  const isTriggerNode = nodeTemplate?.kind === 'trigger';
-  const isGraphRunning = graphStatus === GraphDtoStatusEnum.Running;
-  const isGraphCompiling = graphStatus === GraphDtoStatusEnum.Compiling;
-  const isGraphActive = isGraphRunning || isGraphCompiling;
-  const canTrigger = isTriggerNode && isGraphRunning;
-  const color = (
-    role: 'target' | 'source',
-    _required: boolean,
-    missing: boolean,
-  ) => {
-    if (missing) {
+    // Check if this is a trigger node and if graph is running
+    const isTriggerNode = nodeTemplate?.kind === 'trigger';
+    const isGraphRunning = graphStatus === GraphDtoStatusEnum.Running;
+    const isGraphCompiling = graphStatus === GraphDtoStatusEnum.Compiling;
+    const isGraphActive = isGraphRunning || isGraphCompiling;
+    const canTrigger = isTriggerNode && isGraphRunning;
+    const color = (
+      role: 'target' | 'source',
+      _required: boolean,
+      missing: boolean,
+    ) => {
+      if (missing) {
+        return {
+          bg: '#ff4d4f',
+          br: '2px solid white',
+          sh: '0 0 0 1px rgba(255,77,79,0.5)',
+        };
+      }
+      if (role === 'source') {
+        return {
+          bg: '#52c41a',
+          br: '2px solid white',
+          sh: '0 0 0 1px rgba(82,196,26,0.5)',
+        };
+      }
       return {
-        bg: '#ff4d4f',
+        bg: '#1890ff',
         br: '2px solid white',
-        sh: '0 0 0 1px rgba(255,77,79,0.5)',
+        sh: '0 0 0 1px rgba(24,144,255,0.5)',
       };
-    }
-    if (role === 'source') {
-      return {
-        bg: '#52c41a',
-        br: '2px solid white',
-        sh: '0 0 0 1px rgba(82,196,26,0.5)',
-      };
-    }
-    return {
-      bg: '#1890ff',
-      br: '2px solid white',
-      sh: '0 0 0 1px rgba(24,144,255,0.5)',
     };
-  };
 
-  const statusDotColorMap: Record<string, string> = {
-    running: '#52c41a',
-    idle: '#1890ff',
-    starting: '#2f54eb',
-    stopped: '#ff4d4f',
-  };
+    const statusDotColorMap: Record<string, string> = {
+      running: '#52c41a',
+      idle: '#1890ff',
+      starting: '#2f54eb',
+      stopped: '#ff4d4f',
+    };
 
-  const templateKindLower = (nodeTemplate?.kind || '').toLowerCase();
-  const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
-    templateKindLower,
-  );
+    const templateKindLower = (nodeTemplate?.kind || '').toLowerCase();
+    const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
+      templateKindLower,
+    );
 
-  const formattedStatus = compiledNode?.status
-    ? `${compiledNode.status.charAt(0).toUpperCase()}${compiledNode.status.slice(1)}`
-    : isGraphCompiling
-      ? 'Compiling'
-      : 'Unknown';
+    const formattedStatus = compiledNode?.status
+      ? `${compiledNode.status.charAt(0).toUpperCase()}${compiledNode.status.slice(1)}`
+      : isGraphCompiling
+        ? 'Compiling'
+        : 'Unknown';
 
-  const statusTooltip = !isGraphActive
-    ? 'Not running'
-    : compiledNodesLoading
-      ? 'Loading status...'
-      : formattedStatus;
+    const statusTooltip = !isGraphActive
+      ? 'Not running'
+      : compiledNodesLoading
+        ? 'Loading status...'
+        : formattedStatus;
 
-  const statusDotColor = !isGraphActive
-    ? '#d9d9d9'
-    : compiledNodesLoading
-      ? '#1890ff'
-      : compiledNode?.status
-        ? (statusDotColorMap[compiledNode.status] ?? '#d9d9d9')
-        : '#d9d9d9';
+    const statusDotColor = !isGraphActive
+      ? '#d9d9d9'
+      : compiledNodesLoading
+        ? '#1890ff'
+        : compiledNode?.status
+          ? (statusDotColorMap[compiledNode.status] ?? '#d9d9d9')
+          : '#d9d9d9';
 
-  const isStatusRunning =
-    isGraphActive &&
-    !compiledNodesLoading &&
-    compiledNode?.status === 'running';
+    const isStatusRunning =
+      isGraphActive &&
+      !compiledNodesLoading &&
+      compiledNode?.status === 'running';
 
-  const statusDotStyle: CSSProperties = {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    backgroundColor: statusDotColor,
-    display: 'inline-block',
-    cursor: 'help',
-    boxShadow: isStatusRunning ? '0 0 0 0 rgba(82, 196, 26, 0.6)' : 'none',
-    animation: isStatusRunning
-      ? 'graph-node-status-pulse 1.5s ease-out infinite'
-      : undefined,
-  };
+    const statusDotStyle: CSSProperties = {
+      width: 8,
+      height: 8,
+      borderRadius: '50%',
+      backgroundColor: statusDotColor,
+      display: 'inline-block',
+      cursor: 'help',
+      boxShadow: isStatusRunning ? '0 0 0 0 rgba(82, 196, 26, 0.6)' : 'none',
+      animation: isStatusRunning
+        ? 'graph-node-status-pulse 1.5s ease-out infinite'
+        : undefined,
+    };
 
-  const statusDot = showNodeStatus ? (
-    <Tooltip title={statusTooltip} placement="top">
-      <span style={statusDotStyle} />
-    </Tooltip>
-  ) : null;
+    const statusDot = showNodeStatus ? (
+      <Tooltip title={statusTooltip} placement="top">
+        <span style={statusDotStyle} />
+      </Tooltip>
+    ) : null;
 
-  return (
-    <Card
-      size="small"
-      style={{
-        minWidth: 300,
-        position: 'relative',
-        zIndex: 1,
-        border: hasValidationErrors
-          ? '2px solid #ff4d4f'
-          : selected
-            ? '1px solid #1890ff'
-            : '1px solid #d9d9d9',
-        borderRadius: 8,
-        boxShadow: hasValidationErrors
-          ? '0 4px 12px rgba(255, 77, 79, 0.3)'
-          : selected
-            ? '0 4px 12px rgba(24, 144, 255, 0.3)'
-            : '0 2px 8px rgba(0, 0, 0, 0.1)',
-      }}
-      styles={{
-        body: {
-          padding: 12,
+    return (
+      <Card
+        size="small"
+        style={{
+          minWidth: 300,
           position: 'relative',
-          paddingBottom: isTriggerNode ? 40 : 12, // Add space for trigger button
-        },
-      }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 15,
+          zIndex: 1,
+          border: hasValidationErrors
+            ? '2px solid #ff4d4f'
+            : selected
+              ? '1px solid #1890ff'
+              : '1px solid #d9d9d9',
+          borderRadius: 8,
+          boxShadow: hasValidationErrors
+            ? '0 4px 12px rgba(255, 77, 79, 0.3)'
+            : selected
+              ? '0 4px 12px rgba(24, 144, 255, 0.3)'
+              : '0 2px 8px rgba(0, 0, 0, 0.1)',
+        }}
+        styles={{
+          body: {
+            padding: 12,
+            position: 'relative',
+            paddingBottom: isTriggerNode ? 40 : 12, // Add space for trigger button
+          },
         }}>
-        <Space size="small" align="center">
-          <Space size={8} align="center">
-            {statusDot}
-            <Text
-              strong
-              style={{
-                fontSize: 14,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                maxWidth: 260,
-                display: 'block',
-              }}>
-              {nodeData.label}
-            </Text>
-          </Space>
-          <Tag
-            color={getKindColor(nodeData.templateKind)}
-            style={{ margin: 0, fontSize: 10 }}>
-            {nodeData.templateKind}
-          </Tag>
-          <Tag color="geekblue" style={{ margin: 0, fontSize: 10 }}>
-            {nodeData.template}
-          </Tag>
-          {compiledNode?.error && (
-            <Tooltip title={compiledNode.error} placement="top">
-              <ExclamationCircleOutlined
-                style={{ color: '#ff4d4f', fontSize: 14 }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-        <Space size="small">
-          {hasValidationErrors && (
-            <Tooltip
-              title={
-                <div>
-                  <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                    Validation Errors:
-                  </div>
-                  {validationErrors.map((e, i) => (
-                    <div key={i} style={{ fontSize: 12 }}>
-                      • {e.message}
-                    </div>
-                  ))}
-                </div>
-              }
-              placement="top">
-              <ExclamationCircleOutlined
-                style={{ color: '#ff4d4f', fontSize: 16, cursor: 'help' }}
-              />
-            </Tooltip>
-          )}
-          {nodeData.onDelete && (
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                nodeData.onDelete?.();
-              }}
-            />
-          )}
-        </Space>
-      </div>
-
-      <div ref={contentRef} style={{ position: 'relative', marginTop: 8 }}>
-        {metadataProperties.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {metadataProperties.map(({ key, value, title }) => (
-              <Tag
-                key={key}
-                color="default"
-                bordered={false}
-                style={{ fontSize: 10, margin: 0 }}>
-                {title}: {String(value)}
-              </Tag>
-            ))}
-          </div>
-        )}
-
-        <Text
-          type="secondary"
+        <div
           style={{
-            fontSize: 12,
-            display: 'block',
-            marginTop: 5,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 15,
           }}>
-          {nodeTemplate?.description}
-        </Text>
-      </div>
-
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-        }}>
-        {targets.map((t, i) => {
-          const id = makeHandleId('target', t);
-          const miss = t.required && !allEdges.some((e) => e.target === nodeId);
-          const c = color('target', t.required, miss);
-          return (
-            <Tooltip
-              key={id}
-              title={
-                <div>
-                  <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                    {t.type}: {t.value}
-                    {t.required && ' (Required)'}
-                    {t.multiple && ' (Multiple)'}
-                  </div>
-                  <div style={{ fontSize: 12, marginBottom: 4 }}>
-                    Available templates:
-                  </div>
-                  {t.availableTemplates.map((template, idx) => (
-                    <div key={idx} style={{ fontSize: 11, marginLeft: 8 }}>
-                      • {template.name} ({template.kind})
-                    </div>
-                  ))}
-                  {miss && (
-                    <div
-                      style={{ fontSize: 11, color: '#ff4d4f', marginTop: 4 }}>
-                      ⚠️ This connection is required
-                    </div>
-                  )}
-                </div>
-              }
-              placement="right"
-              mouseEnterDelay={0.1}>
-              <Handle
-                type="target"
-                id={id}
-                isConnectable={isConnectable}
-                position={Position.Left}
+          <Space size="small" align="center">
+            <Space size={8} align="center">
+              {statusDot}
+              <Text
+                strong
                 style={{
-                  width: '12px',
-                  height: '12px',
-                  position: 'relative',
-                  transform: 'none',
-                  left: '-6px',
-                  top: 0,
-                  background: c.bg,
-                  border: c.br,
-                  boxShadow: c.sh,
+                  fontSize: 14,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: 260,
+                  display: 'block',
+                }}>
+                {nodeData.label}
+              </Text>
+            </Space>
+            <Tag
+              color={getKindColor(nodeData.templateKind)}
+              style={{ margin: 0, fontSize: 10 }}>
+              {nodeData.templateKind}
+            </Tag>
+            <Tag color="geekblue" style={{ margin: 0, fontSize: 10 }}>
+              {nodeData.template}
+            </Tag>
+            {compiledNode?.error && (
+              <Tooltip title={compiledNode.error} placement="top">
+                <ExclamationCircleOutlined
+                  style={{ color: '#ff4d4f', fontSize: 14 }}
+                />
+              </Tooltip>
+            )}
+          </Space>
+          <Space size="small">
+            {hasValidationErrors && (
+              <Tooltip
+                title={
+                  <div>
+                    <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                      Validation Errors:
+                    </div>
+                    {validationErrors.map((e, i) => (
+                      <div key={i} style={{ fontSize: 12 }}>
+                        • {e.message}
+                      </div>
+                    ))}
+                  </div>
+                }
+                placement="top">
+                <ExclamationCircleOutlined
+                  style={{ color: '#ff4d4f', fontSize: 16, cursor: 'help' }}
+                />
+              </Tooltip>
+            )}
+            {nodeData.onDelete && (
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nodeData.onDelete?.();
                 }}
               />
-            </Tooltip>
-          );
-        })}
-      </div>
+            )}
+          </Space>
+        </div>
 
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          right: 0,
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-        }}>
-        {nodeTemplate?.outputs?.map((output, i) => {
-          const outRule: {
-            type: 'kind' | 'template';
-            value: string;
-            required?: boolean;
-            multiple?: boolean;
-          } = {
-            type: output.type as 'kind' | 'template',
-            value: String(output.value),
-            required: output.required,
-            multiple: output.multiple,
-          };
-          const id = makeHandleId('source', outRule);
-          const c = color('source', output.required || false, false);
-          return (
-            <Tooltip
-              key={id}
-              title={
-                <div>
-                  <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                    {output.type}: {output.value}
-                    {output.required && ' (Required)'}
-                    {output.multiple && ' (Multiple)'}
+        <div ref={contentRef} style={{ position: 'relative', marginTop: 8 }}>
+          {metadataProperties.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {metadataProperties.map(({ key, value, title }) => (
+                <Tag
+                  key={key}
+                  color="default"
+                  bordered={false}
+                  style={{ fontSize: 10, margin: 0 }}>
+                  {title}: {String(value)}
+                </Tag>
+              ))}
+            </div>
+          )}
+
+          <Text
+            type="secondary"
+            style={{
+              fontSize: 12,
+              display: 'block',
+              marginTop: 5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+            {nodeTemplate?.description}
+          </Text>
+        </div>
+
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}>
+          {targets.map((t, i) => {
+            const id = makeHandleId('target', t);
+            const miss =
+              t.required && !allEdges.some((e) => e.target === nodeId);
+            const c = color('target', t.required, miss);
+            return (
+              <Tooltip
+                key={id}
+                title={
+                  <div>
+                    <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                      {t.type}: {t.value}
+                      {t.required && ' (Required)'}
+                      {t.multiple && ' (Multiple)'}
+                    </div>
+                    <div style={{ fontSize: 12, marginBottom: 4 }}>
+                      Available templates:
+                    </div>
+                    {t.availableTemplates.map((template, idx) => (
+                      <div key={idx} style={{ fontSize: 11, marginLeft: 8 }}>
+                        • {template.name} ({template.kind})
+                      </div>
+                    ))}
+                    {miss && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: '#ff4d4f',
+                          marginTop: 4,
+                        }}>
+                        ⚠️ This connection is required
+                      </div>
+                    )}
                   </div>
-                  <div style={{ fontSize: 12 }}>Output connection</div>
-                </div>
-              }
-              placement="left"
-              mouseEnterDelay={0.1}>
+                }
+                placement="right"
+                mouseEnterDelay={0.1}>
+                <Handle
+                  type="target"
+                  id={id}
+                  isConnectable={isConnectable}
+                  position={Position.Left}
+                  style={{
+                    width: '12px',
+                    height: '12px',
+                    position: 'relative',
+                    transform: 'none',
+                    left: '-6px',
+                    top: 0,
+                    background: c.bg,
+                    border: c.br,
+                    boxShadow: c.sh,
+                  }}
+                />
+              </Tooltip>
+            );
+          })}
+        </div>
+
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}>
+          {nodeTemplate?.outputs?.map((output, i) => {
+            const outRule: {
+              type: 'kind' | 'template';
+              value: string;
+              required?: boolean;
+              multiple?: boolean;
+            } = {
+              type: output.type as 'kind' | 'template',
+              value: String(output.value),
+              required: output.required,
+              multiple: output.multiple,
+            };
+            const id = makeHandleId('source', outRule);
+            const c = color('source', output.required || false, false);
+            return (
+              <Tooltip
+                key={id}
+                title={
+                  <div>
+                    <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                      {output.type}: {output.value}
+                      {output.required && ' (Required)'}
+                      {output.multiple && ' (Multiple)'}
+                    </div>
+                    <div style={{ fontSize: 12 }}>Output connection</div>
+                  </div>
+                }
+                placement="left"
+                mouseEnterDelay={0.1}>
+                <Handle
+                  type="source"
+                  id={id}
+                  isConnectable={isConnectable}
+                  position={Position.Right}
+                  style={{
+                    background: c.bg,
+                    border: c.br,
+                    boxShadow: c.sh,
+                    width: '12px',
+                    height: '12px',
+                    position: 'relative',
+                    transform: 'none',
+                    right: '-6px',
+                    top: 0,
+                  }}
+                />
+              </Tooltip>
+            );
+          })}
+          {nodeTemplate?.outputs === undefined && (
+            <Tooltip title="output" placement="left" mouseEnterDelay={0.1}>
               <Handle
                 type="source"
-                id={id}
+                id="source-out"
                 isConnectable={isConnectable}
                 position={Position.Right}
                 style={{
-                  background: c.bg,
-                  border: c.br,
-                  boxShadow: c.sh,
+                  background: color('source', false, outMissing).bg,
+                  border: color('source', false, outMissing).br,
+                  boxShadow: color('source', false, outMissing).sh,
                   width: '12px',
                   height: '12px',
                   position: 'relative',
@@ -484,76 +512,56 @@ export const CustomNode = React.memo(({
                 }}
               />
             </Tooltip>
-          );
-        })}
-        {nodeTemplate?.outputs === undefined && (
-          <Tooltip title="output" placement="left" mouseEnterDelay={0.1}>
-            <Handle
-              type="source"
-              id="source-out"
-              isConnectable={isConnectable}
-              position={Position.Right}
-              style={{
-                background: color('source', false, outMissing).bg,
-                border: color('source', false, outMissing).br,
-                boxShadow: color('source', false, outMissing).sh,
-                width: '12px',
-                height: '12px',
-                position: 'relative',
-                transform: 'none',
-                right: '-6px',
-                top: 0,
-              }}
-            />
-          </Tooltip>
-        )}
-      </div>
-
-      {/* Trigger Button - positioned under description */}
-      {isTriggerNode && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            left: 12,
-            right: 12,
-            zIndex: 10,
-            display: 'flex',
-            justifyContent: 'center',
-          }}>
-          <Button
-            type="primary"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            disabled={!canTrigger}
-            onClick={() => onTriggerClick?.(nodeId)}
-            style={{
-              fontSize: '11px',
-              padding: '0 20px',
-            }}>
-            Trigger
-          </Button>
+          )}
         </div>
-      )}
-    </Card>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary rerenders
-  // Only rerender if relevant props change
-  // Note: We compare data.label and data.template instead of the whole data object
-  // since the data object reference changes frequently but content may not
-  const prevData = prevProps.data as unknown as GraphNodeData;
-  const nextData = nextProps.data as unknown as GraphNodeData;
-  
-  return (
-    prevProps.id === nextProps.id &&
-    prevProps.selected === nextProps.selected &&
-    prevData?.label === nextData?.label &&
-    prevData?.template === nextData?.template &&
-    prevProps.graphStatus === nextProps.graphStatus &&
-    prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
-    prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
-    prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
-    prevProps.templates?.length === nextProps.templates?.length
-  );
-});
+
+        {/* Trigger Button - positioned under description */}
+        {isTriggerNode && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              left: 12,
+              right: 12,
+              zIndex: 10,
+              display: 'flex',
+              justifyContent: 'center',
+            }}>
+            <Button
+              type="primary"
+              size="small"
+              icon={<PlayCircleOutlined />}
+              disabled={!canTrigger}
+              onClick={() => onTriggerClick?.(nodeId)}
+              style={{
+                fontSize: '11px',
+                padding: '0 20px',
+              }}>
+              Trigger
+            </Button>
+          </div>
+        )}
+      </Card>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function to prevent unnecessary rerenders
+    // Only rerender if relevant props change
+    // Note: We compare data.label and data.template instead of the whole data object
+    // since the data object reference changes frequently but content may not
+    const prevData = prevProps.data as unknown as GraphNodeData;
+    const nextData = nextProps.data as unknown as GraphNodeData;
+
+    return (
+      prevProps.id === nextProps.id &&
+      prevProps.selected === nextProps.selected &&
+      prevData?.label === nextData?.label &&
+      prevData?.template === nextData?.template &&
+      prevProps.graphStatus === nextProps.graphStatus &&
+      prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
+      prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
+      prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
+      prevProps.templates?.length === nextProps.templates?.length
+    );
+  },
+);

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button, Dropdown, Input, Typography } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import type {
@@ -169,10 +175,13 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
           threadId: thread.id, // Update threadId to match current thread
         }));
       const allOptimistic = [...optimisticFromState, ...optimisticFromRef];
-      const mergedMessages = sortMessagesChronologically([...allOptimistic, ...fetched]);
-      
+      const mergedMessages = sortMessagesChronologically([
+        ...allOptimistic,
+        ...fetched,
+      ]);
+
       setMessages(mergedMessages);
-      
+
       // Update shared state if available
       if (onUpdateSharedMessages) {
         onUpdateSharedMessages(thread.id, () => mergedMessages);
@@ -239,7 +248,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
         selectedThreadExternalId || thread.externalThreadId || undefined,
       );
       const nodesWithStatus = response.data || [];
-      
+
       // Collect all pending message contents from compiled nodes
       const compiledPendingContents = new Set<string>();
       nodesWithStatus.forEach((node) => {
@@ -254,14 +263,16 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
           });
         }
       });
-      
+
       // Remove local pending messages that now appear in compiled nodes
       if (compiledPendingContents.size > 0) {
         setLocalPendingMessages((prevPending) =>
-          prevPending.filter((msg) => !compiledPendingContents.has(msg.content)),
+          prevPending.filter(
+            (msg) => !compiledPendingContents.has(msg.content),
+          ),
         );
       }
-      
+
       setCompiledNodesMap(() => {
         const next = nodesWithStatus.reduce<
           Record<string, GraphNodeWithStatusDto>
@@ -329,16 +340,17 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
         const nextError = event.data.error ?? existing?.error ?? null;
         const nextMetadata = event.data.metadata ?? existing?.metadata;
         const nextAdditionalNodeMetadata =
-          event.data.additionalNodeMetadata ??
-          existing?.additionalNodeMetadata;
+          event.data.additionalNodeMetadata ?? existing?.additionalNodeMetadata;
 
         // If this node has pending messages, remove matching local pending messages
         if (
           nextAdditionalNodeMetadata?.pendingMessages &&
           Array.isArray(nextAdditionalNodeMetadata.pendingMessages)
         ) {
-          const nodePendingMessages = nextAdditionalNodeMetadata
-            .pendingMessages as Array<{ content: string }>;
+          const nodePendingMessages =
+            nextAdditionalNodeMetadata.pendingMessages as Array<{
+              content: string;
+            }>;
           const nodePendingContents = new Set(
             nodePendingMessages.map((msg) => msg.content),
           );
@@ -486,7 +498,10 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
 
     // Compare arrays by content to avoid unnecessary re-renders
     let stablePendingMessages = newPendingMessages;
-    if (newPendingMessages && prevPending.length === newPendingMessages.length) {
+    if (
+      newPendingMessages &&
+      prevPending.length === newPendingMessages.length
+    ) {
       // Check if content is the same
       const contentsMatch = newPendingMessages.every(
         (msg, idx) =>
@@ -536,12 +551,12 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       const fetched = response.data?.reverse() || [];
       const merged = mergeMessagesReplacingStreaming(messages, fetched);
       setMessages(merged);
-      
+
       // Update shared state if available
       if (onUpdateSharedMessages) {
         onUpdateSharedMessages(thread.id, () => merged);
       }
-      
+
       setMessagesOffset((current) => current + fetched.length);
       setHasMoreMessages(fetched.length === MESSAGES_PAGE_SIZE);
     } catch (error) {
@@ -672,7 +687,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
     } catch (error) {
       console.error('Error sending message', error);
       const isThreadRunning = thread.status === ThreadDtoStatusEnum.Running;
-      
+
       if (isThreadRunning) {
         // Remove local pending message on error
         setLocalPendingMessages((prev) =>
@@ -719,7 +734,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   // The WebSocket listener is now handled at GraphPage level
   useEffect(() => {
     if (isDraft || !sharedMessages) return;
-    
+
     // Sync shared messages to local state, preserving optimistic messages
     // But remove optimistic messages that match incoming real messages
     setMessages((prev) => {
@@ -727,32 +742,32 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       const optimisticFromState = prev.filter((msg) =>
         optimisticMessageIdsRef.current.has(msg.id),
       );
-      
+
       // Create a set of incoming message contents for quick lookup
       const incomingHumanMessages = new Set<string>();
       sharedMessages.forEach((msg) => {
         const msgRole = (msg.message?.role as string) || '';
         if (msgRole === 'human') {
           const msgContent =
-            typeof msg.message?.content === 'string'
-              ? msg.message.content
-              : '';
+            typeof msg.message?.content === 'string' ? msg.message.content : '';
           if (msgContent) {
             incomingHumanMessages.add(msgContent);
           }
         }
       });
-      
+
       // Remove optimistic messages that match any incoming human message by content
       const filteredOptimistic = optimisticFromState.filter((msg) => {
         const msgRole = (msg.message?.role as string) || '';
         const msgContent =
-          typeof msg.message?.content === 'string'
-            ? msg.message.content
-            : '';
-        
+          typeof msg.message?.content === 'string' ? msg.message.content : '';
+
         // Remove optimistic human message if it matches any incoming human message
-        if (msgRole === 'human' && msgContent && incomingHumanMessages.has(msgContent)) {
+        if (
+          msgRole === 'human' &&
+          msgContent &&
+          incomingHumanMessages.has(msgContent)
+        ) {
           optimisticMessageIdsRef.current.delete(msg.id);
           pendingOptimisticMessagesRef.current.delete(msg.id);
           isSendingMessageRef.current = false; // Clear sending flag when message arrives
@@ -760,7 +775,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
         }
         return true;
       });
-      
+
       // For non-human optimistic messages, remove if older than 5 seconds
       const now = Date.now();
       const finalOptimistic = filteredOptimistic.filter((msg) => {
@@ -775,16 +790,19 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
         }
         return true;
       });
-      
+
       // Merge shared messages (which already includes reasoning updates) with remaining optimistic
       // Use shared messages as the source of truth for reasoning messages
       const sharedWithoutOptimistic = sharedMessages.filter(
         (msg) => !optimisticMessageIdsRef.current.has(msg.id),
       );
-      return sortMessagesChronologically([...finalOptimistic, ...sharedWithoutOptimistic]);
+      return sortMessagesChronologically([
+        ...finalOptimistic,
+        ...sharedWithoutOptimistic,
+      ]);
     });
   }, [sharedMessages, isDraft]);
-  
+
   useEffect(() => {
     if (sharedExternalThreadId && !selectedThreadExternalId) {
       setSelectedThreadExternalId(sharedExternalThreadId);
@@ -855,94 +873,103 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   );
 
   // Memoize input change handler to prevent recreation
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMessageInput(e.target.value);
-  }, []);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setMessageInput(e.target.value);
+    },
+    [],
+  );
 
   // Memoize input enter handler
-  const handleInputEnter = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  }, [handleSendMessage]);
+  const handleInputEnter = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+      }
+    },
+    [handleSendMessage],
+  );
 
   // Extract input section to prevent rerenders of ThreadMessagesView when typing
-  const ChatInputSection = useMemo(() => (
-    <div
-      style={{
-        padding: '12px 16px',
-        border: '1px solid #f0f0f0',
-        borderRadius: 8,
-        background: '#fff',
-      }}>
-      {triggerNodes.length > 0 ? (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 12,
-          }}>
-          <Dropdown
-            menu={{
-              items: triggerMenuItems,
-              selectedKeys: selectedTriggerId ? [selectedTriggerId] : [],
-            }}
-            trigger={['click']}>
+  const ChatInputSection = useMemo(
+    () => (
+      <div
+        style={{
+          padding: '12px 16px',
+          border: '1px solid #f0f0f0',
+          borderRadius: 8,
+          background: '#fff',
+        }}>
+        {triggerNodes.length > 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: 12,
+            }}>
+            <Dropdown
+              menu={{
+                items: triggerMenuItems,
+                selectedKeys: selectedTriggerId ? [selectedTriggerId] : [],
+              }}
+              trigger={['click']}>
+              <Button
+                type="default"
+                size="middle"
+                style={{
+                  flexShrink: 0,
+                }}>
+                {triggerNodes.find((t) => t.id === selectedTriggerId)?.name ||
+                  'Select trigger'}
+              </Button>
+            </Dropdown>
+            <Input.TextArea
+              placeholder="Type your message..."
+              value={messageInput}
+              onChange={handleInputChange}
+              onPressEnter={handleInputEnter}
+              disabled={sendingMessage || !selectedTriggerId}
+              autoSize={{ minRows: 1, maxRows: 5 }}
+              style={{ flex: 1, resize: 'none', outline: 'none' }}
+            />
             <Button
-              type="default"
-              size="middle"
-              style={{
-                flexShrink: 0,
-              }}>
-              {triggerNodes.find((t) => t.id === selectedTriggerId)?.name ||
-                'Select trigger'}
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSendMessage}
+              loading={sendingMessage}
+              disabled={
+                !messageInput.trim() ||
+                !selectedTriggerId ||
+                templatesLoading ||
+                sendingMessage
+              }
+              style={{ flexShrink: 0 }}>
+              Send
             </Button>
-          </Dropdown>
-          <Input.TextArea
-            placeholder="Type your message..."
-            value={messageInput}
-            onChange={handleInputChange}
-            onPressEnter={handleInputEnter}
-            disabled={sendingMessage || !selectedTriggerId}
-            autoSize={{ minRows: 1, maxRows: 5 }}
-            style={{ flex: 1, resize: 'none', outline: 'none' }}
-          />
-          <Button
-            type="primary"
-            icon={<SendOutlined />}
-            onClick={handleSendMessage}
-            loading={sendingMessage}
-            disabled={
-              !messageInput.trim() ||
-              !selectedTriggerId ||
-              templatesLoading ||
-              sendingMessage
-            }
-            style={{ flexShrink: 0 }}>
-            Send
-          </Button>
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', padding: '8px 0' }}>
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            {triggerHelperText}
-          </Typography.Text>
-        </div>
-      )}
-    </div>
-  ), [
-    triggerNodes,
-    triggerMenuItems,
-    selectedTriggerId,
-    messageInput,
-    sendingMessage,
-    templatesLoading,
-    triggerHelperText,
-    handleInputChange,
-    handleInputEnter,
-    handleSendMessage,
-  ]);
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              {triggerHelperText}
+            </Typography.Text>
+          </div>
+        )}
+      </div>
+    ),
+    [
+      triggerNodes,
+      triggerMenuItems,
+      selectedTriggerId,
+      messageInput,
+      sendingMessage,
+      templatesLoading,
+      triggerHelperText,
+      handleInputChange,
+      handleInputEnter,
+      handleSendMessage,
+    ],
+  );
 
   return (
     <div

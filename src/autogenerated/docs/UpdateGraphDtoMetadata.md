@@ -1,14 +1,13 @@
 # UpdateGraphDtoMetadata
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**nodes** | [**Array&lt;CreateGraphDtoMetadataNodesInner&gt;**](CreateGraphDtoMetadataNodesInner.md) | Node coordinates and names by node ID | [optional] [default to undefined]
-**zoom** | **number** | Zoom level for graph display | [optional] [default to undefined]
-**x** | **number** | X coordinate | [optional] [default to undefined]
-**y** | **number** | Y coordinate | [optional] [default to undefined]
+| Name      | Type                                                                                     | Description                           | Notes                             |
+| --------- | ---------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------------- |
+| **nodes** | [**Array&lt;CreateGraphDtoMetadataNodesInner&gt;**](CreateGraphDtoMetadataNodesInner.md) | Node coordinates and names by node ID | [optional] [default to undefined] |
+| **zoom**  | **number**                                                                               | Zoom level for graph display          | [optional] [default to undefined] |
+| **x**     | **number**                                                                               | X coordinate                          | [optional] [default to undefined] |
+| **y**     | **number**                                                                               | Y coordinate                          | [optional] [default to undefined] |
 
 ## Example
 
@@ -16,10 +15,10 @@ Name | Type | Description | Notes
 import { UpdateGraphDtoMetadata } from './api';
 
 const instance: UpdateGraphDtoMetadata = {
-    nodes,
-    zoom,
-    x,
-    y,
+  nodes,
+  zoom,
+  x,
+  y,
 };
 ```
 

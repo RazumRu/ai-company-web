@@ -52,7 +52,6 @@ Code Style, Linting, and Formatting
 - Helpful commands:
   - `pnpm lint:fix` → runs Prettier write across the repo, then ESLint with `--fix` on `src/**/*.{js,ts,tsx}`.
 
-
 Release and Dependencies
 
 - Semantic Release is configured (`release.config.cjs`). Use conventional commits to enable automated versioning and changelog generation.

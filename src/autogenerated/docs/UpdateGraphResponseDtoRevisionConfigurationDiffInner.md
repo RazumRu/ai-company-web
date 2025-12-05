@@ -1,14 +1,13 @@
 # UpdateGraphResponseDtoRevisionConfigurationDiffInner
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**op** | **string** |  | [default to undefined]
-**path** | **string** |  | [default to undefined]
-**value** | **any** |  | [default to undefined]
-**from** | **string** |  | [default to undefined]
+| Name      | Type       | Description | Notes                  |
+| --------- | ---------- | ----------- | ---------------------- |
+| **op**    | **string** |             | [default to undefined] |
+| **path**  | **string** |             | [default to undefined] |
+| **value** | **any**    |             | [default to undefined] |
+| **from**  | **string** |             | [default to undefined] |
 
 ## Example
 
@@ -16,10 +15,10 @@ Name | Type | Description | Notes
 import { UpdateGraphResponseDtoRevisionConfigurationDiffInner } from './api';
 
 const instance: UpdateGraphResponseDtoRevisionConfigurationDiffInner = {
-    op,
-    path,
-    value,
-    from,
+  op,
+  path,
+  value,
+  from,
 };
 ```
 

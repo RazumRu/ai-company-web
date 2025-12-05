@@ -1,12 +1,11 @@
 # LiteLlmModelDto
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **string** | Model identifier | [default to undefined]
-**ownedBy** | **string** | Owner of the model | [default to undefined]
+| Name        | Type       | Description        | Notes                  |
+| ----------- | ---------- | ------------------ | ---------------------- |
+| **id**      | **string** | Model identifier   | [default to undefined] |
+| **ownedBy** | **string** | Owner of the model | [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { LiteLlmModelDto } from './api';
 
 const instance: LiteLlmModelDto = {
-    id,
-    ownedBy,
+  id,
+  ownedBy,
 };
 ```
 

@@ -111,9 +111,7 @@ export const ChatsPage = () => {
   const updateSharedMessages = useCallback(
     (
       threadId: string,
-      updater: (
-        prev: ThreadMessageDto[],
-      ) => ThreadMessageDto[],
+      updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
       nodeId?: string,
     ) => {
       setSharedMessages((prev) => {
@@ -470,7 +468,7 @@ export const ChatsPage = () => {
         next[index] = updatedThread;
         return next;
       });
-      
+
       // Update shared external thread ID if present
       if (updatedThread.externalThreadId) {
         setSharedExternalThreadIds((prev) => ({
@@ -478,7 +476,7 @@ export const ChatsPage = () => {
           [updatedThread.id]: updatedThread.externalThreadId,
         }));
       }
-      
+
       if (
         pendingThreadSelectionRef.current &&
         pendingThreadSelectionRef.current === updatedThread.externalThreadId
@@ -547,9 +545,13 @@ export const ChatsPage = () => {
 
       // If nodeId exists, also update node-specific messages
       if (nodeId) {
-        updateSharedMessages(threadId, (prev) => {
-          return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
-        }, nodeId);
+        updateSharedMessages(
+          threadId,
+          (prev) => {
+            return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
+          },
+          nodeId,
+        );
       }
 
       // Update external thread ID if present

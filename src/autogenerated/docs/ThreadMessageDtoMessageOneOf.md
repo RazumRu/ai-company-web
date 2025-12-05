@@ -1,13 +1,12 @@
 # ThreadMessageDtoMessageOneOf
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**role** | **string** | Message role | [default to undefined]
-**content** | **string** | Message content | [default to undefined]
-**additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata | [optional] [default to undefined]
+| Name                 | Type                        | Description                 | Notes                             |
+| -------------------- | --------------------------- | --------------------------- | --------------------------------- |
+| **role**             | **string**                  | Message role                | [default to undefined]            |
+| **content**          | **string**                  | Message content             | [default to undefined]            |
+| **additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { ThreadMessageDtoMessageOneOf } from './api';
 
 const instance: ThreadMessageDtoMessageOneOf = {
-    role,
-    content,
-    additionalKwargs,
+  role,
+  content,
+  additionalKwargs,
 };
 ```
 
