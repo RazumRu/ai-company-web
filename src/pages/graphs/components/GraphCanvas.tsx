@@ -12,9 +12,11 @@ import {
   OnNodesChange,
   OnEdgesChange,
   Viewport,
+  useReactFlow,
+  ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { CustomNode } from './CustomNode';
 import type { GraphNode, GraphEdge, GraphNodeData } from '../types';
 import {
@@ -152,7 +154,7 @@ interface GraphCanvasProps {
   compiledNodesLoading?: boolean;
 }
 
-export const GraphCanvas = ({
+const GraphCanvasInner = ({
   nodes,
   edges,
   onNodesChange,
@@ -170,7 +172,7 @@ export const GraphCanvas = ({
   compiledNodes,
   compiledNodesLoading,
 }: GraphCanvasProps) => {
-  const reactFlowRef = useRef<HTMLDivElement | null>(null);
+  const { screenToFlowPosition } = useReactFlow();
 
   // Memoize nodeTypes to prevent recreation on every render
   // Only recreate when templates, graphStatus, or compiledNodesLoading change
@@ -286,13 +288,10 @@ const nodeTypes = useMemo<NodeTypes>(
 
       const template: TemplateDto = JSON.parse(templateData);
 
-      const reactFlowBounds = (
-        event.target as HTMLElement
-      ).getBoundingClientRect();
-      const position = {
-        x: event.clientX - reactFlowBounds.left - 75,
-        y: event.clientY - reactFlowBounds.top - 25,
-      };
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
       const newNode: GraphNode = {
         id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -309,7 +308,7 @@ const nodeTypes = useMemo<NodeTypes>(
 
       onNodeAdd(newNode);
     },
-    [onNodeAdd],
+    [onNodeAdd, screenToFlowPosition],
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -340,7 +339,6 @@ const nodeTypes = useMemo<NodeTypes>(
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
-        ref={reactFlowRef}
         nodes={enhancedNodes as Node[]}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -365,3 +363,9 @@ const nodeTypes = useMemo<NodeTypes>(
     </div>
   );
 };
+
+export const GraphCanvas = (props: GraphCanvasProps) => (
+  <ReactFlowProvider>
+    <GraphCanvasInner {...props} />
+  </ReactFlowProvider>
+);

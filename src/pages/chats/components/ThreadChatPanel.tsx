@@ -49,6 +49,7 @@ interface ThreadChatPanelProps {
     updater: (prev: PendingMessage[]) => PendingMessage[],
     nodeId?: string,
   ) => void;
+  newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
 }
 
 export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
@@ -71,7 +72,10 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   onLoadMoreMessages,
   onUpdateSharedMessages,
   onUpdateSharedPendingMessages,
+  newMessageMode = 'wait_for_completion',
 }) => {
+  const effectiveNewMessageMode =
+    newMessageMode ?? ('wait_for_completion' as const);
   const [selectedTriggerId, setSelectedTriggerId] = useState<
     string | undefined
   >(() => triggerNodes[0]?.id);
@@ -152,8 +156,6 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       ? pendingMessagesProp
       : undefined;
   }, [pendingMessagesProp, isDraft]);
-
-  const newMessageMode = undefined;
 
   const handleSendMessage = useCallback(async () => {
     if (!selectedTriggerId || !messageInput.trim()) {
@@ -540,7 +542,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
           nodeDisplayNames={nodeDisplayNames}
           showNodeHeadings
           pendingMessages={pendingMessages}
-          newMessageMode={newMessageMode}
+          newMessageMode={effectiveNewMessageMode}
         />
       </div>
 

@@ -77,11 +77,6 @@ interface NodeEditSidebarProps {
   pendingMessages?: PendingMessage[];
   onLoadMoreMessages?: () => void;
   onRefreshMessages?: () => void;
-  onUpdateSharedMessages?: (
-    threadId: string,
-    updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
-    nodeId?: string,
-  ) => void;
 }
 
 export const NodeEditSidebar = React.memo(
@@ -103,7 +98,6 @@ export const NodeEditSidebar = React.memo(
     pendingMessages = [],
     onLoadMoreMessages,
     onRefreshMessages,
-    onUpdateSharedMessages,
   }: NodeEditSidebarProps) => {
     const [form] = Form.useForm();
     const [nodeName, setNodeName] = useState('');

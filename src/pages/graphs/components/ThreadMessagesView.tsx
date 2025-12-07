@@ -262,6 +262,19 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     }, [messagesLoading, messages.length]);
 
     useEffect(() => {
+      if (!pendingMessages || pendingMessages.length === 0) return;
+      pendingAutoScrollRef.current = true;
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const shouldAutoScroll =
+        pendingAutoScrollRef.current || !autoScrollDisabledRef.current;
+      if (shouldAutoScroll) {
+        el.scrollTop = el.scrollHeight;
+        pendingAutoScrollRef.current = false;
+      }
+    }, [pendingMessages, pendingMessages?.length]);
+
+    useEffect(() => {
       const styleId = 'shell-scrollbar-styles';
       if (document.getElementById(styleId)) return;
 

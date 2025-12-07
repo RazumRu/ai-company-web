@@ -363,6 +363,21 @@ export const GraphPage = () => {
 
   const [messageMeta, setMessageMeta] = useState<MessageMetaState>({});
 
+  const defaultNewMessageMode = useMemo<
+    'inject_after_tool_call' | 'wait_for_completion'
+  >(() => {
+    const firstAgentNode = nodes.find((n) => {
+      const data = n.data as unknown as GraphNodeData;
+      return (data?.templateKind || '').toLowerCase() === 'simpleagent';
+    });
+    const modeFromNode = (firstAgentNode?.data as GraphNodeData | undefined)
+      ?.config?.newMessageMode as
+      | 'inject_after_tool_call'
+      | 'wait_for_completion'
+      | undefined;
+    return modeFromNode ?? 'wait_for_completion';
+  }, [nodes]);
+
   const getMessageMeta = useCallback(
     (threadId?: string, nodeId?: string): MessageMeta => {
       if (!threadId) {
@@ -623,7 +638,7 @@ export const GraphPage = () => {
     }
 
     const meta = getMessageMeta(selectedThreadId, selectedNode.id);
-    if (meta.offset === 0 && !meta.loading) {
+    if (meta.offset === 0 && !meta.loading && meta.hasMore) {
       void loadMessagesForScope(selectedThreadId, selectedNode.id);
     }
   }, [
@@ -754,21 +769,23 @@ export const GraphPage = () => {
         );
 
         // If we already have a streaming message for this reasoningId, append
-        // new chunk content instead of replacing so we accumulate text as it streams.
+        // new chunk content so we accumulate text as it streams.
         const nextMessageContent =
           typeof (nextMessage.message as any)?.content === 'string'
             ? ((nextMessage.message as any).content as string)
             : '';
 
-        const shouldAppend =
-          isExistingStreaming &&
-          existingContent.length > 0 &&
-          nextMessageContent.length > 0 &&
-          nextMessageContent !== existingContent &&
-          !nextMessageContent.includes(existingContent);
-
-        if (shouldAppend) {
-          (nextMessage.message as any).content = `${existingContent}${nextMessageContent}`;
+        if (isExistingStreaming && nextMessageContent.length > 0) {
+          const shouldUseIncoming =
+            nextMessageContent.startsWith(existingContent) ||
+            nextMessageContent.length > existingContent.length;
+          const mergedContent = shouldUseIncoming
+            ? nextMessageContent
+            : `${existingContent}${nextMessageContent}`;
+          (nextMessage.message as any).content =
+            mergedContent.length > existingContent.length
+              ? mergedContent
+              : nextMessageContent;
         }
 
         const nextContent = entry.content;
@@ -880,7 +897,7 @@ export const GraphPage = () => {
   useEffect(() => {
     if (!selectedThreadId) return;
     const meta = getMessageMeta(selectedThreadId, undefined);
-    if (meta.offset === 0 && !meta.loading) {
+    if (meta.offset === 0 && !meta.loading && meta.hasMore) {
       void loadMessagesForScope(selectedThreadId);
     }
   }, [selectedThreadId, getMessageMeta, loadMessagesForScope]);
@@ -888,7 +905,7 @@ export const GraphPage = () => {
   useEffect(() => {
     if (!chatThread) return;
     const meta = getMessageMeta(chatThread.id, undefined);
-    if (meta.offset === 0 && !meta.loading) {
+    if (meta.offset === 0 && !meta.loading && meta.hasMore) {
       void loadMessagesForScope(chatThread.id);
     }
   }, [chatThread, getMessageMeta, loadMessagesForScope]);
@@ -1651,16 +1668,19 @@ export const GraphPage = () => {
         const internalThreadId =
           eventInternalThreadId || resolveInternalThreadId(eventThreadId);
 
-        const externalThreadIdForTarget =
-          internalThreadId && sharedExternalThreadIds[internalThreadId]
-            ? sharedExternalThreadIds[internalThreadId]
-            : eventThreadId;
+        const targetThreadId = internalThreadId ?? eventThreadId;
+        if (!targetThreadId) {
+          return;
+        }
 
-        if (eventThreadId && internalThreadId) {
+        const externalThreadIdForTarget =
+          sharedExternalThreadIds[targetThreadId] ?? eventThreadId;
+
+        if (eventThreadId) {
           setSharedExternalThreadIds((prev) => {
-            const existing = prev[internalThreadId];
+            const existing = prev[targetThreadId];
             if (existing === eventThreadId) return prev;
-            return { ...prev, [internalThreadId]: eventThreadId };
+            return { ...prev, [targetThreadId]: eventThreadId };
           });
         }
         const targetRunIds = buildIdSet(data.runId, metadataRunId);
@@ -1770,7 +1790,7 @@ export const GraphPage = () => {
           // If no pending messages, clear any existing pending entries for this node/thread
           const applyPendingToKeys = [undefined, data.nodeId];
           applyPendingToKeys.forEach((key) => {
-            updateSharedPendingMessages(internalThreadId, () => [], key);
+            updateSharedPendingMessages(targetThreadId, () => [], key);
           });
         }
 
@@ -1781,13 +1801,12 @@ export const GraphPage = () => {
 
         if (!reasoningChunks) {
           applyUpdateToKeys.forEach((key) => {
-            if (!internalThreadId) return;
             updateSharedMessages(
-              internalThreadId,
+              targetThreadId,
               (prev) =>
                 clearStreamingReasoningForContext(prev, {
                   targetThreadId: externalThreadIdForTarget,
-                  selectedThreadId: internalThreadId,
+                  selectedThreadId: targetThreadId,
                   runIds: targetRunIds,
                 }),
               key,
@@ -1808,13 +1827,12 @@ export const GraphPage = () => {
 
         if (!reasoningEntries.length) {
           applyUpdateToKeys.forEach((key) => {
-            if (!internalThreadId) return;
             updateSharedMessages(
-              internalThreadId,
+              targetThreadId,
               (prev) =>
                 clearStreamingReasoningForContext(prev, {
                   targetThreadId: externalThreadIdForTarget,
-                  selectedThreadId: internalThreadId,
+                  selectedThreadId: targetThreadId,
                   runIds: targetRunIds,
                 }),
               key,
@@ -1824,14 +1842,13 @@ export const GraphPage = () => {
         }
 
         applyUpdateToKeys.forEach((key) => {
-          if (!internalThreadId) return;
           updateSharedMessages(
-            internalThreadId,
+            targetThreadId,
             (prev) =>
               upsertReasoningEntries(prev, reasoningEntries, {
                 externalThreadId: externalThreadIdForTarget,
                 runId: data.runId ?? metadataRunId,
-                selectedThreadId: internalThreadId,
+                selectedThreadId: targetThreadId,
                 nodeId: key,
               }),
             key,
@@ -3346,7 +3363,6 @@ export const GraphPage = () => {
             ? () => loadMessagesForScope(selectedThreadId, selectedNode?.id, true)
             : undefined
         }
-        onUpdateSharedMessages={updateSharedMessages}
         />
       </Layout>
 
@@ -3413,6 +3429,7 @@ export const GraphPage = () => {
             triggerNodes={triggerNodesForGraph}
             nodeDisplayNames={nodeDisplayNames}
             graphLoaded
+            newMessageMode={defaultNewMessageMode}
           messages={sharedMessages[chatThread.id]?.['all'] || []}
           messagesLoading={getMessageMeta(chatThread.id, undefined).loading}
           hasMoreMessages={getMessageMeta(chatThread.id, undefined).hasMore}
