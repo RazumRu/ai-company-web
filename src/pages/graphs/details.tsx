@@ -37,7 +37,6 @@ import {
   useNodesState,
   Viewport,
 } from '@xyflow/react';
-import { isAxiosError } from 'axios';
 import {
   graphRevisionsApi,
   graphsApi,
@@ -101,6 +100,7 @@ import {
   buildNodeDisplayNames,
   buildTriggerNodes,
 } from '../../utils/graphThreads';
+import { extractApiErrorMessage } from '../../utils/errors';
 import type {
   GraphEdge,
   GraphMetadata,
@@ -218,58 +218,6 @@ const sortRevisions = (list: GraphRevisionDto[]): GraphRevisionDto[] => {
     }
     return bTime - aTime;
   });
-};
-
-const extractMessageFromUnknown = (value: unknown): string | null => {
-  if (!value) {
-    return null;
-  }
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const extracted = extractMessageFromUnknown(item);
-      if (extracted) {
-        return extracted;
-      }
-    }
-    return null;
-  }
-  if (typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    const keysToCheck = ['message', 'error', 'detail', 'details'];
-    for (const key of keysToCheck) {
-      if (key in obj) {
-        const extracted = extractMessageFromUnknown(obj[key]);
-        if (extracted) {
-          return extracted;
-        }
-      }
-    }
-  }
-  return null;
-};
-
-const extractApiErrorMessage = (error: unknown, fallback: string): string => {
-  if (isAxiosError(error)) {
-    const data = error.response?.data;
-    if (typeof data === 'string') {
-      return data;
-    }
-    if (data && typeof data === 'object') {
-      const extracted = extractMessageFromUnknown(data);
-      if (extracted) {
-        return extracted;
-      }
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return fallback;
 };
 
 export const GraphPage = () => {
@@ -551,7 +499,11 @@ export const GraphPage = () => {
         }
       } catch (error) {
         console.error('Error loading messages:', error);
-        message.error('Failed to load messages');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load messages',
+        );
+        message.error(errorMessage);
         updateMessageMeta(threadId, nodeId, (prev) => ({
           ...prev,
           loading: false,
@@ -610,7 +562,11 @@ export const GraphPage = () => {
         }
       } catch (error) {
         console.error('Error loading more messages:', error);
-        message.error('Failed to load more messages');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load more messages',
+        );
+        message.error(errorMessage);
         updateMessageMeta(threadId, nodeId, (prev) => ({
           ...prev,
           loadingMore: false,
@@ -1064,7 +1020,8 @@ export const GraphPage = () => {
         }
       } catch (e) {
         console.error('Error fetching graph:', e);
-        message.error('Failed to load graph');
+        const errorMessage = extractApiErrorMessage(e, 'Failed to load graph');
+        message.error(errorMessage);
         navigate('/');
       } finally {
         if (mounted) setLoading(false);
@@ -1085,7 +1042,11 @@ export const GraphPage = () => {
       setThreads(response.data || []);
     } catch (error) {
       console.error('Error loading threads:', error);
-      message.error('Failed to load threads');
+      const errorMessage = extractApiErrorMessage(
+        error,
+        'Failed to load threads',
+      );
+      message.error(errorMessage);
       setThreads([]);
     } finally {
       setThreadsLoading(false);
@@ -2452,18 +2413,21 @@ export const GraphPage = () => {
         });
 
         if (updatedGraph.status === GraphDtoStatusEnum.Error) {
-          message.error('Graph execution failed');
-          setGraphError('Graph execution failed');
+          const executionErrorMessage =
+            (updatedGraph as GraphDto & { error?: string }).error ||
+            'Graph execution failed';
+          message.error(executionErrorMessage);
+          setGraphError(executionErrorMessage);
         } else {
           message.success('Graph saved and started successfully');
         }
       }
     } catch (error) {
       console.error('Error with graph action:', error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Failed to perform graph action';
+      const errorMessage = extractApiErrorMessage(
+        error,
+        'Failed to perform graph action',
+      );
       message.error(errorMessage);
       setGraphError(errorMessage);
     } finally {

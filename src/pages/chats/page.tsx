@@ -41,6 +41,7 @@ import {
   buildTriggerNodes,
   type TriggerNodeInfo,
 } from '../../utils/graphThreads';
+import { extractApiErrorMessage } from '../../utils/errors';
 
 const THREADS_PAGE_SIZE = 30;
 
@@ -247,7 +248,11 @@ export const ChatsPage = () => {
         }
       } catch (error) {
         console.error('Error loading messages:', error);
-        antdMessage.error('Failed to load messages');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load messages',
+        );
+        antdMessage.error(errorMessage);
         updateMessageMeta(threadId, (prev) => ({
           ...prev,
           loading: false,
@@ -301,7 +306,11 @@ export const ChatsPage = () => {
         }
       } catch (error) {
         console.error('Error loading more messages:', error);
-        antdMessage.error('Failed to load more messages');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load more messages',
+        );
+        antdMessage.error(errorMessage);
         updateMessageMeta(threadId, (prev) => ({
           ...prev,
           loadingMore: false,
@@ -385,7 +394,11 @@ export const ChatsPage = () => {
         setTemplatesById(map);
       } catch (error) {
         console.error('Error loading templates', error);
-        antdMessage.error('Failed to load templates metadata');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load templates metadata',
+        );
+        antdMessage.error(errorMessage);
       } finally {
         if (mounted) {
           setTemplatesLoading(false);
@@ -449,7 +462,11 @@ export const ChatsPage = () => {
         });
       } catch (error) {
         console.error('Error loading graph metadata', error);
-        antdMessage.error('Failed to load graph metadata for threads');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load graph metadata for threads',
+        );
+        antdMessage.error(errorMessage);
       }
     },
     [graphCache, subscribeToGraph, templatesById],
@@ -549,7 +566,11 @@ export const ChatsPage = () => {
         void ensureGraphsLoaded(fetched);
       } catch (error) {
         console.error('Error loading threads', error);
-        antdMessage.error('Failed to load threads list');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load threads list',
+        );
+        antdMessage.error(errorMessage);
         setThreadsHasMore(false);
       } finally {
         if (isAppend) {
@@ -782,7 +803,11 @@ export const ChatsPage = () => {
         antdMessage.success('Thread deleted successfully');
       } catch (error) {
         console.error('Error deleting thread:', error);
-        antdMessage.error('Failed to delete thread');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to delete thread',
+        );
+        antdMessage.error(errorMessage);
       }
     },
     [selectedThreadId],

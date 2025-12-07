@@ -20,6 +20,7 @@ import {
   type TriggerNodeInfo,
 } from '../../../utils/graphThreads';
 import { message as antdMessage } from 'antd';
+import { extractApiErrorMessage } from '../../../utils/errors';
 
 interface ThreadChatPanelProps {
   graphId: string;
@@ -322,7 +323,11 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
           }
         }
       }
-      antdMessage.error('Failed to send message');
+      const errorMessage = extractApiErrorMessage(
+        error,
+        'Failed to send message',
+      );
+      antdMessage.error(errorMessage);
       // Restore message input
       setMessageInput(messageText);
     } finally {

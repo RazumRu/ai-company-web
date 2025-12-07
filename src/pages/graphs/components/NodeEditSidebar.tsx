@@ -52,6 +52,7 @@ import { litellmApi } from '../../../api';
 import type { PendingMessage } from '../types/messages';
 import { KeyValuePairsInput } from './KeyValuePairsInput';
 import { NodeMessagesPanel } from './NodeMessagesPanel';
+import { extractApiErrorMessage } from '../../../utils/errors';
 
 const { Sider } = Layout;
 const { Title, Text } = Typography;
@@ -285,7 +286,11 @@ export const NodeEditSidebar = React.memo(
             return;
           }
           console.error('Failed to load LiteLLM models:', error);
-          message.error('Failed to load LiteLLM models');
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load LiteLLM models',
+        );
+        message.error(errorMessage);
         } finally {
           if (isActive) {
             setLitellmModelsLoading(false);
