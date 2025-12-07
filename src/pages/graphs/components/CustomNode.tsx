@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Handle, NodeProps, Position, useStore } from '@xyflow/react';
 import { Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
@@ -100,41 +100,37 @@ export const CustomNode = React.memo(
 
     const metadataProperties = getMetadataProperties();
 
-    const validationErrors =
-      templates.length > 0 && allNodes.length > 0 && allEdges.length > 0
-        ? GraphValidationService.getNodeValidationErrors(
-            nodeId,
-            allNodes,
-            allEdges,
-            templates,
-          )
-        : [];
+    const validationErrors = useMemo(
+      () =>
+        templates.length > 0 && allNodes.length > 0 && allEdges.length > 0
+          ? GraphValidationService.getNodeValidationErrors(
+              nodeId,
+              allNodes,
+              allEdges,
+              templates,
+            )
+          : [],
+      [allEdges, allNodes, nodeId, templates],
+    );
     const hasValidationErrors = validationErrors.length > 0;
 
-    const inputRules =
-      templates.length > 0 && nodeId
-        ? GraphValidationService.getAvailableConnectionTypes(
-            {
-              id: nodeId,
-              data: nodeData as unknown as Record<string, unknown>,
-              position: { x: 0, y: 0 },
-              type: 'custom',
-            } satisfies GraphNode,
-            templates,
-          )
-        : [];
+    const inputRules = useMemo(
+      () =>
+        templates.length > 0 && nodeId
+          ? GraphValidationService.getAvailableConnectionTypes(
+              {
+                id: nodeId,
+                data: nodeData as unknown as Record<string, unknown>,
+                position: { x: 0, y: 0 },
+                type: 'custom',
+              } satisfies GraphNode,
+              templates,
+            )
+          : [],
+      [nodeData, nodeId, templates],
+    );
 
-    const rootRef = useRef<HTMLDivElement | null>(null);
     const contentRef = useRef<HTMLDivElement | null>(null);
-    const [contentH, setContentH] = useState(80);
-    useEffect(() => {
-      if (!contentRef.current) return;
-      const ro = new ResizeObserver((e) =>
-        setContentH(e[0]?.contentRect.height || 80),
-      );
-      ro.observe(contentRef.current);
-      return () => ro.disconnect();
-    }, []);
 
     const targets = useMemo(() => inputRules, [inputRules]);
 
@@ -372,7 +368,7 @@ export const CustomNode = React.memo(
             justifyContent: 'center',
             gap: 8,
           }}>
-          {targets.map((t, i) => {
+          {targets.map((t) => {
             const id = makeHandleId('target', t);
             const miss =
               t.required && !allEdges.some((e) => e.target === nodeId);
@@ -443,7 +439,7 @@ export const CustomNode = React.memo(
             justifyContent: 'center',
             gap: 8,
           }}>
-          {nodeTemplate?.outputs?.map((output, i) => {
+          {nodeTemplate?.outputs?.map((output) => {
             const outRule: {
               type: 'kind' | 'template';
               value: string;

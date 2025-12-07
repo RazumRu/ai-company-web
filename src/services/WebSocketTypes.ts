@@ -126,7 +126,7 @@ export interface GraphNodeUpdateNotification extends BaseNotification {
     status: GraphNodeWithStatusDtoStatusEnum;
     error?: string | null;
     metadata?: GraphExecutionMetadata;
-    additionalNodeMetadata?: { [key: string]: any };
+    additionalNodeMetadata?: Record<string, unknown>;
   };
 }
 

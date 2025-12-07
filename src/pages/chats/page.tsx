@@ -107,6 +107,48 @@ export const ChatsPage = () => {
     Record<string, string | undefined>
   >({});
 
+  type MessageMeta = {
+    loading: boolean;
+    loadingMore: boolean;
+    hasMore: boolean;
+    offset: number;
+  };
+
+  const defaultMessageMeta = useMemo<MessageMeta>(
+    () => ({
+      loading: false,
+      loadingMore: false,
+      hasMore: true,
+      offset: 0,
+    }),
+    [],
+  );
+
+  const [messageMeta, setMessageMeta] = useState<Record<string, MessageMeta>>(
+    {},
+  );
+
+  const getMessageMeta = useCallback(
+    (threadId?: string): MessageMeta => {
+      if (!threadId) return defaultMessageMeta;
+      return messageMeta[threadId] ?? defaultMessageMeta;
+    },
+    [defaultMessageMeta, messageMeta],
+  );
+
+  const updateMessageMeta = useCallback(
+    (threadId: string, updater: (prev: MessageMeta) => MessageMeta) => {
+      setMessageMeta((prev) => {
+        const existing = prev[threadId] ?? defaultMessageMeta;
+        return {
+          ...prev,
+          [threadId]: updater(existing),
+        };
+      });
+    },
+    [defaultMessageMeta],
+  );
+
   // Update shared messages helper
   const updateSharedMessages = useCallback(
     (
@@ -119,16 +161,155 @@ export const ChatsPage = () => {
         const key = nodeId || 'all';
         const currentMessages = threadMessages[key] || [];
         const updatedMessages = updater(currentMessages);
+
+        const realIds = new Set<string>();
+        const realContents = new Map<string, string>();
+        updatedMessages.forEach((msg) => {
+          const isOptimistic =
+            typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+          if (!isOptimistic) {
+            realIds.add(msg.id);
+            const content =
+              typeof msg.message?.content === 'string'
+                ? msg.message.content
+                : undefined;
+            if (content && msg.message?.role === 'human') {
+              realContents.set(content, msg.id);
+            }
+          }
+        });
+
+        const dedupedMessages = updatedMessages.filter((msg) => {
+          const isOptimistic =
+            typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+          if (!isOptimistic) return true;
+          const content =
+            typeof msg.message?.content === 'string'
+              ? msg.message.content
+              : undefined;
+          if (content && realContents.has(content)) {
+            return false;
+          }
+          return true;
+        });
         return {
           ...prev,
           [threadId]: {
             ...threadMessages,
-            [key]: updatedMessages,
+            [key]: dedupedMessages,
           },
         };
       });
     },
     [],
+  );
+
+  const loadMessagesForThread = useCallback(
+    async (threadId: string, force = false) => {
+      const meta = getMessageMeta(threadId);
+      if (!force && (meta.loading || meta.offset > 0)) {
+        return;
+      }
+
+      updateMessageMeta(threadId, (prev) => ({
+        ...prev,
+        loading: true,
+        loadingMore: false,
+        hasMore: true,
+        offset: force ? 0 : prev.offset,
+      }));
+
+      try {
+        const response = await threadsApi.getThreadMessages(
+          threadId,
+          undefined,
+          50,
+          0,
+        );
+        const fetched = response.data?.reverse() || [];
+        updateSharedMessages(threadId, () => fetched);
+        updateMessageMeta(threadId, (prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+          hasMore: fetched.length === 50,
+          offset: fetched.length,
+        }));
+
+        const extId =
+          fetched.find((msg) => msg.externalThreadId)?.externalThreadId ??
+          sharedExternalThreadIds[threadId];
+        if (extId) {
+          setSharedExternalThreadIds((prev) => ({
+            ...prev,
+            [threadId]: extId,
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading messages:', error);
+        antdMessage.error('Failed to load messages');
+        updateMessageMeta(threadId, (prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+          hasMore: false,
+        }));
+      }
+    },
+    [
+      getMessageMeta,
+      updateMessageMeta,
+      updateSharedMessages,
+      sharedExternalThreadIds,
+    ],
+  );
+
+  const loadMoreMessagesForThread = useCallback(
+    async (threadId: string) => {
+      const meta = getMessageMeta(threadId);
+      if (meta.loading || meta.loadingMore || !meta.hasMore) {
+        return;
+      }
+
+      updateMessageMeta(threadId, (prev) => ({ ...prev, loadingMore: true }));
+
+      try {
+        const response = await threadsApi.getThreadMessages(
+          threadId,
+          undefined,
+          50,
+          meta.offset,
+        );
+        const fetched = response.data?.reverse() || [];
+
+        if (fetched.length > 0) {
+          updateSharedMessages(threadId, (prev) =>
+            mergeMessagesReplacingStreaming(prev, fetched),
+          );
+          updateMessageMeta(threadId, (prev) => ({
+            ...prev,
+            loadingMore: false,
+            hasMore: fetched.length === 50,
+            offset: prev.offset + fetched.length,
+          }));
+        } else {
+          updateMessageMeta(threadId, (prev) => ({
+            ...prev,
+            loadingMore: false,
+            hasMore: false,
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading more messages:', error);
+        antdMessage.error('Failed to load more messages');
+        updateMessageMeta(threadId, (prev) => ({
+          ...prev,
+          loadingMore: false,
+          hasMore: false,
+        }));
+      }
+    },
+    [getMessageMeta, updateMessageMeta, updateSharedMessages],
   );
 
   const handleThreadChatSwitchRequest = useCallback(
@@ -161,6 +342,14 @@ export const ChatsPage = () => {
     }
     return threads.find((thread) => thread.id === selectedThreadId);
   }, [threads, selectedThreadId, draftThread]);
+
+  useEffect(() => {
+    if (!selectedThread || (selectedThread as DraftThread)?.isDraft) return;
+    const meta = getMessageMeta(selectedThread.id);
+    if (meta.offset === 0 && !meta.loading) {
+      void loadMessagesForThread(selectedThread.id);
+    }
+  }, [selectedThread, getMessageMeta, loadMessagesForThread]);
 
   // Update trigger nodes when selected thread or graph cache changes
   useEffect(() => {
@@ -966,16 +1155,37 @@ export const ChatsPage = () => {
                     onRequestThreadSwitch={handleThreadChatSwitchRequest}
                     isDraft={draftThread?.id === selectedThreadId}
                     onDraftMessageSent={handleDraftMessageSent}
-                    sharedMessages={
-                      selectedThreadId
-                        ? sharedMessages[selectedThreadId]?.['all'] || []
-                        : []
-                    }
-                    sharedExternalThreadId={
-                      selectedThreadId
-                        ? sharedExternalThreadIds[selectedThreadId]
-                        : undefined
-                    }
+                  messages={
+                    selectedThreadId
+                      ? sharedMessages[selectedThreadId]?.['all'] || []
+                      : []
+                  }
+                  messagesLoading={
+                    selectedThreadId
+                      ? getMessageMeta(selectedThreadId).loading
+                      : false
+                  }
+                  hasMoreMessages={
+                    selectedThreadId
+                      ? getMessageMeta(selectedThreadId).hasMore
+                      : false
+                  }
+                  loadingMoreMessages={
+                    selectedThreadId
+                      ? getMessageMeta(selectedThreadId).loadingMore
+                      : false
+                  }
+                  pendingMessages={[]}
+                  externalThreadId={
+                    selectedThreadId
+                      ? sharedExternalThreadIds[selectedThreadId]
+                      : undefined
+                  }
+                  onLoadMoreMessages={
+                    selectedThreadId
+                      ? () => loadMoreMessagesForThread(selectedThreadId)
+                      : undefined
+                  }
                     onUpdateSharedMessages={updateSharedMessages}
                   />
                 </div>

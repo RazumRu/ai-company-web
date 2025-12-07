@@ -141,8 +141,9 @@ export class GraphValidationService {
       return [];
     }
 
+    const outputs = nodeTemplate.outputs ?? [];
     return templates.filter((template) =>
-      this.isConnectionAllowed(nodeTemplate.outputs!, template),
+      this.isConnectionAllowed(outputs, template),
     );
   }
 

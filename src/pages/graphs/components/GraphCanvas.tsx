@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // GraphCanvas.tsx
 import {
   ReactFlow,
@@ -174,7 +175,7 @@ export const GraphCanvas = ({
   // Memoize nodeTypes to prevent recreation on every render
   // Only recreate when templates, graphStatus, or compiledNodesLoading change
   // compiledNodes is passed per-node, so it doesn't need to be in dependencies
-  const nodeTypes = useMemo<NodeTypes>(
+const nodeTypes = useMemo<NodeTypes>(
     () => ({
       custom: (p) => (
         <CustomNode
@@ -187,7 +188,7 @@ export const GraphCanvas = ({
         />
       ),
     }),
-    [templates, graphStatus, compiledNodesLoading, onTriggerClick],
+  [templates, graphStatus, compiledNodesLoading, onTriggerClick, compiledNodes],
   );
 
   // Memoize enhancedNodes to prevent recreation on every render

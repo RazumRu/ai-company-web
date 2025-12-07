@@ -242,7 +242,8 @@ class WebSocketService {
       this.eventHandlers.set(eventType, new Set());
     }
 
-    this.eventHandlers.get(eventType)!.add(handler);
+    const handlerSet = this.eventHandlers.get(eventType);
+    handlerSet?.add(handler);
 
     // Return unsubscribe function
     return () => {
