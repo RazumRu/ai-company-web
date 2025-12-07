@@ -28,7 +28,6 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
   const prevContentRef = useRef(content);
   const timeoutRef = useRef<number | null>(null);
   const reasoningId = getReasoningIdentifier(message) ?? message.id;
-  const [isHovered, setIsHovered] = useState(false);
   const preview = useMemo(() => createReasoningPreview(baseContent), [baseContent]);
 
   const additionalKwargs = (message.message?.additionalKwargs ?? {}) as Record<string, unknown>;
@@ -86,17 +85,9 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
     }
   };
 
-  const containerStyle: React.CSSProperties = {
-    fontSize: '12px',
-    color: isHovered ? '#8c8c8c' : '#afafaf',
-    textAlign: 'center',
-    border: 'none',
-    cursor: 'pointer',
-    background: 'transparent',
-    transition: 'color 0.25s ease',
-    animation: isStreaming ? 'messages-tab-reasoning-streaming 2.8s ease-in-out infinite' : undefined,
-    animationFillMode: isStreaming ? 'both' : undefined,
-  };
+  const containerClassName = `reasoning-message${
+    isStreaming ? ' reasoning-message_streaming' : ''
+  }`;
 
   const collapsedStyle: React.CSSProperties = {
     maxHeight: '6.2em',
@@ -114,21 +105,16 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
 
   return (
     <div
-      style={containerStyle}
+      className={containerClassName}
       role="button"
       tabIndex={0}
       onClick={handleToggle}
-      onKeyDown={handleKeyDown}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      onKeyDown={handleKeyDown}>
       {isExpanded ? (
         <div style={expandedStyle}>
           <MarkdownContent content={baseContent} allowHorizontalScroll={isExpanded} />
           {animatedChunk && (
-            <div
-              style={{
-                animation: 'messages-tab-reasoning-appear 0.6s ease',
-              }}>
+            <div className="reasoning-message_chunk-appear">
               <MarkdownContent content={animatedChunk} allowHorizontalScroll={isExpanded} />
             </div>
           )}
@@ -161,4 +147,3 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
     </div>
   );
 };
-
