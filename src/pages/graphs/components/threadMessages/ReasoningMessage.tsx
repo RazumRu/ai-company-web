@@ -85,7 +85,7 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
     }
   };
 
-  const containerClassName = `reasoning-message${
+  const containerClassName = `hoverable-chat-message${
     isStreaming ? ' reasoning-message_streaming' : ''
   }`;
 
@@ -112,16 +112,28 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
       onKeyDown={handleKeyDown}>
       {isExpanded ? (
         <div style={expandedStyle}>
-          <MarkdownContent content={baseContent} allowHorizontalScroll={isExpanded} />
+          <MarkdownContent
+            content={baseContent}
+            allowHorizontalScroll={isExpanded}
+            style={{ color: 'inherit' }}
+          />
           {animatedChunk && (
             <div className="reasoning-message_chunk-appear">
-              <MarkdownContent content={animatedChunk} allowHorizontalScroll={isExpanded} />
+              <MarkdownContent
+                content={animatedChunk}
+                allowHorizontalScroll={isExpanded}
+                style={{ color: 'inherit' }}
+              />
             </div>
           )}
         </div>
       ) : (
         <div style={collapsedStyle}>
-          <MarkdownContent content={preview.text} allowHorizontalScroll={false} />
+          <MarkdownContent
+            content={preview.text}
+            allowHorizontalScroll={false}
+            style={{ color: 'inherit' }}
+          />
           <div
             style={{
               position: 'absolute',
