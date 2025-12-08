@@ -41,6 +41,7 @@ export interface SchemaProperty {
   enum?: unknown[];
   additionalProperties?: boolean;
   'x-ui:show-on-node'?: boolean;
+  'x-ui:label'?: string;
   'x-ui:textarea'?: boolean;
   'x-ui:litellm-models-list-select'?: boolean;
 }

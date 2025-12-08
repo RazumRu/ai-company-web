@@ -91,7 +91,7 @@ export const CustomNode = React.memo(
         .map(([key, prop]) => ({
           key,
           value: nodeData.config[key] ?? prop.const ?? prop.default ?? '',
-          title: prop.title ?? key,
+          title: prop['x-ui:label'] ?? prop.title ?? key,
         }))
         .filter(
           (x) => x.value !== undefined && x.value !== null && x.value !== '',

@@ -700,24 +700,24 @@ export const GraphPage = () => {
         const savedState = GraphStorageService.loadGraphState(id);
         if (savedState) {
           const nodesWithTemplates = savedState.nodes.map((node) => {
-            if (!node.data.templateKind || !node.data.templateSchema) {
-              const template = templatesList.find(
-                (t) =>
-                  t.id === (node.data as unknown as GraphNodeData).template,
-              );
+            const template = templatesList.find(
+              (t) => t.id === (node.data as unknown as GraphNodeData).template,
+            );
 
-              if (template) {
-                return {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    templateKind: template.kind,
-                    templateSchema: template.schema,
-                  },
-                };
-              }
+            if (!template) {
+              return node;
             }
-            return node;
+
+            // Always refresh template metadata so new UI hints (e.g. x-ui:label)
+            // are visible even when a cached graph state exists.
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                templateKind: template.kind,
+                templateSchema: template.schema,
+              },
+            };
           });
 
           setNodes(nodesWithTemplates);
