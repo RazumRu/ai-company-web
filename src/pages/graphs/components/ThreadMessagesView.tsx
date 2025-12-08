@@ -821,22 +821,19 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       resultContent?: unknown,
       toolOptions?: Record<string, JsonValue>,
     ) => {
+      const isClickable = status === 'executed' && resultContent !== undefined;
       const line = (
         <div
+          className="hoverable-chat-message"
           style={{
-            cursor:
-              status === 'executed' && resultContent !== undefined
-                ? 'pointer'
-                : 'default',
+            cursor: isClickable ? 'pointer' : 'default',
           }}
           aria-label={
             status === 'executed'
               ? `View tool result for ${name}`
               : `Tool ${name} is calling`
           }
-          tabIndex={
-            status === 'executed' && resultContent !== undefined ? 0 : -1
-          }>
+          tabIndex={isClickable ? 0 : -1}>
           <div
             style={{
               display: 'flex',
@@ -847,7 +844,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             {status === 'calling' && <Spin size="small" />}
             <Text
               type="secondary"
-              style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              className="tool-status-line__text"
+              style={{ fontSize: '12px', color: 'inherit' }}>
               {toolOptions?.purpose
                 ? `${name} | ${String(toolOptions.purpose)}`
                 : `tool ${name} is ${status === 'calling' ? 'calling...' : 'executed'}`}
@@ -857,7 +855,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
 
       let baseLine: React.ReactNode = line;
-      if (status === 'executed' && resultContent !== undefined) {
+      if (isClickable) {
         const contentNode = renderToolPopoverContent(
           resultContent,
           toolOptions,

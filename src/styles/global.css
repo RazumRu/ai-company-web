@@ -30,3 +30,26 @@ body {
   min-height: unset !important;
   background: transparent !important;
 }
+
+.hoverable-chat-message {
+  color: #8c8c8c;
+  transition: color 0.2s ease;
+  font-size: 12px;
+  text-align: center;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.hoverable-chat-message:hover {
+  color: #595959;
+}
+
+.reasoning-message_streaming {
+  animation: messages-tab-reasoning-streaming 2.8s ease-in-out infinite;
+  animation-fill-mode: both;
+}
+
+.reasoning-message_chunk-appear {
+  animation: messages-tab-reasoning-appear 0.6s ease;
+}

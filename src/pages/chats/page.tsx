@@ -355,10 +355,31 @@ export const ChatsPage = () => {
   useEffect(() => {
     if (!selectedThread || (selectedThread as DraftThread)?.isDraft) return;
     const meta = getMessageMeta(selectedThread.id);
+    const existingMessages =
+      sharedMessages[selectedThread.id]?.['all'] ?? [];
+
+    if (existingMessages.length > 0) {
+      if (meta.offset === 0) {
+        updateMessageMeta(selectedThread.id, (prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+          offset: existingMessages.length,
+        }));
+      }
+      return;
+    }
+
     if (meta.offset === 0 && !meta.loading) {
       void loadMessagesForThread(selectedThread.id);
     }
-  }, [selectedThread, getMessageMeta, loadMessagesForThread]);
+  }, [
+    selectedThread,
+    getMessageMeta,
+    loadMessagesForThread,
+    sharedMessages,
+    updateMessageMeta,
+  ]);
 
   // Update trigger nodes when selected thread or graph cache changes
   useEffect(() => {
