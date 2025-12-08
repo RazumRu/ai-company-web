@@ -22,15 +22,23 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
   isExpanded,
   onToggle,
 }) => {
-  const content = limitConsecutiveNewlines(formatMessageContent(message.message?.content));
+  const content = limitConsecutiveNewlines(
+    formatMessageContent(message.message?.content),
+  );
   const [baseContent, setBaseContent] = useState(content);
   const [animatedChunk, setAnimatedChunk] = useState('');
   const prevContentRef = useRef(content);
   const timeoutRef = useRef<number | null>(null);
   const reasoningId = getReasoningIdentifier(message) ?? message.id;
-  const preview = useMemo(() => createReasoningPreview(baseContent), [baseContent]);
+  const preview = useMemo(
+    () => createReasoningPreview(baseContent),
+    [baseContent],
+  );
 
-  const additionalKwargs = (message.message?.additionalKwargs ?? {}) as Record<string, unknown>;
+  const additionalKwargs = (message.message?.additionalKwargs ?? {}) as Record<
+    string,
+    unknown
+  >;
   const isStreaming = Boolean(additionalKwargs?.[STREAMING_REASONING_FLAG]);
 
   useEffect(() => {
@@ -141,7 +149,8 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
               left: 0,
               right: 0,
               height: '24px',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%)',
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%)',
               pointerEvents: 'none',
             }}
           />

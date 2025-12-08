@@ -177,7 +177,7 @@ const GraphCanvasInner = ({
   // Memoize nodeTypes to prevent recreation on every render
   // Only recreate when templates, graphStatus, or compiledNodesLoading change
   // compiledNodes is passed per-node, so it doesn't need to be in dependencies
-const nodeTypes = useMemo<NodeTypes>(
+  const nodeTypes = useMemo<NodeTypes>(
     () => ({
       custom: (p) => (
         <CustomNode
@@ -190,7 +190,13 @@ const nodeTypes = useMemo<NodeTypes>(
         />
       ),
     }),
-  [templates, graphStatus, compiledNodesLoading, onTriggerClick, compiledNodes],
+    [
+      templates,
+      graphStatus,
+      compiledNodesLoading,
+      onTriggerClick,
+      compiledNodes,
+    ],
   );
 
   // Memoize enhancedNodes to prevent recreation on every render

@@ -217,3 +217,209 @@ export const buildIdSet = (
   const filtered = values.filter((value): value is string => Boolean(value));
   return filtered.length > 0 ? new Set(filtered) : undefined;
 };
+
+export interface ReasoningUpsertContext {
+  externalThreadId?: string;
+  runId?: string;
+  selectedThreadId?: string;
+  nodeId?: string;
+}
+
+const buildReasoningThreadMessage = (
+  entry: ReasoningChunkEntry,
+  existing: ThreadMessageDto | undefined,
+  context: ReasoningUpsertContext,
+): ThreadMessageDto => {
+  const nowIso = new Date().toISOString();
+  const existingMessage = existing?.message as
+    | (ThreadMessageDto['message'] & {
+        additionalKwargs?: Record<string, unknown>;
+        content?: string;
+      })
+    | undefined;
+  const existingAdditional =
+    (existingMessage?.additionalKwargs as Record<string, unknown>) ?? {};
+
+  const resolvedExternalThreadId =
+    context.externalThreadId ??
+    entry.threadId ??
+    existing?.externalThreadId ??
+    context.selectedThreadId ??
+    '';
+
+  const createdAt =
+    existing?.createdAt ??
+    entry.createdAt ??
+    (typeof existingAdditional.created_at === 'string'
+      ? (existingAdditional.created_at as string)
+      : nowIso);
+  const updatedAt = entry.updatedAt ?? existing?.updatedAt ?? nowIso;
+
+  const additionalKwargs: Record<string, unknown> = {
+    ...existingAdditional,
+    reasoningId: entry.reasoningId,
+    [STREAMING_REASONING_FLAG]: true,
+  };
+
+  const resolvedRunId =
+    context.runId ??
+    entry.runId ??
+    (typeof existingAdditional.run_id === 'string'
+      ? (existingAdditional.run_id as string)
+      : undefined);
+  if (resolvedRunId) {
+    additionalKwargs.run_id = resolvedRunId;
+  }
+
+  if (entry.createdAt) {
+    additionalKwargs.created_at = entry.createdAt;
+  } else if (!additionalKwargs.created_at) {
+    additionalKwargs.created_at = createdAt;
+  }
+
+  if (!additionalKwargs.reasoningId) {
+    additionalKwargs.reasoningId = entry.reasoningId;
+  }
+
+  return {
+    id: entry.reasoningId,
+    threadId: context.selectedThreadId ?? '',
+    nodeId: context.nodeId ?? entry.reasoningId,
+    externalThreadId: resolvedExternalThreadId,
+    createdAt,
+    updatedAt,
+    message: {
+      id: entry.reasoningId,
+      role: 'reasoning' as string,
+      content: entry.content,
+      additionalKwargs,
+    } as ThreadMessageDto['message'],
+  };
+};
+
+export const upsertReasoningEntries = (
+  prev: ThreadMessageDto[],
+  entries: ReasoningChunkEntry[],
+  context: ReasoningUpsertContext,
+): ThreadMessageDto[] => {
+  if (!entries.length) return prev;
+
+  let hasChanges = false;
+  const byId = new Map<string, ThreadMessageDto>();
+  prev.forEach((msg) => {
+    byId.set(msg.id, msg);
+  });
+
+  entries.forEach((entry) => {
+    const existing = byId.get(entry.reasoningId);
+    const existingMessage = existing?.message as
+      | (ThreadMessageDto['message'] & {
+          additionalKwargs?: Record<string, unknown>;
+          content?: string;
+        })
+      | undefined;
+    const existingAdditional =
+      (existingMessage?.additionalKwargs as Record<string, unknown>) ?? {};
+    const isExistingStreaming = Boolean(
+      existingAdditional?.[STREAMING_REASONING_FLAG],
+    );
+
+    if (existing && !isExistingStreaming) {
+      return;
+    }
+
+    const existingContent =
+      typeof existingMessage?.content === 'string'
+        ? existingMessage.content
+        : '';
+
+    const nextMessage = buildReasoningThreadMessage(entry, existing, context);
+
+    // If we already have a streaming message for this reasoningId, append
+    // new chunk content so we accumulate text as it streams.
+    const nextMessageContent =
+      typeof nextMessage.message?.content === 'string'
+        ? (nextMessage.message.content as string)
+        : '';
+
+    if (isExistingStreaming && nextMessageContent.length > 0) {
+      const shouldUseIncoming =
+        nextMessageContent.startsWith(existingContent) ||
+        nextMessageContent.length > existingContent.length;
+      const mergedContent = shouldUseIncoming
+        ? nextMessageContent
+        : `${existingContent}${nextMessageContent}`;
+      (nextMessage.message as ThreadMessageDto['message']).content =
+        mergedContent.length > existingContent.length
+          ? mergedContent
+          : nextMessageContent;
+    }
+
+    const nextContent = entry.content;
+    const additionalChanged =
+      JSON.stringify(existingAdditional) !==
+      JSON.stringify(nextMessage.message?.additionalKwargs ?? {});
+
+    if (
+      !existing ||
+      existingContent !== nextContent ||
+      existing?.updatedAt !== nextMessage.updatedAt ||
+      additionalChanged ||
+      Boolean(
+        (
+          nextMessage.message?.additionalKwargs as
+            | Record<string, unknown>
+            | undefined
+        )?.[STREAMING_REASONING_FLAG],
+      )
+    ) {
+      hasChanges = true;
+    }
+
+    byId.set(entry.reasoningId, nextMessage);
+  });
+
+  if (!hasChanges) {
+    return prev;
+  }
+
+  return sortMessagesChronologically(Array.from(byId.values()));
+};
+
+export const clearStreamingReasoningForContext = (
+  prev: ThreadMessageDto[],
+  options: {
+    targetThreadId?: string;
+    selectedThreadId?: string;
+    runIds?: Set<string>;
+  },
+): ThreadMessageDto[] => {
+  const {
+    targetThreadId,
+    selectedThreadId: selectedThreadIdForContext,
+    runIds,
+  } = options;
+
+  const predicate = (msg: ThreadMessageDto) => {
+    const threadMatches = targetThreadId
+      ? msg.externalThreadId === targetThreadId ||
+        (!msg.externalThreadId && targetThreadId === selectedThreadIdForContext)
+      : !msg.externalThreadId ||
+        msg.externalThreadId === selectedThreadIdForContext;
+
+    if (!threadMatches) {
+      return false;
+    }
+
+    if (runIds && runIds.size > 0) {
+      const msgRunId = getMessageRunId(msg);
+      if (!msgRunId || !runIds.has(msgRunId)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  return removeStreamingReasoningMessages(prev, predicate);
+};

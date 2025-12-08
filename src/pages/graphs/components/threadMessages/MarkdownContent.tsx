@@ -70,7 +70,11 @@ const markdownComponents: Components = {
     children,
     ...props
   }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-    <a {...props} target="_blank" rel="noopener noreferrer" style={{ color: '#1677ff' }}>
+    <a
+      {...props}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ color: '#1677ff' }}>
       {children}
     </a>
   ),
@@ -163,10 +167,11 @@ export const MarkdownContent: React.FC<MarkdownContentProps> = ({
 
   return (
     <div style={combinedStyle} className={className}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </div>
   );
 };
-

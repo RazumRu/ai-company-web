@@ -18,7 +18,10 @@ import { MarkdownContent } from './threadMessages/MarkdownContent';
 import { ChatBubble } from './threadMessages/ChatBubble';
 import { ShellToolDisplay } from './threadMessages/ShellToolDisplay';
 import { ReasoningMessage } from './threadMessages/ReasoningMessage';
-import { formatMessageContent, isBlankContent } from './threadMessages/messageUtils';
+import {
+  formatMessageContent,
+  isBlankContent,
+} from './threadMessages/messageUtils';
 
 interface ToolCallFunction {
   name?: string;
@@ -373,7 +376,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     };
 
     const argsToObject = useCallback(
-      (args?: string | Record<string, unknown>): Record<string, JsonValue> | null => {
+      (
+        args?: string | Record<string, unknown>,
+      ): Record<string, JsonValue> | null => {
         if (!args) return null;
         if (typeof args === 'string') {
           const parsed = parseJsonSafe(args);
@@ -508,87 +513,199 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
     const prepareReadyMessages = useCallback(
       (msgs: ThreadMessageDto[]): PreparedMessage[] => {
-      const toolCallResultsById = buildToolCallResultIndex(msgs);
-      const consumedToolCallIds = new Set<string>();
-      const consumedToolMessageKeys = new Set<string>();
+        const toolCallResultsById = buildToolCallResultIndex(msgs);
+        const consumedToolCallIds = new Set<string>();
+        const consumedToolMessageKeys = new Set<string>();
 
-      const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
-        const key = getToolMessageKey(msg);
-        if (key) {
-          consumedToolMessageKeys.add(key);
-        }
-      };
+        const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
+          const key = getToolMessageKey(msg);
+          if (key) {
+            consumedToolMessageKeys.add(key);
+          }
+        };
 
-      const markToolCallConsumed = (toolCallId?: string) => {
-        if (toolCallId) {
-          consumedToolCallIds.add(toolCallId);
-        }
-      };
+        const markToolCallConsumed = (toolCallId?: string) => {
+          if (toolCallId) {
+            consumedToolCallIds.add(toolCallId);
+          }
+        };
 
-      const consumeToolResultById = (
-        toolCallId?: string,
-      ): ThreadMessageDto | undefined => {
-        if (!toolCallId) return undefined;
-        const queue = toolCallResultsById[toolCallId];
-        if (!queue || queue.length === 0) {
-          return undefined;
-        }
-        const next = queue.shift();
-        markToolCallConsumed(toolCallId);
-        markToolMessageConsumed(next);
-        return next;
-      };
+        const consumeToolResultById = (
+          toolCallId?: string,
+        ): ThreadMessageDto | undefined => {
+          if (!toolCallId) return undefined;
+          const queue = toolCallResultsById[toolCallId];
+          if (!queue || queue.length === 0) {
+            return undefined;
+          }
+          const next = queue.shift();
+          markToolCallConsumed(toolCallId);
+          markToolMessageConsumed(next);
+          return next;
+        };
 
-      const prepared: PreparedMessage[] = [];
-      let i = 0;
+        const prepared: PreparedMessage[] = [];
+        let i = 0;
 
-      while (i < msgs.length) {
-        const m = msgs[i];
-        const role = (m.message?.role as string) || '';
+        while (i < msgs.length) {
+          const m = msgs[i];
+          const role = (m.message?.role as string) || '';
 
-        if (role === 'reasoning') {
-          if (!isBlankContent(m.message?.content)) {
+          if (role === 'reasoning') {
+            if (!isBlankContent(m.message?.content)) {
+              prepared.push({
+                type: 'reasoning',
+                message: m,
+                id: `reasoning-${m.id || m.createdAt}`,
+                nodeId: m.nodeId,
+                createdAt: m.createdAt,
+              });
+            }
+            i++;
+            continue;
+          }
+
+          if (role === 'system') {
+            const sys: ThreadMessageDto[] = [m];
+            let j = i + 1;
+            while (
+              j < msgs.length &&
+              (msgs[j].message?.role as string) === 'system'
+            ) {
+              sys.push(msgs[j]);
+              j++;
+            }
             prepared.push({
-              type: 'reasoning',
-              message: m,
-              id: `reasoning-${m.id || m.createdAt}`,
+              type: 'system',
+              messages: sys,
+              id: `system-${sys[0].id || sys[0].createdAt}`,
+              nodeId: sys[0]?.nodeId,
+              createdAt: sys[0]?.createdAt,
+            });
+            i = j;
+            continue;
+          }
+
+          const messageToolCalls = getMessageValue<ToolCall[]>(
+            m.message,
+            'toolCalls',
+          );
+          if (
+            role === 'ai' &&
+            messageToolCalls &&
+            messageToolCalls.length > 0
+          ) {
+            const hasNonBlankContent = !isBlankContent(m.message?.content);
+
+            if (hasNonBlankContent) {
+              prepared.push({
+                type: 'chat',
+                message: m,
+                id: `chat-${m.id || m.createdAt}`,
+                nodeId: m.nodeId,
+                createdAt: m.createdAt,
+              });
+            }
+
+            const followingTools: ThreadMessageDto[] = [];
+            let j = i + 1;
+            while (
+              j < msgs.length &&
+              isToolLikeRole(msgs[j].message?.role as string)
+            ) {
+              followingTools.push(msgs[j]);
+              j++;
+            }
+
+            const toolCalls = messageToolCalls;
+            for (let idx = 0; idx < toolCalls.length; idx++) {
+              const tc = toolCalls[idx];
+              const name = tc.name || tc.function?.name || 'tool';
+              let matched = consumeToolResultById(tc.id);
+              if (!matched) {
+                matched = followingTools.find(
+                  (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
+                );
+                if (matched) {
+                  markToolCallConsumed(
+                    tc.id || getMessageString(matched.message, 'toolCallId'),
+                  );
+                  markToolMessageConsumed(matched);
+                }
+              }
+              const resultContent = matched?.message?.content;
+              const toolArgs = tc.function?.arguments ?? tc.args;
+              const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
+              const resultObj =
+                typeof resultContent === 'object' &&
+                resultContent !== null &&
+                !Array.isArray(resultContent)
+                  ? (resultContent as ShellResult)
+                  : null;
+              const shellCommand = shellCmdFromArgs || resultObj?.command;
+              const isShell = (name || '').toLowerCase() === 'shell';
+              const toolOptions = argsToObject(toolArgs);
+
+              prepared.push({
+                type: 'tool',
+                name: name || 'tool',
+                status: matched ? 'executed' : 'calling',
+                result: resultContent,
+                id: `tool-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
+                toolKind: isShell ? 'shell' : 'generic',
+                shellCommand,
+                toolOptions: toolOptions || undefined,
+                nodeId: matched?.nodeId ?? m.nodeId,
+                createdAt: matched?.createdAt ?? m.createdAt,
+                roleLabel: name || 'tool',
+              });
+            }
+
+            i = i + 1 + followingTools.length;
+            continue;
+          }
+
+          if (isToolLikeRole(role)) {
+            const toolCallId = getMessageString(m.message, 'toolCallId');
+            const messageKey = getToolMessageKey(m);
+            if (
+              (toolCallId && consumedToolCallIds.has(toolCallId)) ||
+              (messageKey && consumedToolMessageKeys.has(messageKey))
+            ) {
+              i++;
+              continue;
+            }
+
+            const name = getMessageString(m.message, 'name') || 'tool';
+            const resultContent = m.message?.content;
+            const resultObj =
+              typeof resultContent === 'object' &&
+              resultContent !== null &&
+              !Array.isArray(resultContent)
+                ? (resultContent as ShellResult)
+                : null;
+            const shellCommand = resultObj?.command;
+            const isShell = (name || '').toLowerCase() === 'shell';
+            const toolOptions = undefined;
+
+            prepared.push({
+              type: 'tool',
+              name,
+              status: 'executed',
+              result: resultContent,
+              id: `tool-standalone-${m.id || m.createdAt}`,
+              toolKind: isShell ? 'shell' : 'generic',
+              shellCommand,
+              toolOptions,
               nodeId: m.nodeId,
               createdAt: m.createdAt,
+              roleLabel: name || 'tool',
             });
+            i++;
+            continue;
           }
-          i++;
-          continue;
-        }
 
-        if (role === 'system') {
-          const sys: ThreadMessageDto[] = [m];
-          let j = i + 1;
-          while (
-            j < msgs.length &&
-            (msgs[j].message?.role as string) === 'system'
-          ) {
-            sys.push(msgs[j]);
-            j++;
-          }
-          prepared.push({
-            type: 'system',
-            messages: sys,
-            id: `system-${sys[0].id || sys[0].createdAt}`,
-            nodeId: sys[0]?.nodeId,
-            createdAt: sys[0]?.createdAt,
-          });
-          i = j;
-          continue;
-        }
-
-        const messageToolCalls = getMessageValue<ToolCall[]>(
-          m.message,
-          'toolCalls',
-        );
-        if (role === 'ai' && messageToolCalls && messageToolCalls.length > 0) {
-          const hasNonBlankContent = !isBlankContent(m.message?.content);
-
-          if (hasNonBlankContent) {
+          if (!isBlankContent(m.message?.content)) {
             prepared.push({
               type: 'chat',
               message: m,
@@ -597,120 +714,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               createdAt: m.createdAt,
             });
           }
-
-          const followingTools: ThreadMessageDto[] = [];
-          let j = i + 1;
-          while (
-            j < msgs.length &&
-            isToolLikeRole(msgs[j].message?.role as string)
-          ) {
-            followingTools.push(msgs[j]);
-            j++;
-          }
-
-          const toolCalls = messageToolCalls;
-          for (let idx = 0; idx < toolCalls.length; idx++) {
-            const tc = toolCalls[idx];
-            const name = tc.name || tc.function?.name || 'tool';
-            let matched = consumeToolResultById(tc.id);
-            if (!matched) {
-              matched = followingTools.find(
-                (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
-              );
-              if (matched) {
-                markToolCallConsumed(
-                  tc.id || getMessageString(matched.message, 'toolCallId'),
-                );
-                markToolMessageConsumed(matched);
-              }
-            }
-            const resultContent = matched?.message?.content;
-            const toolArgs = tc.function?.arguments ?? tc.args;
-            const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
-            const resultObj =
-              typeof resultContent === 'object' &&
-              resultContent !== null &&
-              !Array.isArray(resultContent)
-                ? (resultContent as ShellResult)
-                : null;
-            const shellCommand = shellCmdFromArgs || resultObj?.command;
-            const isShell = (name || '').toLowerCase() === 'shell';
-            const toolOptions = argsToObject(toolArgs);
-
-            prepared.push({
-              type: 'tool',
-              name: name || 'tool',
-              status: matched ? 'executed' : 'calling',
-              result: resultContent,
-              id: `tool-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
-              toolKind: isShell ? 'shell' : 'generic',
-              shellCommand,
-              toolOptions: toolOptions || undefined,
-              nodeId: matched?.nodeId ?? m.nodeId,
-              createdAt: matched?.createdAt ?? m.createdAt,
-              roleLabel: name || 'tool',
-            });
-          }
-
-          i = i + 1 + followingTools.length;
-          continue;
-        }
-
-        if (isToolLikeRole(role)) {
-          const toolCallId = getMessageString(m.message, 'toolCallId');
-          const messageKey = getToolMessageKey(m);
-          if (
-            (toolCallId && consumedToolCallIds.has(toolCallId)) ||
-            (messageKey && consumedToolMessageKeys.has(messageKey))
-          ) {
-            i++;
-            continue;
-          }
-
-          const name = getMessageString(m.message, 'name') || 'tool';
-          const resultContent = m.message?.content;
-          const resultObj =
-            typeof resultContent === 'object' &&
-            resultContent !== null &&
-            !Array.isArray(resultContent)
-              ? (resultContent as ShellResult)
-              : null;
-          const shellCommand = resultObj?.command;
-          const isShell = (name || '').toLowerCase() === 'shell';
-          const toolOptions = undefined;
-
-          prepared.push({
-            type: 'tool',
-            name,
-            status: 'executed',
-            result: resultContent,
-            id: `tool-standalone-${m.id || m.createdAt}`,
-            toolKind: isShell ? 'shell' : 'generic',
-            shellCommand,
-            toolOptions,
-            nodeId: m.nodeId,
-            createdAt: m.createdAt,
-            roleLabel: name || 'tool',
-          });
           i++;
-          continue;
         }
 
-        if (!isBlankContent(m.message?.content)) {
-          prepared.push({
-            type: 'chat',
-            message: m,
-            id: `chat-${m.id || m.createdAt}`,
-            nodeId: m.nodeId,
-            createdAt: m.createdAt,
-          });
-        }
-        i++;
-      }
-
-      return prepared;
-    },
-    [argsToObject, buildToolCallResultIndex, extractShellCommandFromArgs],
+        return prepared;
+      },
+      [argsToObject, buildToolCallResultIndex, extractShellCommandFromArgs],
     );
 
     // eslint-disable-next-line react-hooks/exhaustive-deps

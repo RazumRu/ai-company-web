@@ -286,11 +286,11 @@ export const NodeEditSidebar = React.memo(
             return;
           }
           console.error('Failed to load LiteLLM models:', error);
-        const errorMessage = extractApiErrorMessage(
-          error,
-          'Failed to load LiteLLM models',
-        );
-        message.error(errorMessage);
+          const errorMessage = extractApiErrorMessage(
+            error,
+            'Failed to load LiteLLM models',
+          );
+          message.error(errorMessage);
         } finally {
           if (isActive) {
             setLitellmModelsLoading(false);
@@ -1238,8 +1238,7 @@ export const NodeEditSidebar = React.memo(
       prevProps.messages?.length === nextProps.messages?.length;
     const pendingEqual =
       prevProps.pendingMessages === nextProps.pendingMessages &&
-      prevProps.pendingMessages?.length ===
-        nextProps.pendingMessages?.length;
+      prevProps.pendingMessages?.length === nextProps.pendingMessages?.length;
 
     return (
       prevProps.visible === nextProps.visible &&

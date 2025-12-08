@@ -134,22 +134,19 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const rawStringResult =
     typeof resultContent === 'string' ? resultContent : null;
   const outputFieldText =
-    resultObj && typeof resultObj.output === 'string'
-      ? resultObj.output
-      : null;
+    resultObj && typeof resultObj.output === 'string' ? resultObj.output : null;
   const exitCode =
-    typeof resultObj?.exitCode === 'number' ? (resultObj.exitCode as number) : null;
+    typeof resultObj?.exitCode === 'number'
+      ? (resultObj.exitCode as number)
+      : null;
   const exitCodeColor =
     exitCode === null || exitCode === 0 ? '#9d9d9d' : '#ff4d4f';
   const tint =
-    exitCode === null
-      ? '#2b2b2b'
-      : exitCode === 0
-        ? '#1d2b1f'
-        : '#2b1d1d';
+    exitCode === null ? '#2b2b2b' : exitCode === 0 ? '#1d2b1f' : '#2b1d1d';
 
   const toolNameText = useMemo(
-    () => `${name}${toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''}`,
+    () =>
+      `${name}${toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''}`,
     [name, toolOptions?.purpose],
   );
 
@@ -170,8 +167,12 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const commandTruncated = shellCommand
     ? truncateToLines(shellCommand, 3)
     : undefined;
-  const stdoutTruncated = stdoutText ? truncateToLines(stdoutText, 3) : undefined;
-  const stderrTruncated = stderrText ? truncateToLines(stderrText, 3) : undefined;
+  const stdoutTruncated = stdoutText
+    ? truncateToLines(stdoutText, 3)
+    : undefined;
+  const stderrTruncated = stderrText
+    ? truncateToLines(stderrText, 3)
+    : undefined;
   const fallbackOutputTruncated =
     !stdoutText && !stderrText && outputText
       ? truncateToLines(outputText, 3)
@@ -371,7 +372,8 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                         left: 0,
                         right: 0,
                         height: '1.5em',
-                        background: 'linear-gradient(to bottom, transparent, #1e1e1e)',
+                        background:
+                          'linear-gradient(to bottom, transparent, #1e1e1e)',
                         pointerEvents: 'none',
                       }}
                     />
@@ -441,9 +443,19 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
               }}
               className="shell-output-container">
               {stdoutText &&
-                renderOutputBlock('stdout', stdoutText, '#e8e8e8', stdoutTruncated)}
+                renderOutputBlock(
+                  'stdout',
+                  stdoutText,
+                  '#e8e8e8',
+                  stdoutTruncated,
+                )}
               {stderrText &&
-                renderOutputBlock('stderr', stderrText, '#ff7875', stderrTruncated)}
+                renderOutputBlock(
+                  'stderr',
+                  stderrText,
+                  '#ff7875',
+                  stderrTruncated,
+                )}
               {!stdoutText &&
                 !stderrText &&
                 outputText &&
@@ -473,4 +485,3 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     </div>
   );
 };
-

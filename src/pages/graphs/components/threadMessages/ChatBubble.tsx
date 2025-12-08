@@ -59,17 +59,20 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   return (
     <div style={mergedContainer}>
       {!isHuman && (
-        <Avatar style={{ backgroundColor: avatarColor, flexShrink: 0 }} size="small">
+        <Avatar
+          style={{ backgroundColor: avatarColor, flexShrink: 0 }}
+          size="small">
           {avatarLabel}
         </Avatar>
       )}
       {ContentWrapper}
       {isHuman && (
-        <Avatar style={{ backgroundColor: avatarColor, flexShrink: 0 }} size="small">
+        <Avatar
+          style={{ backgroundColor: avatarColor, flexShrink: 0 }}
+          size="small">
           {avatarLabel}
         </Avatar>
       )}
     </div>
   );
 };
-
