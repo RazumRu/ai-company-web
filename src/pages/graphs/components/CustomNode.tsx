@@ -247,281 +247,295 @@ export const CustomNode = React.memo(
         }}
         styles={{
           body: {
-            padding: 12,
+            padding: 0,
             position: 'relative',
-            paddingBottom: isTriggerNode ? 40 : 12, // Add space for trigger button
           },
         }}>
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 15,
+            background: '#F3F6FF',
+            padding: 12,
+            borderBottom: '1px solid #dfdfdf',
+            borderRadius: '8px 8px 0 0',
           }}>
-          <Space size="small" align="center">
-            <Space size={8} align="center">
-              {statusDot}
-              <Text
-                strong
-                style={{
-                  fontSize: 14,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: 260,
-                  display: 'block',
-                }}>
-                {nodeData.label}
-              </Text>
-            </Space>
-            <Tag
-              color={getKindColor(nodeData.templateKind)}
-              style={{ margin: 0, fontSize: 10 }}>
-              {nodeData.templateKind}
-            </Tag>
-            <Tag color="geekblue" style={{ margin: 0, fontSize: 10 }}>
-              {nodeData.template}
-            </Tag>
-            {compiledNode?.error && (
-              <Tooltip title={compiledNode.error} placement="top">
-                <ExclamationCircleOutlined
-                  style={{ color: '#ff4d4f', fontSize: 14 }}
-                />
-              </Tooltip>
-            )}
-          </Space>
-          <Space size="small">
-            {hasValidationErrors && (
-              <Tooltip
-                title={
-                  <div>
-                    <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                      Validation Errors:
-                    </div>
-                    {validationErrors.map((e, i) => (
-                      <div key={i} style={{ fontSize: 12 }}>
-                        • {e.message}
-                      </div>
-                    ))}
-                  </div>
-                }
-                placement="top">
-                <ExclamationCircleOutlined
-                  style={{ color: '#ff4d4f', fontSize: 16, cursor: 'help' }}
-                />
-              </Tooltip>
-            )}
-            {nodeData.onDelete && (
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  nodeData.onDelete?.();
-                }}
-              />
-            )}
-          </Space>
-        </div>
-
-        <div ref={contentRef} style={{ position: 'relative', marginTop: 8 }}>
-          {metadataProperties.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-              {metadataProperties.map(({ key, value, title }) => (
-                <Tag
-                  key={key}
-                  color="default"
-                  bordered={false}
-                  style={{ fontSize: 10, margin: 0 }}>
-                  {title}: {String(value)}
-                </Tag>
-              ))}
-            </div>
-          )}
-
-          <Text
-            type="secondary"
+          <div
             style={{
-              fontSize: 12,
-              display: 'block',
-              marginTop: 5,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 15,
             }}>
-            {nodeTemplate?.description}
-          </Text>
-        </div>
-
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}>
-          {targets.map((t) => {
-            const id = makeHandleId('target', t);
-            const miss =
-              t.required && !allEdges.some((e) => e.target === nodeId);
-            const c = color('target', t.required, miss);
-            return (
-              <Tooltip
-                key={id}
-                title={
-                  <div>
-                    <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                      {t.type}: {t.value}
-                      {t.required && ' (Required)'}
-                      {t.multiple && ' (Multiple)'}
-                    </div>
-                    <div style={{ fontSize: 12, marginBottom: 4 }}>
-                      Available templates:
-                    </div>
-                    {t.availableTemplates.map((template, idx) => (
-                      <div key={idx} style={{ fontSize: 11, marginLeft: 8 }}>
-                        • {template.name} ({template.kind})
-                      </div>
-                    ))}
-                    {miss && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: '#ff4d4f',
-                          marginTop: 4,
-                        }}>
-                        ⚠️ This connection is required
-                      </div>
-                    )}
-                  </div>
-                }
-                placement="right"
-                mouseEnterDelay={0.1}>
-                <Handle
-                  type="target"
-                  id={id}
-                  isConnectable={isConnectable}
-                  position={Position.Left}
+            <Space size="small" align="center">
+              <Space size={8} align="center">
+                {statusDot}
+                <Text
+                  strong
                   style={{
-                    width: '12px',
-                    height: '12px',
-                    position: 'relative',
-                    transform: 'none',
-                    left: '-6px',
-                    top: 0,
-                    background: c.bg,
-                    border: c.br,
-                    boxShadow: c.sh,
+                    fontSize: 14,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 260,
+                    display: 'block',
+                  }}>
+                  {nodeData.label}
+                </Text>
+              </Space>
+              <Tag
+                color={getKindColor(nodeData.templateKind)}
+                style={{ margin: 0, fontSize: 10 }}>
+                {nodeData.templateKind}
+              </Tag>
+              <Tag color="geekblue" style={{ margin: 0, fontSize: 10 }}>
+                {nodeData.template}
+              </Tag>
+              {compiledNode?.error && (
+                <Tooltip title={compiledNode.error} placement="top">
+                  <ExclamationCircleOutlined
+                    style={{ color: '#ff4d4f', fontSize: 14 }}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+            <Space size="small">
+              {hasValidationErrors && (
+                <Tooltip
+                  title={
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                        Validation Errors:
+                      </div>
+                      {validationErrors.map((e, i) => (
+                        <div key={i} style={{ fontSize: 12 }}>
+                          • {e.message}
+                        </div>
+                      ))}
+                    </div>
+                  }
+                  placement="top">
+                  <ExclamationCircleOutlined
+                    style={{ color: '#ff4d4f', fontSize: 16, cursor: 'help' }}
+                  />
+                </Tooltip>
+              )}
+              {nodeData.onDelete && (
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nodeData.onDelete?.();
                   }}
                 />
-              </Tooltip>
-            );
-          })}
+              )}
+            </Space>
+          </div>
+
+          <div ref={contentRef} style={{ position: 'relative', marginTop: 8 }}>
+            {metadataProperties.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {metadataProperties.map(({ key, value, title }) => (
+                  <Tag
+                    key={key}
+                    color="default"
+                    bordered={false}
+                    style={{ fontSize: 10, margin: 0, background: '#dee6ff' }}>
+                    {title}: {String(value)}
+                  </Tag>
+                ))}
+              </div>
+            )}
+
+            <Text
+              type="secondary"
+              style={{
+                fontSize: 12,
+                display: 'block',
+                marginTop: 5,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+              {nodeTemplate?.description}
+            </Text>
+          </div>
         </div>
 
         <div
           style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            height: '100%',
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
+            gap: 16,
+            padding: 12,
           }}>
-          {nodeTemplate?.outputs?.map((output) => {
-            const outRule: {
-              type: 'kind' | 'template';
-              value: string;
-              required?: boolean;
-              multiple?: boolean;
-            } = {
-              type: output.type as 'kind' | 'template',
-              value: String(output.value),
-              required: output.required,
-              multiple: output.multiple,
-            };
-            const id = makeHandleId('source', outRule);
-            const c = color('source', output.required || false, false);
-            return (
-              <Tooltip
-                key={id}
-                title={
-                  <div>
-                    <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                      {output.type}: {output.value}
-                      {output.required && ' (Required)'}
-                      {output.multiple && ' (Multiple)'}
-                    </div>
-                    <div style={{ fontSize: 12 }}>Output connection</div>
-                  </div>
-                }
-                placement="left"
-                mouseEnterDelay={0.1}>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}>
+            {targets.map((t) => {
+              const id = makeHandleId('target', t);
+              const miss =
+                t.required && !allEdges.some((e) => e.target === nodeId);
+              const c = color('target', t.required, miss);
+              return (
+                <div
+                  key={id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    position: 'relative',
+                    minHeight: 18,
+                  }}>
+                  <Handle
+                    type="target"
+                    id={id}
+                    isConnectable={isConnectable}
+                    position={Position.Left}
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      position: 'absolute',
+                      left: '-12px',
+                      background: miss ? '#ff5d5d' : c.bg,
+                      border: c.br,
+                      boxShadow: c.sh,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: miss ? '#ff4d4f' : 'white',
+                      marginLeft: 3,
+                      whiteSpace: 'nowrap',
+                      background: miss ? '#ff5d5d' : c.bg,
+                      padding: '2px 10px',
+                      borderRadius: '10px',
+                    }}>
+                    {t.value}
+                    {t.required ? ' • required' : ''}
+                    {t.multiple ? ' • multiple' : ''}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}>
+            {nodeTemplate?.outputs?.map((output) => {
+              const outRule: {
+                type: 'kind' | 'template';
+                value: string;
+                required?: boolean;
+                multiple?: boolean;
+              } = {
+                type: output.type as 'kind' | 'template',
+                value: String(output.value),
+                required: output.required,
+                multiple: output.multiple,
+              };
+              const id = makeHandleId('source', outRule);
+              const miss =
+                output.required && !allEdges.some((e) => e.target === nodeId);
+              const c = color('source', output.required || false, false);
+              return (
+                <div
+                  key={id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    position: 'relative',
+                    minHeight: 18,
+                  }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      marginRight: 3,
+                      whiteSpace: 'nowrap',
+                      background: miss ? '#ff5d5d' : c.bg,
+                      padding: '2px 10px',
+                      borderRadius: '10px',
+                      color: 'white',
+                    }}>
+                    {output.value}
+                    {output.required ? ' • required' : ''}
+                    {output.multiple ? ' • multiple' : ''}
+                  </span>
+                  <Handle
+                    type="source"
+                    id={id}
+                    isConnectable={isConnectable}
+                    position={Position.Right}
+                    style={{
+                      background: miss ? '#ff5d5d' : c.bg,
+                      border: c.br,
+                      boxShadow: c.sh,
+                      width: '12px',
+                      height: '12px',
+                      position: 'absolute',
+                      right: '-12px',
+                    }}
+                  />
+                </div>
+              );
+            })}
+            {nodeTemplate?.outputs === undefined && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  position: 'relative',
+                  minHeight: 18,
+                  paddingRight: 6,
+                }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: '#595959',
+                    marginRight: 8,
+                    whiteSpace: 'nowrap',
+                  }}>
+                  output
+                </span>
                 <Handle
                   type="source"
-                  id={id}
+                  id="source-out"
                   isConnectable={isConnectable}
                   position={Position.Right}
                   style={{
-                    background: c.bg,
-                    border: c.br,
-                    boxShadow: c.sh,
+                    background: color('source', false, outMissing).bg,
+                    border: color('source', false, outMissing).br,
+                    boxShadow: color('source', false, outMissing).sh,
                     width: '12px',
                     height: '12px',
-                    position: 'relative',
-                    transform: 'none',
-                    right: '-6px',
-                    top: 0,
+                    position: 'absolute',
+                    right: '-12px',
                   }}
                 />
-              </Tooltip>
-            );
-          })}
-          {nodeTemplate?.outputs === undefined && (
-            <Tooltip title="output" placement="left" mouseEnterDelay={0.1}>
-              <Handle
-                type="source"
-                id="source-out"
-                isConnectable={isConnectable}
-                position={Position.Right}
-                style={{
-                  background: color('source', false, outMissing).bg,
-                  border: color('source', false, outMissing).br,
-                  boxShadow: color('source', false, outMissing).sh,
-                  width: '12px',
-                  height: '12px',
-                  position: 'relative',
-                  transform: 'none',
-                  right: '-6px',
-                  top: 0,
-                }}
-              />
-            </Tooltip>
-          )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Trigger Button - positioned under description */}
+        {/* Actions row */}
         {isTriggerNode && (
           <div
             style={{
-              position: 'absolute',
-              bottom: 8,
-              left: 12,
-              right: 12,
-              zIndex: 10,
               display: 'flex',
               justifyContent: 'center',
+              padding: 12,
+              borderTop: '1px solid #dfdfdf',
             }}>
             <Button
               type="primary"
