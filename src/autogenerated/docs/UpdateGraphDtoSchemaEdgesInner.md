@@ -1,13 +1,12 @@
 # UpdateGraphDtoSchemaEdgesInner
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**from** | **string** | Source node ID | [default to undefined]
-**to** | **string** | Target node ID | [default to undefined]
-**label** | **string** | Optional edge label | [optional] [default to undefined]
+| Name      | Type       | Description         | Notes                             |
+| --------- | ---------- | ------------------- | --------------------------------- |
+| **from**  | **string** | Source node ID      | [default to undefined]            |
+| **to**    | **string** | Target node ID      | [default to undefined]            |
+| **label** | **string** | Optional edge label | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { UpdateGraphDtoSchemaEdgesInner } from './api';
 
 const instance: UpdateGraphDtoSchemaEdgesInner = {
-    from,
-    to,
-    label,
+  from,
+  to,
+  label,
 };
 ```
 

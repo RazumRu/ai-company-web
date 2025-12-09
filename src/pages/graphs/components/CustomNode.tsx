@@ -474,8 +474,9 @@ export const CustomNode = React.memo(
             }}>
             {targets.map((t) => {
               const id = makeHandleId('target', t);
-              const miss =
-                t.required && !allEdges.some((e) => e.target === nodeId);
+              const miss = Boolean(
+                t.required && !allEdges.some((e) => e.target === nodeId),
+              );
               const c = color('target', t.required, miss);
               const highlight = getHandleHighlight('target', t);
               const visuals = resolveHandleVisuals(c, miss, highlight);
@@ -491,7 +492,7 @@ export const CustomNode = React.memo(
                   <Handle
                     type="target"
                     id={id}
-                    isConnectable={isConnectable}
+                    isConnectable={isConnectable ?? true}
                     position={Position.Left}
                     style={{
                       width: '12px',
@@ -542,8 +543,9 @@ export const CustomNode = React.memo(
                 multiple: output.multiple,
               };
               const id = makeHandleId('source', outRule);
-              const miss =
-                output.required && !allEdges.some((e) => e.target === nodeId);
+              const miss = Boolean(
+                output.required && !allEdges.some((e) => e.target === nodeId),
+              );
               const c = color('source', output.required || false, false);
               const highlight = getHandleHighlight('source', outRule);
               const visuals = resolveHandleVisuals(c, miss, highlight);
@@ -574,7 +576,7 @@ export const CustomNode = React.memo(
                   <Handle
                     type="source"
                     id={id}
-                    isConnectable={isConnectable}
+                    isConnectable={isConnectable ?? true}
                     position={Position.Right}
                     style={{
                       background: visuals.background,
@@ -611,7 +613,7 @@ export const CustomNode = React.memo(
                 <Handle
                   type="source"
                   id="source-out"
-                  isConnectable={isConnectable}
+                  isConnectable={isConnectable ?? true}
                   position={Position.Right}
                   style={{
                     background: color('source', false, outMissing).bg,

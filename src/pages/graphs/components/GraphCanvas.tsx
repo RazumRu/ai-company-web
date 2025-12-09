@@ -14,6 +14,7 @@ import {
   Viewport,
   useReactFlow,
   ReactFlowProvider,
+  OnConnectStart,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useMemo, useState } from 'react';
@@ -281,15 +282,8 @@ const GraphCanvasInner = ({
     setConnectionPreview(null);
   }, []);
 
-  const handleConnectStart = useCallback(
-    (
-      _event: React.MouseEvent,
-      params: {
-        nodeId?: string | null;
-        handleId?: string | null;
-        handleType?: 'source' | 'target' | null;
-      },
-    ) => {
+  const handleConnectStart = useCallback<OnConnectStart>(
+    (_event, params) => {
       if (!params.nodeId || !params.handleId || !params.handleType) {
         clearConnectionPreview();
         return;
@@ -302,7 +296,8 @@ const GraphCanvasInner = ({
       );
       const sourceNode = nodes.find((n) => n.id === params.nodeId);
       const template = templates.find(
-        (t) => t.id === (sourceNode?.data as GraphNodeData | undefined)?.template,
+        (t) =>
+          t.id === (sourceNode?.data as GraphNodeData | undefined)?.template,
       );
 
       setConnectionPreview({
@@ -386,7 +381,13 @@ const GraphCanvasInner = ({
         },
       ]);
     },
-    [clearConnectionPreview, onEdgesChange, nodes, templates, onValidationError],
+    [
+      clearConnectionPreview,
+      onEdgesChange,
+      nodes,
+      templates,
+      onValidationError,
+    ],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {

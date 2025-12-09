@@ -101,10 +101,14 @@ export class GraphValidationService {
     const targetHandleId = options?.targetHandleId;
 
     const selectedOutputRule = sourceHandleId
-      ? outputRules.find((rule) => makeHandleId('source', rule) === sourceHandleId)
+      ? outputRules.find(
+          (rule) => makeHandleId('source', rule) === sourceHandleId,
+        )
       : undefined;
     const selectedInputRule = targetHandleId
-      ? inputRules.find((rule) => makeHandleId('target', rule) === targetHandleId)
+      ? inputRules.find(
+          (rule) => makeHandleId('target', rule) === targetHandleId,
+        )
       : undefined;
 
     if (sourceHandleId && !selectedOutputRule) {
@@ -185,8 +189,8 @@ export class GraphValidationService {
         targetNode,
         templates,
         {
-          sourceHandleId: edge.sourceHandle,
-          targetHandleId: edge.targetHandle,
+          sourceHandleId: edge.sourceHandle ?? undefined,
+          targetHandleId: edge.targetHandle ?? undefined,
         },
       );
       if (!validation.isValid) {
@@ -212,7 +216,13 @@ export class GraphValidationService {
       return [];
     }
 
-    const outputs = nodeTemplate.outputs ?? [];
+    const outputs =
+      nodeTemplate.outputs?.map((rule) => ({
+        type: rule.type as 'kind' | 'template',
+        value: String(rule.value),
+        required: Boolean(rule.required),
+        multiple: Boolean(rule.multiple),
+      })) ?? [];
     return templates.filter((template) =>
       this.isConnectionAllowed(outputs, template),
     );
@@ -222,19 +232,11 @@ export class GraphValidationService {
    * Checks if a connection is allowed based on outputs rules
    */
   private static isConnectionAllowed(
-    outputs: TemplateDtoInputsInner[],
+    outputs: ConnectionRule[],
     targetTemplate: TemplateDto,
   ): boolean {
     return outputs.some((rule) => {
-      return this.isRuleAllowingTemplate(
-        {
-          type: rule.type as 'kind' | 'template',
-          value: String(rule.value),
-          required: Boolean(rule.required),
-          multiple: Boolean(rule.multiple),
-        },
-        targetTemplate,
-      );
+      return this.isRuleAllowingTemplate(rule, targetTemplate);
     });
   }
 
@@ -292,8 +294,8 @@ export class GraphValidationService {
           targetNode,
           templates,
           {
-            sourceHandleId: edge.sourceHandle,
-            targetHandleId: edge.targetHandle,
+            sourceHandleId: edge.sourceHandle ?? undefined,
+            targetHandleId: edge.targetHandle ?? undefined,
           },
         );
         if (!validation.isValid) {

@@ -146,19 +146,15 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const tint =
     exitCode === null ? '#2b2b2b' : exitCode === 0 ? '#1d2b1f' : '#2b1d1d';
 
-  const toolNameText = useMemo(
-    () => {
-      const displayName =
-        title && title.trim().length > 0 ? title.trim() : name;
-      if (displayName !== name) {
-        return displayName;
-      }
-      return `${displayName}${
-        toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''
-      }`;
-    },
-    [name, title, toolOptions?.purpose],
-  );
+  const toolNameText = useMemo(() => {
+    const displayName = title && title.trim().length > 0 ? title.trim() : name;
+    if (displayName !== name) {
+      return displayName;
+    }
+    return `${displayName}${
+      toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''
+    }`;
+  }, [name, title, toolOptions?.purpose]);
 
   const getOutputText = (): string | null => {
     if (outputFieldText) return outputFieldText;

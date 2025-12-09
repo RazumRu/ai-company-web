@@ -1,12 +1,11 @@
 # UpdateGraphDtoSchema
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**nodes** | [**Array&lt;UpdateGraphDtoSchemaNodesInner&gt;**](UpdateGraphDtoSchemaNodesInner.md) |  | [default to undefined]
-**edges** | [**Array&lt;UpdateGraphDtoSchemaEdgesInner&gt;**](UpdateGraphDtoSchemaEdgesInner.md) |  | [optional] [default to undefined]
+| Name      | Type                                                                                 | Description | Notes                             |
+| --------- | ------------------------------------------------------------------------------------ | ----------- | --------------------------------- |
+| **nodes** | [**Array&lt;UpdateGraphDtoSchemaNodesInner&gt;**](UpdateGraphDtoSchemaNodesInner.md) |             | [default to undefined]            |
+| **edges** | [**Array&lt;UpdateGraphDtoSchemaEdgesInner&gt;**](UpdateGraphDtoSchemaEdgesInner.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UpdateGraphDtoSchema } from './api';
 
 const instance: UpdateGraphDtoSchema = {
-    nodes,
-    edges,
+  nodes,
+  edges,
 };
 ```
 

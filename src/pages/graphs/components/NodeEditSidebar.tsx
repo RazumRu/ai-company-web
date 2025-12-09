@@ -503,6 +503,14 @@ export const NodeEditSidebar = React.memo(
       }
     }, [node, nodeName, formFields, form, onSave]);
 
+    const handleExpandedTextareaSave = useCallback(() => {
+      if (expandedTextarea) {
+        form.setFieldValue(expandedTextarea.fieldKey, expandedTextarea.value);
+        autoSaveNodeChanges();
+      }
+      setExpandedTextarea(null);
+    }, [autoSaveNodeChanges, expandedTextarea, form]);
+
     const handleFormChange = useCallback(
       (
         changedValues: Record<string, unknown>,
@@ -1184,25 +1192,16 @@ export const NodeEditSidebar = React.memo(
         <Modal
           title="Edit Text"
           open={!!expandedTextarea}
-          onCancel={() => setExpandedTextarea(null)}
+          onCancel={handleExpandedTextareaSave}
           width={800}
           footer={[
-            <Button key="cancel" onClick={() => setExpandedTextarea(null)}>
-              Cancel
+            <Button key="cancel" onClick={handleExpandedTextareaSave}>
+              Close
             </Button>,
             <Button
               key="save"
               type="primary"
-              onClick={() => {
-                if (expandedTextarea) {
-                  form.setFieldValue(
-                    expandedTextarea.fieldKey,
-                    expandedTextarea.value,
-                  );
-                  autoSaveNodeChanges();
-                  setExpandedTextarea(null);
-                }
-              }}>
+              onClick={handleExpandedTextareaSave}>
               Save
             </Button>,
           ]}>
