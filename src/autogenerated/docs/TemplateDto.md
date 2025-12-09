@@ -1,16 +1,17 @@
 # TemplateDto
 
+
 ## Properties
 
-| Name            | Type                                                                 | Description | Notes                             |
-| --------------- | -------------------------------------------------------------------- | ----------- | --------------------------------- |
-| **id**          | **string**                                                           |             | [default to undefined]            |
-| **name**        | **string**                                                           |             | [default to undefined]            |
-| **description** | **string**                                                           |             | [default to undefined]            |
-| **kind**        | **string**                                                           |             | [default to undefined]            |
-| **schema**      | **{ [key: string]: any; }**                                          |             | [default to undefined]            |
-| **inputs**      | [**Array&lt;TemplateDtoInputsInner&gt;**](TemplateDtoInputsInner.md) |             | [optional] [default to undefined] |
-| **outputs**     | [**Array&lt;TemplateDtoInputsInner&gt;**](TemplateDtoInputsInner.md) |             | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**id** | **string** |  | [default to undefined]
+**name** | **string** |  | [default to undefined]
+**description** | **string** |  | [default to undefined]
+**kind** | **string** |  | [default to undefined]
+**schema** | **{ [key: string]: any; }** |  | [default to undefined]
+**inputs** | [**Array&lt;TemplateDtoInputsInner&gt;**](TemplateDtoInputsInner.md) |  | [optional] [default to undefined]
+**outputs** | [**Array&lt;TemplateDtoInputsInner&gt;**](TemplateDtoInputsInner.md) |  | [optional] [default to undefined]
 
 ## Example
 
@@ -18,13 +19,13 @@
 import { TemplateDto } from './api';
 
 const instance: TemplateDto = {
-  id,
-  name,
-  description,
-  kind,
-  schema,
-  inputs,
-  outputs,
+    id,
+    name,
+    description,
+    kind,
+    schema,
+    inputs,
+    outputs,
 };
 ```
 

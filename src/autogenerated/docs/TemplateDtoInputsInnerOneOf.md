@@ -1,13 +1,14 @@
 # TemplateDtoInputsInnerOneOf
 
+
 ## Properties
 
-| Name         | Type        | Description | Notes                             |
-| ------------ | ----------- | ----------- | --------------------------------- |
-| **type**     | **string**  |             | [default to undefined]            |
-| **value**    | **string**  |             | [default to undefined]            |
-| **required** | **boolean** |             | [optional] [default to undefined] |
-| **multiple** | **boolean** |             | [default to undefined]            |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**type** | **string** |  | [default to undefined]
+**value** | **string** |  | [default to undefined]
+**required** | **boolean** |  | [optional] [default to undefined]
+**multiple** | **boolean** |  | [default to undefined]
 
 ## Example
 
@@ -15,10 +16,10 @@
 import { TemplateDtoInputsInnerOneOf } from './api';
 
 const instance: TemplateDtoInputsInnerOneOf = {
-  type,
-  value,
-  required,
-  multiple,
+    type,
+    value,
+    required,
+    multiple,
 };
 ```
 

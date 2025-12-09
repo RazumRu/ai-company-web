@@ -4,10 +4,10 @@ Merged schema result
 
 ## Properties
 
-| Name      | Type                                                                                 | Description | Notes                             |
-| --------- | ------------------------------------------------------------------------------------ | ----------- | --------------------------------- |
-| **nodes** | [**Array&lt;CreateGraphDtoSchemaNodesInner&gt;**](CreateGraphDtoSchemaNodesInner.md) |             | [default to undefined]            |
-| **edges** | [**Array&lt;CreateGraphDtoSchemaEdgesInner&gt;**](CreateGraphDtoSchemaEdgesInner.md) |             | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**nodes** | [**Array&lt;CreateGraphDtoSchemaNodesInner&gt;**](CreateGraphDtoSchemaNodesInner.md) |  | [default to undefined]
+**edges** | [**Array&lt;CreateGraphDtoSchemaEdgesInner&gt;**](CreateGraphDtoSchemaEdgesInner.md) |  | [optional] [default to undefined]
 
 ## Example
 
@@ -15,8 +15,8 @@ Merged schema result
 import { UpdateGraphResponseDtoRevisionNewSchema } from './api';
 
 const instance: UpdateGraphResponseDtoRevisionNewSchema = {
-  nodes,
-  edges,
+    nodes,
+    edges,
 };
 ```
 

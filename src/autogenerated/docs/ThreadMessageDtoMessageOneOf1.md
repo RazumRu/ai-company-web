@@ -1,15 +1,16 @@
 # ThreadMessageDtoMessageOneOf1
 
+
 ## Properties
 
-| Name                 | Type                                                                                                           | Description                 | Notes                             |
-| -------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------------- |
-| **role**             | **string**                                                                                                     | Message role                | [default to undefined]            |
-| **content**          | **string**                                                                                                     | Message content             | [default to undefined]            |
-| **id**               | **string**                                                                                                     | Message ID                  | [optional] [default to undefined] |
-| **rawContent**       | **any**                                                                                                        |                             | [optional] [default to undefined] |
-| **toolCalls**        | [**Array&lt;ThreadMessageDtoMessageOneOf1ToolCallsInner&gt;**](ThreadMessageDtoMessageOneOf1ToolCallsInner.md) | Tool calls in the message   | [optional] [default to undefined] |
-| **additionalKwargs** | **{ [key: string]: any; }**                                                                                    | Additional message metadata | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**role** | **string** | Message role | [default to undefined]
+**content** | **string** | Message content | [default to undefined]
+**id** | **string** | Message ID | [optional] [default to undefined]
+**rawContent** | **any** |  | [optional] [default to undefined]
+**toolCalls** | [**Array&lt;ThreadMessageDtoMessageOneOf1ToolCallsInner&gt;**](ThreadMessageDtoMessageOneOf1ToolCallsInner.md) | Tool calls in the message | [optional] [default to undefined]
+**additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata | [optional] [default to undefined]
 
 ## Example
 
@@ -17,12 +18,12 @@
 import { ThreadMessageDtoMessageOneOf1 } from './api';
 
 const instance: ThreadMessageDtoMessageOneOf1 = {
-  role,
-  content,
-  id,
-  rawContent,
-  toolCalls,
-  additionalKwargs,
+    role,
+    content,
+    id,
+    rawContent,
+    toolCalls,
+    additionalKwargs,
 };
 ```
 

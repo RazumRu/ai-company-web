@@ -26,6 +26,7 @@ import {
 interface ToolCallFunction {
   name?: string;
   arguments?: string | Record<string, unknown>;
+  title?: string;
 }
 
 interface ToolCall {
@@ -33,6 +34,7 @@ interface ToolCall {
   name?: string;
   function?: ToolCallFunction;
   args?: string | Record<string, unknown>;
+  title?: string;
 }
 
 interface ShellResult {
@@ -184,7 +186,7 @@ const scrollContainerStyle: React.CSSProperties = {
 };
 
 const messageBlockStyle: React.CSSProperties = {
-  marginBottom: '25px',
+  marginBottom: '15px',
 };
 
 const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
@@ -509,6 +511,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           nodeId?: string;
           createdAt?: string;
           roleLabel?: string;
+          title?: string;
         };
 
     const prepareReadyMessages = useCallback(
@@ -621,6 +624,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             for (let idx = 0; idx < toolCalls.length; idx++) {
               const tc = toolCalls[idx];
               const name = tc.name || tc.function?.name || 'tool';
+              const callTitle = tc.title || tc.function?.title;
               let matched = consumeToolResultById(tc.id);
               if (!matched) {
                 matched = followingTools.find(
@@ -645,6 +649,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               const shellCommand = shellCmdFromArgs || resultObj?.command;
               const isShell = (name || '').toLowerCase() === 'shell';
               const toolOptions = argsToObject(toolArgs);
+              const matchedTitle = getMessageString(matched?.message, 'title');
+              const effectiveTitle = matchedTitle || callTitle;
 
               prepared.push({
                 type: 'tool',
@@ -657,7 +663,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 toolOptions: toolOptions || undefined,
                 nodeId: matched?.nodeId ?? m.nodeId,
                 createdAt: matched?.createdAt ?? m.createdAt,
-                roleLabel: name || 'tool',
+                roleLabel: effectiveTitle || name || 'tool',
+                title: effectiveTitle,
               });
             }
 
@@ -677,6 +684,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             }
 
             const name = getMessageString(m.message, 'name') || 'tool';
+            const title = getMessageString(m.message, 'title');
             const resultContent = m.message?.content;
             const resultObj =
               typeof resultContent === 'object' &&
@@ -699,7 +707,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               toolOptions,
               nodeId: m.nodeId,
               createdAt: m.createdAt,
-              roleLabel: name || 'tool',
+              roleLabel: title || name || 'tool',
+              title,
             });
             i++;
             continue;
@@ -829,8 +838,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       status: 'calling' | 'executed',
       resultContent?: unknown,
       toolOptions?: Record<string, JsonValue>,
+      titleText?: string,
     ) => {
       const isClickable = status === 'executed' && resultContent !== undefined;
+      const displayTitle =
+        (titleText && titleText.trim().length > 0 ? titleText : undefined) ??
+        (toolOptions?.purpose
+          ? `${name} | ${String(toolOptions.purpose)}`
+          : `tool ${name} is ${status === 'calling' ? 'calling...' : 'executed'}`);
+      const accessibleName = displayTitle || name;
       const line = (
         <div
           className="hoverable-chat-message"
@@ -839,8 +855,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           }}
           aria-label={
             status === 'executed'
-              ? `View tool result for ${name}`
-              : `Tool ${name} is calling`
+              ? `View tool result for ${accessibleName}`
+              : `Tool ${accessibleName} is calling`
           }
           tabIndex={isClickable ? 0 : -1}>
           <div
@@ -855,9 +871,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               type="secondary"
               className="tool-status-line__text"
               style={{ fontSize: '12px', color: 'inherit' }}>
-              {toolOptions?.purpose
-                ? `${name} | ${String(toolOptions.purpose)}`
-                : `tool ${name} is ${status === 'calling' ? 'calling...' : 'executed'}`}
+              {displayTitle}
             </Text>
           </div>
         </div>
@@ -889,6 +903,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       shellCommand?: string,
       toolOptions?: Record<string, JsonValue>,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
+      titleText?: string,
     ) => {
       return (
         <ShellToolDisplay
@@ -897,6 +912,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           resultContent={resultContent}
           shellCommand={shellCommand}
           toolOptions={toolOptions}
+          title={titleText}
           metadata={metadata}
         />
       );
@@ -952,8 +968,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       if (isToolLikeRole(role)) {
         const name = getMessageString(message.message, 'name') || 'tool';
+        const title = getMessageString(message.message, 'title');
         const resultContent = message.message?.content;
-        return renderToolStatusLine(name, 'executed', resultContent, undefined);
+        return renderToolStatusLine(
+          name,
+          'executed',
+          resultContent,
+          undefined,
+          title,
+        );
       }
 
       if (isBlankContent(message.message?.content)) return null;
@@ -1173,6 +1196,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   createdAt: item.createdAt,
                   roleLabel: item.roleLabel ?? item.name,
                 },
+                item.title,
               ),
             );
             i++;
@@ -1186,6 +1210,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               item.status,
               item.result,
               item.toolOptions,
+              item.title,
             ),
           );
           i++;

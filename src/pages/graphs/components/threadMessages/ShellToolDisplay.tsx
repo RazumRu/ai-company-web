@@ -20,6 +20,7 @@ export interface ShellToolDisplayProps {
   resultContent?: unknown;
   shellCommand?: string;
   toolOptions?: Record<string, JsonValue>;
+  title?: string;
   metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string };
 }
 
@@ -117,6 +118,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   resultContent,
   shellCommand,
   toolOptions,
+  title,
 }) => {
   const [commandExpanded, setCommandExpanded] = useState(false);
   const [outputExpanded, setOutputExpanded] = useState(false);
@@ -145,9 +147,17 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     exitCode === null ? '#2b2b2b' : exitCode === 0 ? '#1d2b1f' : '#2b1d1d';
 
   const toolNameText = useMemo(
-    () =>
-      `${name}${toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''}`,
-    [name, toolOptions?.purpose],
+    () => {
+      const displayName =
+        title && title.trim().length > 0 ? title.trim() : name;
+      if (displayName !== name) {
+        return displayName;
+      }
+      return `${displayName}${
+        toolOptions?.purpose ? ` | ${String(toolOptions.purpose)}` : ''
+      }`;
+    },
+    [name, title, toolOptions?.purpose],
   );
 
   const getOutputText = (): string | null => {
@@ -282,8 +292,8 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                 }}
                 aria-label={
                   status === 'executed'
-                    ? `View shell result for ${name}`
-                    : `Shell ${name} is calling`
+                    ? `View shell result for ${toolNameText}`
+                    : `Shell ${toolNameText} is calling`
                 }
                 title={toolNameText}>
                 {toolNameText}

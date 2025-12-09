@@ -1,12 +1,13 @@
 # CreateGraphDtoSchemaNodesInner
 
+
 ## Properties
 
-| Name         | Type                        | Description                                | Notes                  |
-| ------------ | --------------------------- | ------------------------------------------ | ---------------------- |
-| **id**       | **string**                  | Unique identifier for this node            | [default to undefined] |
-| **template** | **string**                  | Template id registered in TemplateRegistry | [default to undefined] |
-| **config**   | **{ [key: string]: any; }** | Template-specific configuration            | [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**id** | **string** | Unique identifier for this node | [default to undefined]
+**template** | **string** | Template id registered in TemplateRegistry | [default to undefined]
+**config** | **{ [key: string]: any; }** | Template-specific configuration | [default to undefined]
 
 ## Example
 
@@ -14,9 +15,9 @@
 import { CreateGraphDtoSchemaNodesInner } from './api';
 
 const instance: CreateGraphDtoSchemaNodesInner = {
-  id,
-  template,
-  config,
+    id,
+    template,
+    config,
 };
 ```
 

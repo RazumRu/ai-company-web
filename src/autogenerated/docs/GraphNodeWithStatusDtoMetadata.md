@@ -1,12 +1,13 @@
 # GraphNodeWithStatusDtoMetadata
 
+
 ## Properties
 
-| Name               | Type       | Description | Notes                             |
-| ------------------ | ---------- | ----------- | --------------------------------- |
-| **threadId**       | **string** |             | [optional] [default to undefined] |
-| **runId**          | **string** |             | [optional] [default to undefined] |
-| **parentThreadId** | **string** |             | [optional] [default to undefined] |
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**threadId** | **string** |  | [optional] [default to undefined]
+**runId** | **string** |  | [optional] [default to undefined]
+**parentThreadId** | **string** |  | [optional] [default to undefined]
 
 ## Example
 
@@ -14,9 +15,9 @@
 import { GraphNodeWithStatusDtoMetadata } from './api';
 
 const instance: GraphNodeWithStatusDtoMetadata = {
-  threadId,
-  runId,
-  parentThreadId,
+    threadId,
+    runId,
+    parentThreadId,
 };
 ```
 

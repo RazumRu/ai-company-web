@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import type { GraphEdge, GraphNode, GraphNodeData } from '../types';
 import { makeHandleId } from './GraphCanvas';
+import type { ConnectionPreview, ConnectionRule } from './GraphCanvas';
 import { GraphValidationService } from '../../../services/GraphValidationService';
 import {
   GraphDtoStatusEnum,
@@ -40,6 +41,14 @@ const ensureNodeStatusPulseStyle = (() => {
   };
 })();
 
+const slug = (v: string | number | undefined | null): string =>
+  String(v ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-');
+
+type HandleHighlight = 'allowed' | 'blocked' | 'none';
+
 const { Text } = Typography;
 
 interface CustomNodeProps extends NodeProps {
@@ -48,6 +57,7 @@ interface CustomNodeProps extends NodeProps {
   onTriggerClick?: (nodeId: string) => void;
   compiledNode?: GraphNodeWithStatusDto;
   compiledNodesLoading?: boolean;
+  connectionPreview?: ConnectionPreview | null;
 }
 
 export const CustomNode = React.memo(
@@ -61,6 +71,7 @@ export const CustomNode = React.memo(
     onTriggerClick,
     compiledNode,
     compiledNodesLoading,
+    connectionPreview,
   }: CustomNodeProps) => {
     const nodeData = data as unknown as GraphNodeData;
     const allNodes = useStore((s) => s.nodes) as GraphNode[];
@@ -167,6 +178,91 @@ export const CustomNode = React.memo(
         bg: '#1890ff',
         br: '2px solid white',
         sh: '0 0 0 1px rgba(24,144,255,0.5)',
+      };
+    };
+
+    const matchesRuleForTemplate = (
+      rule: Pick<ConnectionRule, 'type' | 'value'> | undefined,
+      template?: TemplateDto,
+    ) => {
+      if (!rule || !template) {
+        return false;
+      }
+      if (rule.type === 'kind') {
+        return slug(rule.value) === slug(template.kind);
+      }
+      if (rule.type === 'template') {
+        return String(template.id) === String(rule.value);
+      }
+      return false;
+    };
+
+    const getHandleHighlight = (
+      role: 'target' | 'source',
+      rule: ConnectionRule,
+    ): HandleHighlight => {
+      if (!connectionPreview?.template || !nodeTemplate) {
+        return 'none';
+      }
+
+      if (role === 'target' && connectionPreview.fromHandleType === 'source') {
+        const inputAllowsSource = matchesRuleForTemplate(
+          rule,
+          connectionPreview.template,
+        );
+        const outputAllowsTarget = connectionPreview.rule
+          ? matchesRuleForTemplate(connectionPreview.rule, nodeTemplate)
+          : true;
+        if (!inputAllowsSource || !outputAllowsTarget) {
+          return 'blocked';
+        }
+        return 'allowed';
+      }
+
+      if (role === 'source' && connectionPreview.fromHandleType === 'target') {
+        const outputAllowsTarget = matchesRuleForTemplate(
+          rule,
+          connectionPreview.template,
+        );
+        const inputAllowsSource = connectionPreview.rule
+          ? matchesRuleForTemplate(connectionPreview.rule, nodeTemplate)
+          : true;
+        if (!outputAllowsTarget || !inputAllowsSource) {
+          return 'blocked';
+        }
+        return 'allowed';
+      }
+
+      return 'none';
+    };
+
+    const resolveHandleVisuals = (
+      base: { bg: string; br: string; sh: string },
+      missing: boolean,
+      highlight: HandleHighlight,
+    ) => {
+      const isAllowed = highlight === 'allowed';
+      const isBlocked = highlight === 'blocked';
+
+      const background = isBlocked
+        ? '#ff4d4f'
+        : isAllowed
+          ? '#52c41a'
+          : missing
+            ? '#ff5d5d'
+            : base.bg;
+
+      const boxShadow = isBlocked
+        ? '0 0 0 1px rgba(255,77,79,0.5)'
+        : isAllowed
+          ? '0 0 0 1px rgba(82,196,26,0.6)'
+          : base.sh;
+
+      return {
+        background,
+        border: base.br,
+        boxShadow,
+        textColor: isBlocked || isAllowed || missing ? '#ffffff' : undefined,
       };
     };
 
@@ -381,6 +477,8 @@ export const CustomNode = React.memo(
               const miss =
                 t.required && !allEdges.some((e) => e.target === nodeId);
               const c = color('target', t.required, miss);
+              const highlight = getHandleHighlight('target', t);
+              const visuals = resolveHandleVisuals(c, miss, highlight);
               return (
                 <div
                   key={id}
@@ -400,18 +498,18 @@ export const CustomNode = React.memo(
                       height: '12px',
                       position: 'absolute',
                       left: '-12px',
-                      background: miss ? '#ff5d5d' : c.bg,
-                      border: c.br,
-                      boxShadow: c.sh,
+                      background: visuals.background,
+                      border: visuals.border,
+                      boxShadow: visuals.boxShadow,
                     }}
                   />
                   <span
                     style={{
                       fontSize: 11,
-                      color: miss ? '#ff4d4f' : 'white',
+                      color: visuals.textColor ?? 'white',
                       marginLeft: 3,
                       whiteSpace: 'nowrap',
-                      background: miss ? '#ff5d5d' : c.bg,
+                      background: visuals.background,
                       padding: '2px 10px',
                       borderRadius: '10px',
                     }}>
@@ -447,6 +545,8 @@ export const CustomNode = React.memo(
               const miss =
                 output.required && !allEdges.some((e) => e.target === nodeId);
               const c = color('source', output.required || false, false);
+              const highlight = getHandleHighlight('source', outRule);
+              const visuals = resolveHandleVisuals(c, miss, highlight);
               return (
                 <div
                   key={id}
@@ -462,10 +562,10 @@ export const CustomNode = React.memo(
                       fontSize: 11,
                       marginRight: 3,
                       whiteSpace: 'nowrap',
-                      background: miss ? '#ff5d5d' : c.bg,
+                      background: visuals.background,
                       padding: '2px 10px',
                       borderRadius: '10px',
-                      color: 'white',
+                      color: visuals.textColor ?? 'white',
                     }}>
                     {output.value}
                     {output.required ? ' • required' : ''}
@@ -477,9 +577,9 @@ export const CustomNode = React.memo(
                     isConnectable={isConnectable}
                     position={Position.Right}
                     style={{
-                      background: miss ? '#ff5d5d' : c.bg,
-                      border: c.br,
-                      boxShadow: c.sh,
+                      background: visuals.background,
+                      border: visuals.border,
+                      boxShadow: visuals.boxShadow,
                       width: '12px',
                       height: '12px',
                       position: 'absolute',
@@ -562,6 +662,18 @@ export const CustomNode = React.memo(
     const prevData = prevProps.data as unknown as GraphNodeData;
     const nextData = nextProps.data as unknown as GraphNodeData;
 
+    const previewChanged =
+      prevProps.connectionPreview?.handleId !==
+        nextProps.connectionPreview?.handleId ||
+      prevProps.connectionPreview?.fromHandleType !==
+        nextProps.connectionPreview?.fromHandleType ||
+      prevProps.connectionPreview?.rule?.type !==
+        nextProps.connectionPreview?.rule?.type ||
+      prevProps.connectionPreview?.rule?.value !==
+        nextProps.connectionPreview?.rule?.value ||
+      prevProps.connectionPreview?.template?.id !==
+        nextProps.connectionPreview?.template?.id;
+
     return (
       prevProps.id === nextProps.id &&
       prevProps.selected === nextProps.selected &&
@@ -571,7 +683,8 @@ export const CustomNode = React.memo(
       prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
       prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
       prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
-      prevProps.templates?.length === nextProps.templates?.length
+      prevProps.templates?.length === nextProps.templates?.length &&
+      !previewChanged
     );
   },
 );

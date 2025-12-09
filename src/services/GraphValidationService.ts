@@ -23,6 +23,17 @@ export interface ConnectionValidation {
   errors: ValidationError[];
 }
 
+const slug = (v: string | number | undefined | null): string =>
+  String(v ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-');
+
+const makeHandleId = (
+  dir: 'source' | 'target',
+  rule: Pick<ConnectionRule, 'type' | 'value'>,
+): string => `${dir}-${rule.type}-${slug(rule.value)}`;
+
 export class GraphValidationService {
   /**
    * Validates if a connection between two nodes is allowed
@@ -31,6 +42,7 @@ export class GraphValidationService {
     sourceNode: GraphNode,
     targetNode: GraphNode,
     templates: TemplateDto[],
+    options?: { sourceHandleId?: string; targetHandleId?: string },
   ): ConnectionValidation {
     const errors: ValidationError[] = [];
 
@@ -70,15 +82,70 @@ export class GraphValidationService {
       return { isValid: false, errors };
     }
 
-    // Check if target node is allowed to be connected from source
-    const isAllowed = this.isConnectionAllowed(
-      sourceTemplate.outputs,
-      targetTemplate,
-    );
-    if (!isAllowed) {
+    const outputRules =
+      sourceTemplate.outputs?.map((rule) => ({
+        type: rule.type as 'kind' | 'template',
+        value: String(rule.value),
+        required: Boolean(rule.required),
+        multiple: Boolean(rule.multiple),
+      })) ?? [];
+    const inputRules =
+      targetTemplate.inputs?.map((rule) => ({
+        type: rule.type as 'kind' | 'template',
+        value: String(rule.value),
+        required: Boolean(rule.required),
+        multiple: Boolean(rule.multiple),
+      })) ?? [];
+
+    const sourceHandleId = options?.sourceHandleId;
+    const targetHandleId = options?.targetHandleId;
+
+    const selectedOutputRule = sourceHandleId
+      ? outputRules.find((rule) => makeHandleId('source', rule) === sourceHandleId)
+      : undefined;
+    const selectedInputRule = targetHandleId
+      ? inputRules.find((rule) => makeHandleId('target', rule) === targetHandleId)
+      : undefined;
+
+    if (sourceHandleId && !selectedOutputRule) {
+      errors.push({
+        nodeId: sourceNode.id,
+        message: `Unknown source handle '${sourceHandleId}' for node '${sourceNode.data.label}'`,
+        type: 'connection',
+      });
+    }
+
+    if (targetHandleId && !selectedInputRule) {
+      errors.push({
+        nodeId: targetNode.id,
+        message: `Unknown target handle '${targetHandleId}' for node '${targetNode.data.label}'`,
+        type: 'connection',
+      });
+    }
+
+    const outputAllowsTarget = selectedOutputRule
+      ? this.isRuleAllowingTemplate(selectedOutputRule, targetTemplate)
+      : this.isConnectionAllowed(outputRules, targetTemplate);
+
+    const inputAllowsSource = selectedInputRule
+      ? this.isRuleAllowingTemplate(selectedInputRule, sourceTemplate)
+      : this.isTemplateAcceptedByInputs(inputRules, sourceTemplate);
+
+    if (!outputAllowsTarget) {
       errors.push({
         nodeId: sourceNode.id,
         message: `Node '${sourceNode.data.label}' cannot connect to '${targetNode.data.label}' (template: ${targetNode.data.template})`,
+        type: 'connection',
+      });
+    }
+
+    if (!inputAllowsSource) {
+      const messageDetail = selectedInputRule
+        ? `${selectedInputRule.type}: ${selectedInputRule.value}`
+        : 'available inputs';
+      errors.push({
+        nodeId: targetNode.id,
+        message: `Node '${targetNode.data.label}' does not accept connections from '${sourceNode.data.label}' on ${messageDetail}`,
         type: 'connection',
       });
     }
@@ -117,6 +184,10 @@ export class GraphValidationService {
         sourceNode,
         targetNode,
         templates,
+        {
+          sourceHandleId: edge.sourceHandle,
+          targetHandleId: edge.targetHandle,
+        },
       );
       if (!validation.isValid) {
         errors.push(...validation.errors);
@@ -155,13 +226,41 @@ export class GraphValidationService {
     targetTemplate: TemplateDto,
   ): boolean {
     return outputs.some((rule) => {
-      if (rule.type === 'kind') {
-        return targetTemplate.kind === rule.value;
-      } else if (rule.type === 'template') {
-        return targetTemplate.id === rule.value;
-      }
-      return false;
+      return this.isRuleAllowingTemplate(
+        {
+          type: rule.type as 'kind' | 'template',
+          value: String(rule.value),
+          required: Boolean(rule.required),
+          multiple: Boolean(rule.multiple),
+        },
+        targetTemplate,
+      );
     });
+  }
+
+  private static isTemplateAcceptedByInputs(
+    inputs: ConnectionRule[],
+    sourceTemplate: TemplateDto,
+  ): boolean {
+    if (inputs.length === 0) {
+      return true;
+    }
+    return inputs.some((rule) =>
+      this.isRuleAllowingTemplate(rule, sourceTemplate),
+    );
+  }
+
+  private static isRuleAllowingTemplate(
+    rule: Pick<ConnectionRule, 'type' | 'value'>,
+    template: TemplateDto,
+  ): boolean {
+    if (rule.type === 'kind') {
+      return slug(template.kind) === slug(rule.value);
+    }
+    if (rule.type === 'template') {
+      return String(template.id) === rule.value;
+    }
+    return false;
   }
 
   /**
@@ -192,6 +291,10 @@ export class GraphValidationService {
           sourceNode,
           targetNode,
           templates,
+          {
+            sourceHandleId: edge.sourceHandle,
+            targetHandleId: edge.targetHandle,
+          },
         );
         if (!validation.isValid) {
           // Only include errors for the current node

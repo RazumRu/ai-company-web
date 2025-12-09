@@ -16,7 +16,7 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { CustomNode } from './CustomNode';
 import type { GraphNode, GraphEdge, GraphNodeData } from '../types';
 import {
@@ -41,6 +41,13 @@ export type HandleDirection = {
   sourceHandle?: string;
   targetHandle?: string;
 };
+
+export interface ConnectionPreview {
+  fromHandleType: 'source' | 'target';
+  handleId: string;
+  rule?: ConnectionRule;
+  template?: TemplateDto;
+}
 
 export interface ConnectionRule {
   type: 'kind' | 'template';
@@ -173,6 +180,8 @@ const GraphCanvasInner = ({
   compiledNodesLoading,
 }: GraphCanvasProps) => {
   const { screenToFlowPosition } = useReactFlow();
+  const [connectionPreview, setConnectionPreview] =
+    useState<ConnectionPreview | null>(null);
 
   // Memoize nodeTypes to prevent recreation on every render
   // Only recreate when templates, graphStatus, or compiledNodesLoading change
@@ -187,6 +196,7 @@ const GraphCanvasInner = ({
           onTriggerClick={onTriggerClick}
           compiledNode={compiledNodes?.[p.id]}
           compiledNodesLoading={compiledNodesLoading}
+          connectionPreview={connectionPreview}
         />
       ),
     }),
@@ -196,6 +206,7 @@ const GraphCanvasInner = ({
       compiledNodesLoading,
       onTriggerClick,
       compiledNodes,
+      connectionPreview,
     ],
   );
 
@@ -212,8 +223,102 @@ const GraphCanvasInner = ({
     }));
   }, [nodes, onNodeEdit, onNodeDelete]);
 
+  const normalizeRule = useCallback(
+    (rule: {
+      type?: unknown;
+      value?: unknown;
+      required?: unknown;
+      multiple?: unknown;
+    }): ConnectionRule => ({
+      type: (rule.type as 'kind' | 'template') ?? 'kind',
+      value: String(rule.value ?? ''),
+      required: Boolean(rule.required),
+      multiple: Boolean(rule.multiple),
+    }),
+    [],
+  );
+
+  const findRuleForHandle = useCallback(
+    (
+      nodeId: string,
+      handleType: 'source' | 'target',
+      handleId: string,
+    ): ConnectionRule | undefined => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return undefined;
+      const nodeTemplate = templates.find(
+        (t) => t.id === (node.data as unknown as GraphNodeData).template,
+      );
+      if (!nodeTemplate) return undefined;
+
+      if (handleType === 'source') {
+        return (
+          nodeTemplate.outputs
+            ?.map(normalizeRule)
+            .find((rule) => makeHandleId('source', rule) === handleId) ??
+          undefined
+        );
+      }
+
+      const inputRules = GraphValidationService.getAvailableConnectionTypes(
+        {
+          id: node.id,
+          data: node.data,
+          position: node.position,
+          type: node.type ?? 'custom',
+        } satisfies GraphNode,
+        templates,
+      );
+
+      return inputRules.find(
+        (rule) => makeHandleId('target', normalizeRule(rule)) === handleId,
+      );
+    },
+    [nodes, templates, normalizeRule],
+  );
+
+  const clearConnectionPreview = useCallback(() => {
+    setConnectionPreview(null);
+  }, []);
+
+  const handleConnectStart = useCallback(
+    (
+      _event: React.MouseEvent,
+      params: {
+        nodeId?: string | null;
+        handleId?: string | null;
+        handleType?: 'source' | 'target' | null;
+      },
+    ) => {
+      if (!params.nodeId || !params.handleId || !params.handleType) {
+        clearConnectionPreview();
+        return;
+      }
+
+      const rule = findRuleForHandle(
+        params.nodeId,
+        params.handleType,
+        params.handleId,
+      );
+      const sourceNode = nodes.find((n) => n.id === params.nodeId);
+      const template = templates.find(
+        (t) => t.id === (sourceNode?.data as GraphNodeData | undefined)?.template,
+      );
+
+      setConnectionPreview({
+        fromHandleType: params.handleType,
+        handleId: params.handleId,
+        rule,
+        template,
+      });
+    },
+    [clearConnectionPreview, findRuleForHandle, nodes, templates],
+  );
+
   const onConnect = useCallback(
     (params: Connection) => {
+      clearConnectionPreview();
+
       if (templates.length > 0) {
         const sourceNode = nodes.find((n) => n.id === params.source);
         const targetNode = nodes.find((n) => n.id === params.target);
@@ -223,6 +328,10 @@ const GraphCanvasInner = ({
             sourceNode,
             targetNode,
             templates,
+            {
+              sourceHandleId: params.sourceHandle ?? undefined,
+              targetHandleId: params.targetHandle ?? undefined,
+            },
           );
 
           if (!validation.isValid) {
@@ -277,7 +386,7 @@ const GraphCanvasInner = ({
         },
       ]);
     },
-    [onEdgesChange, nodes, templates, onValidationError],
+    [clearConnectionPreview, onEdgesChange, nodes, templates, onValidationError],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -350,6 +459,8 @@ const GraphCanvasInner = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={handleConnectStart}
+        onConnectEnd={clearConnectionPreview}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onNodeClick={handleNodeClick}
