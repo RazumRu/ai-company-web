@@ -43,6 +43,7 @@ export interface SchemaProperty {
   'x-ui:show-on-node'?: boolean;
   'x-ui:label'?: string;
   'x-ui:textarea'?: boolean;
+  'x-ui:ai-suggestions'?: boolean;
   'x-ui:litellm-models-list-select'?: boolean;
 }
 
@@ -62,6 +63,7 @@ export interface FormField {
   enum?: unknown[];
   isConst?: boolean;
   isObject?: boolean;
+  'x-ui:ai-suggestions'?: boolean;
   'x-ui:litellm-models-list-select'?: boolean;
 }
 

@@ -2,17 +2,18 @@
 
 All URIs are relative to _http://localhost_
 
-| Method                                    | HTTP request                                                   | Description |
-| ----------------------------------------- | -------------------------------------------------------------- | ----------- |
-| [**createGraph**](#creategraph)           | **POST** /api/v1/graphs                                        |             |
-| [**deleteGraph**](#deletegraph)           | **DELETE** /api/v1/graphs/{id}                                 |             |
-| [**destroyGraph**](#destroygraph)         | **POST** /api/v1/graphs/{id}/destroy                           |             |
-| [**executeTrigger**](#executetrigger)     | **POST** /api/v1/graphs/{graphId}/triggers/{triggerId}/execute |             |
-| [**findGraphById**](#findgraphbyid)       | **GET** /api/v1/graphs/{id}                                    |             |
-| [**getAllGraphs**](#getallgraphs)         | **GET** /api/v1/graphs                                         |             |
-| [**getCompiledNodes**](#getcompilednodes) | **GET** /api/v1/graphs/{id}/nodes                              |             |
-| [**runGraph**](#rungraph)                 | **POST** /api/v1/graphs/{id}/run                               |             |
-| [**updateGraph**](#updategraph)           | **PUT** /api/v1/graphs/{id}                                    |             |
+| Method                                                    | HTTP request                                                          | Description |
+| --------------------------------------------------------- | --------------------------------------------------------------------- | ----------- |
+| [**createGraph**](#creategraph)                           | **POST** /api/v1/graphs                                               |             |
+| [**deleteGraph**](#deletegraph)                           | **DELETE** /api/v1/graphs/{id}                                        |             |
+| [**destroyGraph**](#destroygraph)                         | **POST** /api/v1/graphs/{id}/destroy                                  |             |
+| [**executeTrigger**](#executetrigger)                     | **POST** /api/v1/graphs/{graphId}/triggers/{triggerId}/execute        |             |
+| [**findGraphById**](#findgraphbyid)                       | **GET** /api/v1/graphs/{id}                                           |             |
+| [**getAllGraphs**](#getallgraphs)                         | **GET** /api/v1/graphs                                                |             |
+| [**getCompiledNodes**](#getcompilednodes)                 | **GET** /api/v1/graphs/{id}/nodes                                     |             |
+| [**runGraph**](#rungraph)                                 | **POST** /api/v1/graphs/{id}/run                                      |             |
+| [**suggestAgentInstructions**](#suggestagentinstructions) | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions |             |
+| [**updateGraph**](#updategraph)                           | **PUT** /api/v1/graphs/{id}                                           |             |
 
 # **createGraph**
 
@@ -368,6 +369,58 @@ const { status, data } = await apiInstance.runGraph(id);
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suggestAgentInstructions**
+
+> SuggestAgentInstructionsResponseDto suggestAgentInstructions(suggestAgentInstructionsDto)
+
+### Example
+
+```typescript
+import { GraphsApi, Configuration, SuggestAgentInstructionsDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new GraphsApi(configuration);
+
+let graphId: string; // (default to undefined)
+let nodeId: string; // (default to undefined)
+let suggestAgentInstructionsDto: SuggestAgentInstructionsDto; //
+
+const { status, data } = await apiInstance.suggestAgentInstructions(
+  graphId,
+  nodeId,
+  suggestAgentInstructionsDto,
+);
+```
+
+### Parameters
+
+| Name                            | Type                            | Description | Notes                 |
+| ------------------------------- | ------------------------------- | ----------- | --------------------- |
+| **suggestAgentInstructionsDto** | **SuggestAgentInstructionsDto** |             |                       |
+| **graphId**                     | [**string**]                    |             | defaults to undefined |
+| **nodeId**                      | [**string**]                    |             | defaults to undefined |
+
+### Return type
+
+**SuggestAgentInstructionsResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
 - **Accept**: application/json
 
 ### HTTP response details

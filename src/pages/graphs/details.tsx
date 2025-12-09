@@ -3062,6 +3062,7 @@ export const GraphPage = () => {
                 ? pendingMessages[selectedThreadId]?.['all'] || []
                 : []
           }
+          graphId={id}
           onLoadMoreMessages={
             selectedThreadId
               ? () =>
