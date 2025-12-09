@@ -3,8 +3,7 @@
 An open-source platform to build, run, and manage AI agent graphs.
 
 ![img.png](assets/readme_1.png)
-![img.png](assets/readme_2.png)
-![img_1.png](assets/readme_3.png)
+![img_1.png](assets/readme_2.png)
 
 ## Overview
 

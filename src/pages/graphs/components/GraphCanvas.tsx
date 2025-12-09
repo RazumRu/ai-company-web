@@ -15,6 +15,7 @@ import {
   useReactFlow,
   ReactFlowProvider,
   OnConnectStart,
+  PanOnScrollMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useMemo, useState } from 'react';
@@ -475,7 +476,7 @@ const GraphCanvasInner = ({
         minZoom={0.1}
         maxZoom={4}
         panOnScroll
-        panOnScrollMode="free"
+        panOnScrollMode={PanOnScrollMode.Free}
         zoomOnScroll={false}>
         <Controls />
         <MiniMap />
