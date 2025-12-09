@@ -30,6 +30,7 @@ import {
   RightOutlined,
   SaveFilled,
   XFilled,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import {
   NodeChange,
@@ -1026,6 +1027,39 @@ export const GraphPage = () => {
     setRevisionDiffRevision(revision);
     setRevisionPopoverVisible(false);
   }, []);
+
+  const handleDownloadGraphBackup = useCallback(() => {
+    if (!graph) {
+      message.warning('Graph is not loaded yet');
+      return;
+    }
+
+    try {
+      const backupPayload = {
+        exportedAt: new Date().toISOString(),
+        graph,
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+        viewport: viewportRef.current,
+      };
+
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const safeVersion = graph.version ? `v${graph.version}` : 'draft';
+      link.href = url;
+      link.download = `graph-${graph.id ?? 'graph'}-${safeVersion}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export graph backup', error);
+      message.error('Failed to download graph backup');
+    }
+  }, [graph]);
 
   const handleCloseRevisionDiff = useCallback(() => {
     setRevisionDiffRevision(null);
@@ -2216,7 +2250,6 @@ export const GraphPage = () => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 16,
               flexWrap: 'wrap',
             }}>
             {isEditingName ? (
@@ -2256,57 +2289,72 @@ export const GraphPage = () => {
               </div>
             )}
             {graph && (
-              <Popover
-                open={revisionPopoverVisible}
-                onOpenChange={(open) => {
-                  setRevisionPopoverVisible(open);
-                  if (open) {
-                    void loadRevisions();
-                  }
-                }}
-                trigger="click"
-                placement="bottomLeft"
-                content={revisionPopoverContent}>
-                <Button
-                  type="text"
-                  size="small"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '4px 8px',
-                    height: 'auto',
-                    borderRadius: 6,
-                    backgroundColor: revisionPopoverVisible
-                      ? '#f5f5f5'
-                      : 'transparent',
-                  }}>
-                  <Typography.Text style={{ fontSize: 12, color: '#595959' }}>
-                    Version {displayedVersion}
-                  </Typography.Text>
-                  {displayedRevisionMeta && (
-                    <Tag
-                      color={displayedRevisionMeta.color}
-                      style={{
-                        margin: 0,
-                        borderRadius: 999,
-                        fontSize: 11,
-                        lineHeight: '18px',
-                        padding: '0 8px',
-                        boxShadow: displayedRevisionMeta.pulse
-                          ? '0 0 0 0 rgba(250, 173, 20, 0.45)'
-                          : 'none',
-                        animation: displayedRevisionMeta.pulse
-                          ? 'revision-status-pulse 1.5s ease-out infinite'
-                          : undefined,
-                      }}>
-                      {displayedRevisionMeta.label}
-                    </Tag>
-                  )}
-                  <DownOutlined style={{ fontSize: 10, color: '#8c8c8c' }} />
-                </Button>
-              </Popover>
+              <div style={{ marginLeft: 16 }}>
+                <Popover
+                  open={revisionPopoverVisible}
+                  onOpenChange={(open) => {
+                    setRevisionPopoverVisible(open);
+                    if (open) {
+                      void loadRevisions();
+                    }
+                  }}
+                  trigger="click"
+                  placement="bottomLeft"
+                  content={revisionPopoverContent}>
+                  <Button
+                    type="text"
+                    size="small"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 8px',
+                      height: 'auto',
+                      borderRadius: 6,
+                      backgroundColor: revisionPopoverVisible
+                        ? '#f5f5f5'
+                        : 'transparent',
+                    }}>
+                    <Typography.Text style={{ fontSize: 12, color: '#595959' }}>
+                      Version {displayedVersion}
+                    </Typography.Text>
+                    {displayedRevisionMeta && (
+                      <Tag
+                        color={displayedRevisionMeta.color}
+                        style={{
+                          margin: 0,
+                          borderRadius: 999,
+                          fontSize: 11,
+                          lineHeight: '18px',
+                          padding: '0 8px',
+                          boxShadow: displayedRevisionMeta.pulse
+                            ? '0 0 0 0 rgba(250, 173, 20, 0.45)'
+                            : 'none',
+                          animation: displayedRevisionMeta.pulse
+                            ? 'revision-status-pulse 1.5s ease-out infinite'
+                            : undefined,
+                        }}>
+                        {displayedRevisionMeta.label}
+                      </Tag>
+                    )}
+                    <DownOutlined style={{ fontSize: 10, color: '#8c8c8c' }} />
+                  </Button>
+                </Popover>
+              </div>
             )}
+            <Tooltip
+              title="Download current graph as JSON backup"
+              placement="bottom">
+              <Button
+                type="text"
+                size="small"
+                icon={<DownloadOutlined />}
+                onClick={handleDownloadGraphBackup}
+                aria-label="Download graph JSON backup"
+                disabled={!graph}
+                style={{ padding: '4px 8px', color: 'gray' }}
+              />
+            </Tooltip>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

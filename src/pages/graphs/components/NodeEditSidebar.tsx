@@ -168,12 +168,14 @@ export const NodeEditSidebar = React.memo(
       onClick: () => void;
       style?: React.CSSProperties;
       label?: string;
-    }> = ({ onClick, style, label = 'Improve with AI' }) => (
+      disabled?: boolean;
+    }> = ({ onClick, style, label = 'Improve with AI', disabled }) => (
       <Button
         type="link"
         size="small"
         style={{ padding: 0, height: 'auto', fontSize: 12, ...style }}
-        onClick={onClick}>
+        onClick={onClick}
+        disabled={disabled}>
         {label}
       </Button>
     );
@@ -283,6 +285,11 @@ export const NodeEditSidebar = React.memo(
 
     const openAiSuggestionModal = useCallback(
       (fieldKey: string, fieldLabel: string, initialValue?: unknown) => {
+        if (!isGraphRunning) {
+          message.warning('Start the graph to use AI suggestions');
+          return;
+        }
+
         const valueToUse =
           initialValue !== undefined
             ? initialValue
@@ -303,7 +310,7 @@ export const NodeEditSidebar = React.memo(
           loading: false,
         });
       },
-      [form, formatInstructionsValue],
+      [form, formatInstructionsValue, isGraphRunning],
     );
 
     const closeAiSuggestionModal = useCallback(() => {
@@ -766,6 +773,11 @@ export const NodeEditSidebar = React.memo(
     const handleAiSuggestionSubmit = useCallback(async () => {
       if (!aiSuggestionState) return;
 
+      if (!isGraphRunning) {
+        message.warning('Start the graph to use AI suggestions');
+        return;
+      }
+
       const userRequest = aiSuggestionState.userRequest.trim();
       if (!userRequest) {
         message.warning('Enter a request to improve the instructions');
@@ -818,7 +830,7 @@ export const NodeEditSidebar = React.memo(
         );
         message.error(errorMessage);
       }
-    }, [aiSuggestionState, graphId, node?.id]);
+    }, [aiSuggestionState, graphId, isGraphRunning, node?.id]);
 
     const handleApplyAiSuggestion = useCallback(() => {
       if (
@@ -883,7 +895,10 @@ export const NodeEditSidebar = React.memo(
         (field as SchemaProperty)['x-ui:ai-suggestions'] === true;
 
       const aiSuggestionLink = supportsAiSuggestions ? (
-        <AiSuggestionLink onClick={() => openAiSuggestionModal(key, name)} />
+        <AiSuggestionLink
+          onClick={() => openAiSuggestionModal(key, name)}
+          disabled={!isGraphRunning}
+        />
       ) : null;
 
       const extraContent =
@@ -1015,6 +1030,7 @@ export const NodeEditSidebar = React.memo(
                 {supportsAiSuggestions && (
                   <AiSuggestionLink
                     onClick={() => openAiSuggestionModal(key, name)}
+                    disabled={!isGraphRunning}
                   />
                 )}
               </Form.Item>
@@ -1504,6 +1520,7 @@ export const NodeEditSidebar = React.memo(
                         <AiSuggestionLink
                           onClick={handleStartEditSuggested}
                           label="Edit"
+                          disabled={!isGraphRunning}
                         />
                       </div>
                       <style>{DIFF_NO_LINE_NUMBERS_CSS}</style>

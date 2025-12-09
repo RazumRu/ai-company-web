@@ -473,7 +473,10 @@ const GraphCanvasInner = ({
         deleteKeyCode={['Delete', 'Backspace']}
         defaultViewport={initialViewport}
         minZoom={0.1}
-        maxZoom={4}>
+        maxZoom={4}
+        panOnScroll
+        panOnScrollMode="free"
+        zoomOnScroll={false}>
         <Controls />
         <MiniMap />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
