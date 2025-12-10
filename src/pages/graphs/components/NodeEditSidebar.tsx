@@ -1498,7 +1498,9 @@ export const NodeEditSidebar = React.memo(
                         style={{ fontFamily: 'monospace' }}
                       />
                       <Space>
-                        <Button onClick={handleCancelEditSuggested} size="small">
+                        <Button
+                          onClick={handleCancelEditSuggested}
+                          size="small">
                           Cancel
                         </Button>
                         <Button
@@ -1533,7 +1535,9 @@ export const NodeEditSidebar = React.memo(
                           border: '1px solid #f0f0f0',
                           borderRadius: 6,
                         }}
-                        dangerouslySetInnerHTML={{ __html: suggestionDiffHtml ?? '' }}
+                        dangerouslySetInnerHTML={{
+                          __html: suggestionDiffHtml ?? '',
+                        }}
                       />
                     </>
                   )

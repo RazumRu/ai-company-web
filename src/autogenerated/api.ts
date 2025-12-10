@@ -752,6 +752,44 @@ export type TemplateDtoInputsInnerOneOf1TypeEnum =
 /**
  *
  * @export
+ * @interface ThreadAnalysisRequestDto
+ */
+export interface ThreadAnalysisRequestDto {
+  /**
+   * Optional user-provided input to guide the analysis
+   * @type {string}
+   * @memberof ThreadAnalysisRequestDto
+   */
+  'userInput'?: string;
+  /**
+   * Optional LLM conversation id to continue the existing suggestion thread
+   * @type {string}
+   * @memberof ThreadAnalysisRequestDto
+   */
+  'threadId'?: string;
+}
+/**
+ *
+ * @export
+ * @interface ThreadAnalysisResponseDto
+ */
+export interface ThreadAnalysisResponseDto {
+  /**
+   * LLM-generated analysis and improvement suggestions
+   * @type {string}
+   * @memberof ThreadAnalysisResponseDto
+   */
+  'analysis': string;
+  /**
+   * Identifier of the LLM conversation used for the analysis
+   * @type {string}
+   * @memberof ThreadAnalysisResponseDto
+   */
+  'conversationId': string;
+}
+/**
+ *
+ * @export
  * @interface ThreadDto
  */
 export interface ThreadDto {
@@ -3660,6 +3698,70 @@ export const ThreadsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    analyzeThread: async (
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'threadId' is not null or undefined
+      assertParamExists('analyzeThread', 'threadId', threadId);
+      // verify required parameter 'threadAnalysisRequestDto' is not null or undefined
+      assertParamExists(
+        'analyzeThread',
+        'threadAnalysisRequestDto',
+        threadAnalysisRequestDto,
+      );
+      const localVarPath = `/api/v1/threads/{threadId}/analyze`.replace(
+        `{${'threadId'}}`,
+        encodeURIComponent(String(threadId)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        threadAnalysisRequestDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} threadId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -3949,6 +4051,41 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async analyzeThread(
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<ThreadAnalysisResponseDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.analyzeThread(
+        threadId,
+        threadAnalysisRequestDto,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.analyzeThread']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} threadId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -4131,6 +4268,22 @@ export const ThreadsApiFactory = function (
     /**
      *
      * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    analyzeThread(
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadAnalysisResponseDto> {
+      return localVarFp
+        .analyzeThread(threadId, threadAnalysisRequestDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} threadId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -4218,6 +4371,24 @@ export const ThreadsApiFactory = function (
  * @extends {BaseAPI}
  */
 export class ThreadsApi extends BaseAPI {
+  /**
+   *
+   * @param {string} threadId
+   * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public analyzeThread(
+    threadId: string,
+    threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .analyzeThread(threadId, threadAnalysisRequestDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
   /**
    *
    * @param {string} threadId

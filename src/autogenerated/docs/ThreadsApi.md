@@ -4,11 +4,61 @@ All URIs are relative to _http://localhost_
 
 | Method                                              | HTTP request                                        | Description |
 | --------------------------------------------------- | --------------------------------------------------- | ----------- |
+| [**analyzeThread**](#analyzethread)                 | **POST** /api/v1/threads/{threadId}/analyze         |             |
 | [**deleteThread**](#deletethread)                   | **DELETE** /api/v1/threads/{threadId}               |             |
 | [**getThreadByExternalId**](#getthreadbyexternalid) | **GET** /api/v1/threads/external/{externalThreadId} |             |
 | [**getThreadById**](#getthreadbyid)                 | **GET** /api/v1/threads/{threadId}                  |             |
 | [**getThreadMessages**](#getthreadmessages)         | **GET** /api/v1/threads/{threadId}/messages         |             |
 | [**getThreads**](#getthreads)                       | **GET** /api/v1/threads                             |             |
+
+# **analyzeThread**
+
+> ThreadAnalysisResponseDto analyzeThread(threadAnalysisRequestDto)
+
+### Example
+
+```typescript
+import { ThreadsApi, Configuration, ThreadAnalysisRequestDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new ThreadsApi(configuration);
+
+let threadId: string; // (default to undefined)
+let threadAnalysisRequestDto: ThreadAnalysisRequestDto; //
+
+const { status, data } = await apiInstance.analyzeThread(
+  threadId,
+  threadAnalysisRequestDto,
+);
+```
+
+### Parameters
+
+| Name                         | Type                         | Description | Notes                 |
+| ---------------------------- | ---------------------------- | ----------- | --------------------- |
+| **threadAnalysisRequestDto** | **ThreadAnalysisRequestDto** |             |                       |
+| **threadId**                 | [**string**]                 |             | defaults to undefined |
+
+### Return type
+
+**ThreadAnalysisResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **deleteThread**
 

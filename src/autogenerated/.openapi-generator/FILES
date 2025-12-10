@@ -27,6 +27,8 @@ docs/TemplateDtoInputsInner.md
 docs/TemplateDtoInputsInnerOneOf.md
 docs/TemplateDtoInputsInnerOneOf1.md
 docs/TemplatesApi.md
+docs/ThreadAnalysisRequestDto.md
+docs/ThreadAnalysisResponseDto.md
 docs/ThreadDto.md
 docs/ThreadMessageDto.md
 docs/ThreadMessageDtoMessage.md
