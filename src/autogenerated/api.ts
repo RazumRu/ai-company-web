@@ -412,6 +412,7 @@ export const GraphNodeWithStatusDtoTypeEnum = {
   SimpleAgent: 'simpleAgent',
   Trigger: 'trigger',
   Resource: 'resource',
+  Knowledge: 'knowledge',
 } as const;
 
 export type GraphNodeWithStatusDtoTypeEnum =
@@ -595,6 +596,44 @@ export interface SuggestAgentInstructionsResponseDto {
 /**
  *
  * @export
+ * @interface SuggestKnowledgeContentDto
+ */
+export interface SuggestKnowledgeContentDto {
+  /**
+   * User request describing the knowledge content to generate
+   * @type {string}
+   * @memberof SuggestKnowledgeContentDto
+   */
+  'userRequest': string;
+  /**
+   * Optional thread id to continue a previous knowledge suggestion conversation
+   * @type {string}
+   * @memberof SuggestKnowledgeContentDto
+   */
+  'threadId'?: string;
+}
+/**
+ *
+ * @export
+ * @interface SuggestKnowledgeContentResponseDto
+ */
+export interface SuggestKnowledgeContentResponseDto {
+  /**
+   * Generated knowledge content
+   * @type {string}
+   * @memberof SuggestKnowledgeContentResponseDto
+   */
+  'content': string;
+  /**
+   * Thread id used for this suggestion session
+   * @type {string}
+   * @memberof SuggestKnowledgeContentResponseDto
+   */
+  'threadId': string;
+}
+/**
+ *
+ * @export
  * @interface TemplateDto
  */
 export interface TemplateDto {
@@ -648,6 +687,7 @@ export const TemplateDtoKindEnum = {
   SimpleAgent: 'simpleAgent',
   Trigger: 'trigger',
   Resource: 'resource',
+  Knowledge: 'knowledge',
 } as const;
 
 export type TemplateDtoKindEnum =
@@ -705,6 +745,7 @@ export const TemplateDtoInputsInnerOneOfValueEnum = {
   SimpleAgent: 'simpleAgent',
   Trigger: 'trigger',
   Resource: 'resource',
+  Knowledge: 'knowledge',
 } as const;
 
 export type TemplateDtoInputsInnerOneOfValueEnum =
@@ -2188,6 +2229,70 @@ export const GraphsApiAxiosParamCreator = function (
   return {
     /**
      *
+     * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    analyzeThread: async (
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'threadId' is not null or undefined
+      assertParamExists('analyzeThread', 'threadId', threadId);
+      // verify required parameter 'threadAnalysisRequestDto' is not null or undefined
+      assertParamExists(
+        'analyzeThread',
+        'threadAnalysisRequestDto',
+        threadAnalysisRequestDto,
+      );
+      const localVarPath = `/api/v1/threads/{threadId}/analyze`.replace(
+        `{${'threadId'}}`,
+        encodeURIComponent(String(threadId)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        threadAnalysisRequestDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
      * @param {CreateGraphDto} createGraphDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -2676,6 +2781,74 @@ export const GraphsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestKnowledgeContent: async (
+      graphId: string,
+      nodeId: string,
+      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'graphId' is not null or undefined
+      assertParamExists('suggestKnowledgeContent', 'graphId', graphId);
+      // verify required parameter 'nodeId' is not null or undefined
+      assertParamExists('suggestKnowledgeContent', 'nodeId', nodeId);
+      // verify required parameter 'suggestKnowledgeContentDto' is not null or undefined
+      assertParamExists(
+        'suggestKnowledgeContent',
+        'suggestKnowledgeContentDto',
+        suggestKnowledgeContentDto,
+      );
+      const localVarPath =
+        `/api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge`
+          .replace(`{${'graphId'}}`, encodeURIComponent(String(graphId)))
+          .replace(`{${'nodeId'}}`, encodeURIComponent(String(nodeId)));
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        suggestKnowledgeContentDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
      * @param {string} id
      * @param {UpdateGraphDto} updateGraphDto
      * @param {*} [options] Override http request option.
@@ -2744,6 +2917,41 @@ export const GraphsApiAxiosParamCreator = function (
 export const GraphsApiFp = function (configuration?: Configuration) {
   const localVarAxiosParamCreator = GraphsApiAxiosParamCreator(configuration);
   return {
+    /**
+     *
+     * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async analyzeThread(
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<ThreadAnalysisResponseDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.analyzeThread(
+        threadId,
+        threadAnalysisRequestDto,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GraphsApi.analyzeThread']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
     /**
      *
      * @param {CreateGraphDto} createGraphDto
@@ -3034,6 +3242,45 @@ export const GraphsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async suggestKnowledgeContent(
+      graphId: string,
+      nodeId: string,
+      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<SuggestKnowledgeContentResponseDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.suggestKnowledgeContent(
+          graphId,
+          nodeId,
+          suggestKnowledgeContentDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GraphsApi.suggestKnowledgeContent']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
      * @param {string} id
      * @param {UpdateGraphDto} updateGraphDto
      * @param {*} [options] Override http request option.
@@ -3081,6 +3328,22 @@ export const GraphsApiFactory = function (
 ) {
   const localVarFp = GraphsApiFp(configuration);
   return {
+    /**
+     *
+     * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    analyzeThread(
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadAnalysisResponseDto> {
+      return localVarFp
+        .analyzeThread(threadId, threadAnalysisRequestDto, options)
+        .then((request) => request(axios, basePath));
+    },
     /**
      *
      * @param {CreateGraphDto} createGraphDto
@@ -3224,6 +3487,29 @@ export const GraphsApiFactory = function (
     },
     /**
      *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestKnowledgeContent(
+      graphId: string,
+      nodeId: string,
+      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<SuggestKnowledgeContentResponseDto> {
+      return localVarFp
+        .suggestKnowledgeContent(
+          graphId,
+          nodeId,
+          suggestKnowledgeContentDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
      * @param {string} id
      * @param {UpdateGraphDto} updateGraphDto
      * @param {*} [options] Override http request option.
@@ -3248,6 +3534,24 @@ export const GraphsApiFactory = function (
  * @extends {BaseAPI}
  */
 export class GraphsApi extends BaseAPI {
+  /**
+   *
+   * @param {string} threadId
+   * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GraphsApi
+   */
+  public analyzeThread(
+    threadId: string,
+    threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GraphsApiFp(this.configuration)
+      .analyzeThread(threadId, threadAnalysisRequestDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
   /**
    *
    * @param {CreateGraphDto} createGraphDto
@@ -3388,6 +3692,31 @@ export class GraphsApi extends BaseAPI {
         graphId,
         nodeId,
         suggestAgentInstructionsDto,
+        options,
+      )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} graphId
+   * @param {string} nodeId
+   * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GraphsApi
+   */
+  public suggestKnowledgeContent(
+    graphId: string,
+    nodeId: string,
+    suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GraphsApiFp(this.configuration)
+      .suggestKnowledgeContent(
+        graphId,
+        nodeId,
+        suggestKnowledgeContentDto,
         options,
       )
       .then((request) => request(this.axios, this.basePath));
@@ -4038,6 +4367,142 @@ export const ThreadsApiAxiosParamCreator = function (
         options: localVarRequestOptions,
       };
     },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestAgentInstructions: async (
+      graphId: string,
+      nodeId: string,
+      suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'graphId' is not null or undefined
+      assertParamExists('suggestAgentInstructions', 'graphId', graphId);
+      // verify required parameter 'nodeId' is not null or undefined
+      assertParamExists('suggestAgentInstructions', 'nodeId', nodeId);
+      // verify required parameter 'suggestAgentInstructionsDto' is not null or undefined
+      assertParamExists(
+        'suggestAgentInstructions',
+        'suggestAgentInstructionsDto',
+        suggestAgentInstructionsDto,
+      );
+      const localVarPath =
+        `/api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions`
+          .replace(`{${'graphId'}}`, encodeURIComponent(String(graphId)))
+          .replace(`{${'nodeId'}}`, encodeURIComponent(String(nodeId)));
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        suggestAgentInstructionsDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestKnowledgeContent: async (
+      graphId: string,
+      nodeId: string,
+      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'graphId' is not null or undefined
+      assertParamExists('suggestKnowledgeContent', 'graphId', graphId);
+      // verify required parameter 'nodeId' is not null or undefined
+      assertParamExists('suggestKnowledgeContent', 'nodeId', nodeId);
+      // verify required parameter 'suggestKnowledgeContentDto' is not null or undefined
+      assertParamExists(
+        'suggestKnowledgeContent',
+        'suggestKnowledgeContentDto',
+        suggestKnowledgeContentDto,
+      );
+      const localVarPath =
+        `/api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge`
+          .replace(`{${'graphId'}}`, encodeURIComponent(String(graphId)))
+          .replace(`{${'nodeId'}}`, encodeURIComponent(String(nodeId)));
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        suggestKnowledgeContentDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
   };
 };
 
@@ -4251,6 +4716,84 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
           configuration,
         )(axios, localVarOperationServerBasePath || basePath);
     },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async suggestAgentInstructions(
+      graphId: string,
+      nodeId: string,
+      suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<SuggestAgentInstructionsResponseDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.suggestAgentInstructions(
+          graphId,
+          nodeId,
+          suggestAgentInstructionsDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.suggestAgentInstructions']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async suggestKnowledgeContent(
+      graphId: string,
+      nodeId: string,
+      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<SuggestKnowledgeContentResponseDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.suggestKnowledgeContent(
+          graphId,
+          nodeId,
+          suggestKnowledgeContentDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.suggestKnowledgeContent']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
   };
 };
 
@@ -4359,6 +4902,52 @@ export const ThreadsApiFactory = function (
     ): AxiosPromise<Array<ThreadDto>> {
       return localVarFp
         .getThreads(graphId, limit, offset, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestAgentInstructions(
+      graphId: string,
+      nodeId: string,
+      suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<SuggestAgentInstructionsResponseDto> {
+      return localVarFp
+        .suggestAgentInstructions(
+          graphId,
+          nodeId,
+          suggestAgentInstructionsDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestKnowledgeContent(
+      graphId: string,
+      nodeId: string,
+      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<SuggestKnowledgeContentResponseDto> {
+      return localVarFp
+        .suggestKnowledgeContent(
+          graphId,
+          nodeId,
+          suggestKnowledgeContentDto,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
   };
@@ -4470,6 +5059,56 @@ export class ThreadsApi extends BaseAPI {
   ) {
     return ThreadsApiFp(this.configuration)
       .getThreads(graphId, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} graphId
+   * @param {string} nodeId
+   * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public suggestAgentInstructions(
+    graphId: string,
+    nodeId: string,
+    suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .suggestAgentInstructions(
+        graphId,
+        nodeId,
+        suggestAgentInstructionsDto,
+        options,
+      )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} graphId
+   * @param {string} nodeId
+   * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public suggestKnowledgeContent(
+    graphId: string,
+    nodeId: string,
+    suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .suggestKnowledgeContent(
+        graphId,
+        nodeId,
+        suggestKnowledgeContentDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }

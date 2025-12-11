@@ -207,7 +207,7 @@ const GraphCanvasInner = ({
       graphStatus,
       compiledNodesLoading,
       onTriggerClick,
-      compiledNodes,
+      // compiledNodes intentionally omitted - accessed dynamically via p.id
       connectionPreview,
     ],
   );

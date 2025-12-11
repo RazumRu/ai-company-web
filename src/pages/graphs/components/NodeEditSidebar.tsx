@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from 'react';
 import {
+  Alert,
   Button,
   Form,
   Input,
@@ -89,12 +90,21 @@ interface NodeEditSidebarProps {
   node: GraphNode | null;
   visible: boolean;
   onClose: () => void;
-  onSave: (
+  /**
+   * Called whenever the user makes a real change to the node form.
+   * GraphPage should use this to update draftGraph immediately.
+   */
+  onNodeDraftChange: (
     nodeId: string,
     updates: { name?: string; config?: Record<string, unknown> },
   ) => void;
   templates: TemplateDto[];
   graphStatus?: GraphDtoStatusEnum;
+  /**
+   * Global graph-level unsaved changes flag, computed in GraphPage.
+   * NodeEditSidebar should NOT modify this.
+   */
+  hasGlobalUnsavedChanges?: boolean;
   onTriggerClick?: (nodeId: string) => void;
   selectedThreadId?: string;
   compiledNode?: GraphNodeWithStatusDto;
@@ -107,11 +117,24 @@ interface NodeEditSidebarProps {
   onLoadMoreMessages?: () => void;
   onRefreshMessages?: () => void;
   graphId?: string;
+  /**
+   * Snapshot version of the node config from draftGraph.
+   * Used to reset initialFormValues when the parent updates draftGraph externally.
+   */
+  draftNodeConfigVersion?: number;
+  /**
+   * True when the currently opened node in the draft differs from the server baseline.
+   * This should be computed in GraphPage (single source of truth).
+   */
+  hasNodeUnsavedChangesFromServer?: boolean;
 }
 
-type AiSuggestionState = {
+type AiSuggestionMode = 'agent' | 'knowledge';
+
+export type AiSuggestionState = {
   fieldKey: string;
   fieldLabel: string;
+  mode: AiSuggestionMode;
   initialInstructions: string;
   currentInstructions: string;
   suggestedInstructions?: string;
@@ -129,9 +152,10 @@ export const NodeEditSidebar = React.memo(
     node,
     visible,
     onClose,
-    onSave,
+    onNodeDraftChange,
     templates,
     graphStatus,
+    hasGlobalUnsavedChanges = false,
     onTriggerClick,
     selectedThreadId,
     compiledNode,
@@ -144,8 +168,12 @@ export const NodeEditSidebar = React.memo(
     onLoadMoreMessages,
     onRefreshMessages,
     graphId,
+    draftNodeConfigVersion,
+    hasNodeUnsavedChangesFromServer,
   }: NodeEditSidebarProps) => {
     const [form] = Form.useForm();
+    const isHydratingRef = useRef(false);
+    const nodeRef = useRef<GraphNode | null>(null);
     const [nodeName, setNodeName] = useState('');
     const [isEditingName, setIsEditingName] = useState(false);
     const [editingName, setEditingName] = useState('');
@@ -157,12 +185,96 @@ export const NodeEditSidebar = React.memo(
     const [initialFormValues, setInitialFormValues] = useState<
       Record<string, unknown>
     >({});
+    const [hasLocalUnsavedChanges, setHasLocalUnsavedChanges] = useState(false);
     const [activeTab, setActiveTab] = useState('options');
     const [liteLlmModels, setLiteLlmModels] = useState<LiteLlmModelDto[]>([]);
     const [litellmModelsLoading, setLitellmModelsLoading] = useState(false);
     const [aiSuggestionState, setAiSuggestionState] =
       useState<AiSuggestionState | null>(null);
-    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const deepEqual = useCallback((a: unknown, b: unknown) => {
+      return JSON.stringify(a) === JSON.stringify(b);
+    }, []);
+
+    const computeHasLocalUnsavedChanges = useCallback(() => {
+      const currentValues = form.getFieldsValue(true);
+      const keys = new Set([
+        ...Object.keys(initialFormValues),
+        ...Object.keys(currentValues),
+      ]);
+
+      const formChanged = Array.from(keys).some((key) => {
+        return !deepEqual(currentValues[key], initialFormValues[key]);
+      });
+
+      const expandedChanged = expandedTextarea
+        ? !deepEqual(
+            expandedTextarea.value,
+            initialFormValues[expandedTextarea.fieldKey],
+          )
+        : false;
+
+      return formChanged || expandedChanged;
+    }, [deepEqual, expandedTextarea, form, initialFormValues]);
+
+    // Local unsaved warning: ONLY based on actual local form changes.
+    // (Do NOT compare draft config to compiled/runtime config; that can differ even
+    // without user edits and causes false warnings.)
+    // Also do NOT include server/draft diffs here - local is strictly uiForm vs baseline.
+    const shouldShowUnsavedWarning = hasLocalUnsavedChanges;
+
+    // For AI suggestion modal, we need to warn if there are unsaved changes that AI won't see
+    const nodeDirtyWarning = useMemo(() => {
+      // Show warning if there are local form changes OR the node differs from the
+      // server baseline (draft != server). The parent owns this comparison.
+      return shouldShowUnsavedWarning || Boolean(hasNodeUnsavedChangesFromServer);
+    }, [shouldShowUnsavedWarning, hasNodeUnsavedChangesFromServer]);
+
+    // Track the previous node ID to detect node switches
+    const prevNodeIdRef = useRef<string | undefined>(undefined);
+
+    const selectedNodeId = node?.id;
+    const selectedNodeTemplateId = (node?.data as unknown as GraphNodeData)
+      ?.template;
+
+    useEffect(() => {
+      // Keep a stable snapshot for form hydration to avoid re-hydrating
+      // on every node prop reference change (e.g. when draftGraph updates).
+      nodeRef.current = node;
+    }, [node, selectedNodeId]);
+
+    // Reset local unsaved changes when the parent signals that the graph was saved
+    // (draftNodeConfigVersion increments after save)
+    useEffect(() => {
+      if (!hasGlobalUnsavedChanges && !isHydratingRef.current) {
+        // Graph was saved - reset local form baseline
+        const currentValues = form.getFieldsValue(true);
+        setInitialFormValues(currentValues);
+        setHasLocalUnsavedChanges(false);
+      }
+    }, [form, hasGlobalUnsavedChanges]);
+
+    // Update initialFormValues when the draftNodeConfigVersion changes (after parent save)
+    useEffect(() => {
+      if (draftNodeConfigVersion !== undefined && !isHydratingRef.current) {
+        const currentValues = form.getFieldsValue(true);
+        setInitialFormValues(currentValues);
+        setHasLocalUnsavedChanges(false);
+      }
+    }, [draftNodeConfigVersion, form]);
+
+    useEffect(() => {
+      if (expandedTextarea) {
+        const hasChanges = computeHasLocalUnsavedChanges();
+        if (hasChanges) {
+          setHasLocalUnsavedChanges(true);
+        }
+      }
+    }, [
+      computeHasLocalUnsavedChanges,
+      expandedTextarea,
+      expandedTextarea?.value,
+    ]);
 
     const AiSuggestionLink: React.FC<{
       onClick: () => void;
@@ -191,6 +303,10 @@ export const NodeEditSidebar = React.memo(
     const nodeData = node?.data as unknown as GraphNodeData;
     const templateKindLower = (nodeData?.templateKind || '').toLowerCase();
     const isAgentNode = templateKindLower === 'simpleagent';
+    const isKnowledgeNode = templateKindLower === 'knowledge';
+    const aiSuggestionMode: AiSuggestionMode = isKnowledgeNode
+      ? 'knowledge'
+      : 'agent';
     const isGraphRunning = graphStatus === GraphDtoStatusEnum.Running;
     const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
       templateKindLower,
@@ -249,23 +365,23 @@ export const NodeEditSidebar = React.memo(
       }
     }, []);
 
+    const aiInitialInstructions = aiSuggestionState?.initialInstructions ?? '';
+    const aiLastSuggestedInstructions =
+      aiSuggestionState?.lastSuggestedInstructions;
+    const aiManualSuggestedOverride =
+      aiSuggestionState?.manualSuggestedOverride;
+
     const suggestionDiffHtml = useMemo(() => {
-      if (
-        !aiSuggestionState?.lastSuggestedInstructions &&
-        !aiSuggestionState?.manualSuggestedOverride
-      ) {
+      if (!aiLastSuggestedInstructions && !aiManualSuggestedOverride) {
         return null;
       }
 
-      const initial = aiSuggestionState.initialInstructions ?? '';
       const suggested =
-        aiSuggestionState.manualSuggestedOverride ??
-        aiSuggestionState.lastSuggestedInstructions ??
-        '';
+        aiManualSuggestedOverride ?? aiLastSuggestedInstructions ?? '';
       const diffString = createTwoFilesPatch(
         'AI Suggestion',
         'AI Suggestion',
-        initial,
+        aiInitialInstructions,
         suggested,
         '',
         '',
@@ -278,13 +394,19 @@ export const NodeEditSidebar = React.memo(
         outputFormat: 'line-by-line',
       });
     }, [
-      aiSuggestionState?.initialInstructions,
-      aiSuggestionState?.lastSuggestedInstructions,
-      aiSuggestionState?.manualSuggestedOverride,
+      aiInitialInstructions,
+      aiLastSuggestedInstructions,
+      aiManualSuggestedOverride,
     ]);
 
     const openAiSuggestionModal = useCallback(
-      (fieldKey: string, fieldLabel: string, initialValue?: unknown) => {
+      (
+        fieldKey: string,
+        fieldLabel: string,
+        initialValue?: unknown,
+        modeOverride?: AiSuggestionMode,
+      ) => {
+        const modeToUse = modeOverride ?? aiSuggestionMode;
         if (!isGraphRunning) {
           message.warning('Start the graph to use AI suggestions');
           return;
@@ -298,6 +420,7 @@ export const NodeEditSidebar = React.memo(
         setAiSuggestionState({
           fieldKey,
           fieldLabel,
+          mode: modeToUse,
           initialInstructions: formattedValue,
           currentInstructions: formattedValue,
           suggestedInstructions: undefined,
@@ -310,7 +433,7 @@ export const NodeEditSidebar = React.memo(
           loading: false,
         });
       },
-      [form, formatInstructionsValue, isGraphRunning],
+      [aiSuggestionMode, form, formatInstructionsValue, isGraphRunning],
     );
 
     const closeAiSuggestionModal = useCallback(() => {
@@ -412,14 +535,6 @@ export const NodeEditSidebar = React.memo(
     );
 
     useEffect(() => {
-      return () => {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-      };
-    }, []);
-
-    useEffect(() => {
       if (!visible) {
         setAiSuggestionState(null);
       }
@@ -471,27 +586,40 @@ export const NodeEditSidebar = React.memo(
       };
     }, [hasLiteLlmSelectField, liteLlmModels.length]);
 
+    // Keep active tab valid for the currently selected node (does NOT touch form state).
     useEffect(() => {
-      if (!node) {
-        form.resetFields();
-        setFormFields([]);
-        setInitialFormValues({});
-        return;
-      }
-
-      const currentNodeData = node.data as unknown as GraphNodeData;
+      const nodeForTabs = node;
+      if (!nodeForTabs) return;
+      const currentNodeData = nodeForTabs.data as unknown as GraphNodeData;
       const currentNodeIsAgent =
         currentNodeData?.templateKind === 'simpleAgent';
       const availableTabs = ['options'];
       if (currentNodeIsAgent) {
         availableTabs.push('messages');
       }
-
       if (!availableTabs.includes(activeTab)) {
         setActiveTab('options');
       }
+    }, [activeTab, node]);
 
+    // Hydrate form ONLY when switching nodes or switching templates.
+    // Critically, do NOT re-run on every `node` object reference change, otherwise
+    // typing (which updates draftGraph) will rehydrate and steal focus.
+    useEffect(() => {
+      const nodeForInit = nodeRef.current;
+      if (!nodeForInit) {
+        form.resetFields();
+        setFormFields([]);
+        setInitialFormValues({});
+        setHasLocalUnsavedChanges(false);
+        prevNodeIdRef.current = undefined;
+        return;
+      }
+
+      const currentNodeData = nodeForInit.data as unknown as GraphNodeData;
       const template = templates.find((t) => t.id === currentNodeData.template);
+
+      isHydratingRef.current = true;
 
       if (template?.schema?.properties) {
         const fields: FormField[] = [];
@@ -534,178 +662,241 @@ export const NodeEditSidebar = React.memo(
 
         form.resetFields();
         form.setFieldsValue(initialValues);
+
         const currentValuesNow = form.getFieldsValue(true);
         setInitialFormValues(currentValuesNow);
+        setHasLocalUnsavedChanges(false);
+
+        requestAnimationFrame(() => {
+          isHydratingRef.current = false;
+        });
       } else {
         setFormFields([]);
         form.resetFields();
         setInitialFormValues({});
+        setHasLocalUnsavedChanges(false);
+        requestAnimationFrame(() => {
+          isHydratingRef.current = false;
+        });
       }
 
       const label = (currentNodeData.label as string) || '';
       setNodeName(label);
       setEditingName(label);
-    }, [node?.id, templates, form, node, activeTab]);
+      prevNodeIdRef.current = nodeForInit.id;
+    }, [form, selectedNodeId, selectedNodeTemplateId, templates]);
 
-    const autoSaveNodeChanges = useCallback(async () => {
+    /**
+     * Build the processed config from current form values.
+     * This is used for both immediate draft updates and final saves.
+     */
+    const buildProcessedConfig = useCallback((): Record<string, unknown> => {
+      const currentConfig: Record<string, unknown> =
+        (node?.data as unknown as GraphNodeData | undefined)?.config ?? {};
+      const configValues: Record<string, unknown> = { ...currentConfig };
+
+      formFields.forEach((field) => {
+        const key = field.key;
+
+        if (field.isConst) {
+          configValues[key] = field.const as unknown;
+          return;
+        }
+
+        const rawValue = form.getFieldValue(key);
+        const effectiveValue =
+          rawValue === undefined ? currentConfig[key] : rawValue;
+
+        const isEmptyString =
+          typeof effectiveValue === 'string' && effectiveValue.trim() === '';
+        const isEmptyArray =
+          Array.isArray(effectiveValue) && effectiveValue.length === 0;
+        const isEmptyObject =
+          field.type === 'object' &&
+          effectiveValue &&
+          typeof effectiveValue === 'object' &&
+          !Array.isArray(effectiveValue) &&
+          Object.keys(effectiveValue as object).length === 0;
+
+        const isTrulyEmpty =
+          effectiveValue === null ||
+          effectiveValue === undefined ||
+          isEmptyString ||
+          isEmptyArray ||
+          isEmptyObject;
+
+        const currentValueExists = key in currentConfig;
+        if (isTrulyEmpty && field.type !== 'boolean') {
+          // Preserve existing value if the user didn't explicitly clear it.
+          if (currentValueExists) {
+            configValues[key] = currentConfig[key];
+          }
+          return;
+        }
+
+        let processedValue: unknown = effectiveValue;
+
+        switch (field.type) {
+          case 'number':
+          case 'integer': {
+            if (typeof effectiveValue === 'string') {
+              const num = Number(effectiveValue);
+              if (Number.isNaN(num)) {
+                return;
+              }
+              processedValue =
+                field.type === 'integer' ? Math.trunc(num) : num;
+            } else if (typeof effectiveValue === 'number') {
+              processedValue =
+                field.type === 'integer'
+                  ? Math.trunc(effectiveValue)
+                  : effectiveValue;
+            } else {
+              return;
+            }
+            break;
+          }
+          case 'array': {
+            if (typeof effectiveValue === 'string') {
+              processedValue = effectiveValue
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line !== '');
+            } else if (Array.isArray(effectiveValue)) {
+              processedValue = effectiveValue;
+            } else if (effectiveValue == null) {
+              return;
+            }
+            break;
+          }
+          case 'object': {
+            if (typeof effectiveValue === 'string') {
+              try {
+                const parsed = JSON.parse(effectiveValue);
+                processedValue = parsed;
+              } catch {
+                return;
+              }
+            } else if (
+              effectiveValue &&
+              typeof effectiveValue === 'object' &&
+              !Array.isArray(effectiveValue)
+            ) {
+              processedValue = effectiveValue;
+            } else if (effectiveValue == null) {
+              return;
+            }
+            break;
+          }
+          case 'boolean': {
+            processedValue = Boolean(effectiveValue);
+            break;
+          }
+          case 'string':
+          default: {
+            if (typeof effectiveValue === 'string') {
+              const trimmed = effectiveValue.trim();
+              if (trimmed === '') {
+                return;
+              }
+              processedValue = trimmed;
+            } else {
+              processedValue = effectiveValue;
+            }
+          }
+        }
+
+        configValues[key] = processedValue;
+      });
+
+      return configValues;
+    }, [node?.data, formFields, form]);
+
+    /**
+     * Push draft changes to the parent (GraphPage).
+     * This is called immediately on every meaningful form change.
+     * The parent will update draftGraph and persist the diff.
+     */
+    const pushDraftChange = useCallback(() => {
       if (!node) return;
 
-      try {
-        const configValues: Record<string, unknown> = {};
-
-        formFields.forEach((field) => {
-          const key = field.key;
-
-          if (field.isConst) {
-            configValues[key] = field.const as unknown;
-            return;
-          }
-
-          const rawValue = form.getFieldValue(key);
-
-          const isEmptyString =
-            typeof rawValue === 'string' && rawValue.trim() === '';
-          const isEmptyArray = Array.isArray(rawValue) && rawValue.length === 0;
-          const isEmptyObject =
-            field.type === 'object' &&
-            rawValue &&
-            typeof rawValue === 'object' &&
-            !Array.isArray(rawValue) &&
-            Object.keys(rawValue as object).length === 0;
-
-          const isTrulyEmpty =
-            rawValue === null ||
-            rawValue === undefined ||
-            isEmptyString ||
-            isEmptyArray ||
-            isEmptyObject;
-
-          if (isTrulyEmpty && field.type !== 'boolean') {
-            return;
-          }
-
-          let processedValue: unknown = rawValue;
-
-          switch (field.type) {
-            case 'number':
-            case 'integer': {
-              if (typeof rawValue === 'string') {
-                const num = Number(rawValue);
-                if (Number.isNaN(num)) {
-                  return;
-                }
-                processedValue =
-                  field.type === 'integer' ? Math.trunc(num) : num;
-              } else if (typeof rawValue === 'number') {
-                processedValue =
-                  field.type === 'integer' ? Math.trunc(rawValue) : rawValue;
-              } else {
-                return;
-              }
-              break;
-            }
-            case 'array': {
-              if (typeof rawValue === 'string') {
-                processedValue = rawValue
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter((line) => line !== '');
-              } else if (Array.isArray(rawValue)) {
-                processedValue = rawValue;
-              } else if (rawValue == null) {
-                return;
-              }
-              break;
-            }
-            case 'object': {
-              if (typeof rawValue === 'string') {
-                try {
-                  const parsed = JSON.parse(rawValue);
-                  processedValue = parsed;
-                } catch {
-                  return;
-                }
-              } else if (
-                rawValue &&
-                typeof rawValue === 'object' &&
-                !Array.isArray(rawValue)
-              ) {
-                processedValue = rawValue;
-              } else if (rawValue == null) {
-                return;
-              }
-              break;
-            }
-            case 'boolean': {
-              processedValue = Boolean(rawValue);
-              break;
-            }
-            case 'string':
-            default: {
-              if (typeof rawValue === 'string') {
-                const trimmed = rawValue.trim();
-                if (trimmed === '') {
-                  return;
-                }
-                processedValue = trimmed;
-              } else {
-                processedValue = rawValue;
-              }
-            }
-          }
-
-          configValues[key] = processedValue;
-        });
-
-        onSave(node.id, {
-          name: nodeName,
-          config: configValues,
-        });
-
-        const currentValues = form.getFieldsValue(true);
-        setInitialFormValues(currentValues);
-      } catch (error) {
-        console.error('Auto-save failed:', error);
+      const configValues = buildProcessedConfig();
+      const currentConfig: Record<string, unknown> =
+        (node.data as unknown as GraphNodeData | undefined)?.config ?? {};
+      const currentLabel = (node.data as unknown as GraphNodeData | undefined)?.label;
+      
+      const labelUnchanged = nodeName === currentLabel;
+      const configUnchanged = deepEqual(configValues, currentConfig);
+      
+      if (labelUnchanged && configUnchanged) {
+        return;
       }
-    }, [node, nodeName, formFields, form, onSave]);
+
+      onNodeDraftChange(node.id, {
+        name: nodeName,
+        config: configValues,
+      });
+    }, [node, nodeName, buildProcessedConfig, deepEqual, onNodeDraftChange]);
+
+
+    // Cleanup effect: push any pending draft changes when unmounting
+    // Note: This is a safety net, but ideally changes should be pushed immediately
+    useEffect(() => {
+      return () => {
+        // The effect cleanup runs on unmount, but we can't reliably
+        // push changes here since the refs and state may be stale.
+        // The handleClose function should handle this case.
+      };
+    }, []);
 
     const handleExpandedTextareaSave = useCallback(() => {
       if (expandedTextarea) {
         form.setFieldValue(expandedTextarea.fieldKey, expandedTextarea.value);
-        autoSaveNodeChanges();
+        // Compute hasChanges and push draft
+        const hasChanges = computeHasLocalUnsavedChanges();
+        setHasLocalUnsavedChanges(hasChanges);
+        if (hasChanges) {
+          pushDraftChange();
+        }
       }
       setExpandedTextarea(null);
-    }, [autoSaveNodeChanges, expandedTextarea, form]);
+    }, [expandedTextarea, form, computeHasLocalUnsavedChanges, pushDraftChange]);
 
     const handleFormChange = useCallback(
       (
-        changedValues: Record<string, unknown>,
-        allValues: Record<string, unknown>,
+        _changedValues: Record<string, unknown>,
+        _allValues: Record<string, unknown>,
       ) => {
-        const hasRealChanges = Object.keys(changedValues).some((key) => {
-          const currentValue = allValues[key];
-          const initialValue = initialFormValues[key];
-          return JSON.stringify(currentValue) !== JSON.stringify(initialValue);
-        });
-
-        if (!hasRealChanges) {
+        void _changedValues;
+        void _allValues;
+        
+        // Ignore changes during form hydration (initial mount / node switch)
+        if (isHydratingRef.current) {
           return;
         }
+        
+        // Compute whether the form has actually changed from the initial values
+        const hasChanges = computeHasLocalUnsavedChanges();
+        
+        // Update local unsaved state - this can go from true to false
+        // if the user reverts their changes back to the initial values
+        setHasLocalUnsavedChanges(hasChanges);
 
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
+        // Only push draft changes if there are actual changes
+        if (hasChanges) {
+          pushDraftChange();
         }
-
-        saveTimeoutRef.current = setTimeout(() => {
-          autoSaveNodeChanges();
-        }, 500);
       },
-      [initialFormValues, autoSaveNodeChanges],
+      [computeHasLocalUnsavedChanges, pushDraftChange],
     );
 
     const handleClose = useCallback(() => {
+      // Push any remaining draft changes before closing
+      if (hasLocalUnsavedChanges) {
+        pushDraftChange();
+      }
       onClose();
-    }, [onClose]);
+    }, [hasLocalUnsavedChanges, pushDraftChange, onClose]);
 
     const handleStartEditSuggested = useCallback(() => {
       setAiSuggestionState((prev) => {
@@ -757,9 +948,11 @@ export const NodeEditSidebar = React.memo(
       if (editingName !== nodeName) {
         setNodeName(editingName);
         if (node) {
-          onSave(node.id, {
+          // Use onNodeDraftChange for immediate draft update
+          onNodeDraftChange(node.id, {
             name: editingName,
           });
+          setHasLocalUnsavedChanges(true);
         }
       }
       setIsEditingName(false);
@@ -773,6 +966,8 @@ export const NodeEditSidebar = React.memo(
     const handleAiSuggestionSubmit = useCallback(async () => {
       if (!aiSuggestionState) return;
 
+      const isAgentSuggestion = aiSuggestionState.mode === 'agent';
+
       if (!isGraphRunning) {
         message.warning('Start the graph to use AI suggestions');
         return;
@@ -780,7 +975,7 @@ export const NodeEditSidebar = React.memo(
 
       const userRequest = aiSuggestionState.userRequest.trim();
       if (!userRequest) {
-        message.warning('Enter a request to improve the instructions');
+        message.warning('Enter a request for the AI suggestion');
         return;
       }
 
@@ -794,32 +989,62 @@ export const NodeEditSidebar = React.memo(
       );
 
       try {
-        const response = await graphsApi.suggestAgentInstructions(
-          graphId,
-          node.id,
-          {
-            userRequest,
-            threadId: aiSuggestionState.threadId,
-          },
-        );
+        if (isAgentSuggestion) {
+          const response = await graphsApi.suggestAgentInstructions(
+            graphId ?? '',
+            node?.id ?? '',
+            {
+              userRequest,
+              threadId: aiSuggestionState.threadId,
+            },
+          );
 
-        setAiSuggestionState((prev) =>
-          prev
-            ? {
-                ...prev,
-                loading: false,
-                suggestedInstructions:
-                  response.data?.instructions ?? prev.suggestedInstructions,
-                lastSuggestedInstructions:
-                  response.data?.instructions ?? prev.lastSuggestedInstructions,
-                manualSuggestedOverride: undefined,
-                isEditingSuggestion: false,
-                editSuggestionDraft: undefined,
-                threadId: response.data?.threadId ?? prev.threadId,
-                userRequest: '',
-              }
-            : prev,
-        );
+          setAiSuggestionState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  loading: false,
+                  suggestedInstructions:
+                    response.data?.instructions ?? prev.suggestedInstructions,
+                  lastSuggestedInstructions:
+                    response.data?.instructions ??
+                    prev.lastSuggestedInstructions,
+                  manualSuggestedOverride: undefined,
+                  isEditingSuggestion: false,
+                  editSuggestionDraft: undefined,
+                  threadId: response.data?.threadId ?? prev.threadId,
+                  userRequest: '',
+                }
+              : prev,
+          );
+        } else {
+          const response = await graphsApi.suggestKnowledgeContent(
+            graphId,
+            node.id,
+            {
+              userRequest,
+              threadId: aiSuggestionState.threadId,
+            },
+          );
+
+          setAiSuggestionState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  loading: false,
+                  suggestedInstructions:
+                    response.data?.content ?? prev.suggestedInstructions,
+                  lastSuggestedInstructions:
+                    response.data?.content ?? prev.lastSuggestedInstructions,
+                  manualSuggestedOverride: undefined,
+                  isEditingSuggestion: false,
+                  editSuggestionDraft: undefined,
+                  threadId: response.data?.threadId ?? prev.threadId,
+                  userRequest: '',
+                }
+              : prev,
+          );
+        }
       } catch (error) {
         setAiSuggestionState((prev) =>
           prev ? { ...prev, loading: false } : prev,
@@ -856,12 +1081,15 @@ export const NodeEditSidebar = React.memo(
       }
 
       setAiSuggestionState(null);
-      autoSaveNodeChanges();
+      
+      // Push the AI suggestion as a draft change
+      setHasLocalUnsavedChanges(true);
+      pushDraftChange();
     }, [
       aiSuggestionState,
-      autoSaveNodeChanges,
       expandedTextarea?.fieldKey,
       form,
+      pushDraftChange,
     ]);
 
     const renderFormField = (field: FormField) => {
@@ -894,10 +1122,18 @@ export const NodeEditSidebar = React.memo(
       const supportsAiSuggestions =
         (field as SchemaProperty)['x-ui:ai-suggestions'] === true;
 
+      const aiSuggestionLabel =
+        aiSuggestionMode === 'knowledge'
+          ? 'Generate with AI'
+          : 'Improve with AI';
+
       const aiSuggestionLink = supportsAiSuggestions ? (
         <AiSuggestionLink
-          onClick={() => openAiSuggestionModal(key, name)}
-          disabled={!isGraphRunning}
+          onClick={() =>
+            openAiSuggestionModal(key, name, undefined, aiSuggestionMode)
+          }
+          disabled={!isGraphRunning || !graphId || !node?.id}
+          label={aiSuggestionLabel}
         />
       ) : null;
 
@@ -1029,8 +1265,20 @@ export const NodeEditSidebar = React.memo(
                 </div>
                 {supportsAiSuggestions && (
                   <AiSuggestionLink
-                    onClick={() => openAiSuggestionModal(key, name)}
+                    onClick={() =>
+                      openAiSuggestionModal(
+                        key,
+                        name,
+                        undefined,
+                        aiSuggestionMode,
+                      )
+                    }
                     disabled={!isGraphRunning}
+                    label={
+                      aiSuggestionMode === 'knowledge'
+                        ? 'Generate with AI'
+                        : 'Improve with AI'
+                    }
                   />
                 )}
               </Form.Item>
@@ -1209,6 +1457,36 @@ export const NodeEditSidebar = React.memo(
       // Keep the form instance connected to a Form element to avoid antd warnings
       return <Form form={form} style={{ display: 'none' }} />;
     }
+
+    const isKnowledgeSuggestion = aiSuggestionState?.mode === 'knowledge';
+    const suggestionModalTitle = aiSuggestionState?.fieldLabel
+      ? `${isKnowledgeSuggestion ? 'Generate' : 'Improve'} ${aiSuggestionState.fieldLabel} with AI`
+      : isKnowledgeSuggestion
+        ? 'Generate knowledge with AI'
+        : 'Improve instructions with AI';
+    const currentContentLabel = isKnowledgeSuggestion
+      ? 'Current content'
+      : 'Current instructions';
+    const suggestionSectionLabel = isKnowledgeSuggestion
+      ? 'Suggested content'
+      : 'Suggested instructions';
+    const requestPromptLabel = isKnowledgeSuggestion
+      ? 'What should be generated?'
+      : 'What should be improved?';
+    const requestPlaceholder = isKnowledgeSuggestion
+      ? 'Describe the knowledge you want to generate or refine'
+      : 'Describe what you want to change or add';
+    const sendButtonLabel = isKnowledgeSuggestion ? 'Generate' : 'Send';
+    const suggestionText =
+      aiSuggestionState?.manualSuggestedOverride ??
+      aiSuggestionState?.lastSuggestedInstructions ??
+      aiSuggestionState?.suggestedInstructions ??
+      '';
+    const hasSuggestedContent = Boolean(suggestionText);
+    const shouldShowDiffOnly =
+      isKnowledgeSuggestion &&
+      hasSuggestedContent &&
+      Boolean(suggestionDiffHtml);
 
     return (
       <Sider
@@ -1457,11 +1735,7 @@ export const NodeEditSidebar = React.memo(
         </div>
 
         <Modal
-          title={
-            aiSuggestionState?.fieldLabel
-              ? `Improve ${aiSuggestionState.fieldLabel} with AI`
-              : 'Improve instructions with AI'
-          }
+          title={suggestionModalTitle}
           open={!!aiSuggestionState}
           footer={null}
           onCancel={closeAiSuggestionModal}
@@ -1469,20 +1743,149 @@ export const NodeEditSidebar = React.memo(
           width={720}>
           {aiSuggestionState && (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 6 }}>
-                  Current instructions
-                </Text>
-                {aiSuggestionState.lastSuggestedInstructions &&
-                (aiSuggestionState.manualSuggestedOverride ||
-                  suggestionDiffHtml) ? (
-                  aiSuggestionState.isEditingSuggestion ? (
+              {nodeDirtyWarning && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message="Unsaved changes for this node"
+                  description="AI suggestions use the current value from the database. Save this node first if you want your latest edits included."
+                />
+              )}
+              {!shouldShowDiffOnly && (
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                    {currentContentLabel}
+                  </Text>
+                  {aiSuggestionState.lastSuggestedInstructions &&
+                  (aiSuggestionState.manualSuggestedOverride ||
+                    suggestionDiffHtml) ? (
+                    aiSuggestionState.isEditingSuggestion ? (
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Input.TextArea
+                          value={
+                            aiSuggestionState.editSuggestionDraft ??
+                            aiSuggestionState.manualSuggestedOverride ??
+                            aiSuggestionState.lastSuggestedInstructions
+                          }
+                          onChange={(e) =>
+                            setAiSuggestionState((prev) =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    editSuggestionDraft: e.target.value,
+                                  }
+                                : prev,
+                            )
+                          }
+                          autoSize={{ minRows: 6, maxRows: 14 }}
+                          style={{ fontFamily: 'monospace' }}
+                        />
+                        <Space>
+                          <Button
+                            onClick={handleCancelEditSuggested}
+                            size="small">
+                            Cancel
+                          </Button>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={handleApplyEditSuggested}>
+                            Apply
+                          </Button>
+                        </Space>
+                      </Space>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            marginBottom: 8,
+                          }}>
+                          <AiSuggestionLink
+                            onClick={handleStartEditSuggested}
+                            label="Edit"
+                            disabled={!isGraphRunning}
+                          />
+                        </div>
+                        <style>{DIFF_NO_LINE_NUMBERS_CSS}</style>
+                        <div
+                          className="diff2html-wrapper"
+                          style={{
+                            maxHeight: 360,
+                            overflowY: 'auto',
+                            overflowX: 'auto',
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 6,
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: suggestionDiffHtml ?? '',
+                          }}
+                        />
+                      </>
+                    )
+                  ) : aiSuggestionState.currentInstructions.trim() ? (
+                    <div
+                      style={{
+                        maxHeight: 280,
+                        overflowY: 'auto',
+                      }}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: (props) => (
+                            <Typography.Paragraph
+                              style={{ marginBottom: 8 }}
+                              {...props}
+                            />
+                          ),
+                          ul: (props) => (
+                            <ul
+                              style={{ paddingLeft: 20, marginBottom: 8 }}
+                              {...props}
+                            />
+                          ),
+                          ol: (props) => (
+                            <ol
+                              style={{ paddingLeft: 20, marginBottom: 8 }}
+                              {...props}
+                            />
+                          ),
+                          code: (props) => (
+                            <Typography.Text
+                              code
+                              style={{
+                                background: '#f5f5f5',
+                                padding: '2px 4px',
+                                borderRadius: 4,
+                                fontSize: 12,
+                              }}
+                              {...props}
+                            />
+                          ),
+                        }}>
+                        {aiSuggestionState.currentInstructions}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <Text type="secondary">No content available.</Text>
+                  )}
+                </div>
+              )}
+
+              {shouldShowDiffOnly && (
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                    Suggested content
+                  </Text>
+                  {aiSuggestionState.isEditingSuggestion ? (
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <Input.TextArea
                         value={
                           aiSuggestionState.editSuggestionDraft ??
                           aiSuggestionState.manualSuggestedOverride ??
-                          aiSuggestionState.lastSuggestedInstructions
+                          aiSuggestionState.lastSuggestedInstructions ??
+                          ''
                         }
                         onChange={(e) =>
                           setAiSuggestionState((prev) =>
@@ -1540,58 +1943,114 @@ export const NodeEditSidebar = React.memo(
                         }}
                       />
                     </>
-                  )
-                ) : aiSuggestionState.currentInstructions.trim() ? (
-                  <div
-                    style={{
-                      maxHeight: 280,
-                      overflowY: 'auto',
-                    }}>
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: (props) => (
-                          <Typography.Paragraph
-                            style={{ marginBottom: 8 }}
-                            {...props}
-                          />
-                        ),
-                        ul: (props) => (
-                          <ul
-                            style={{ paddingLeft: 20, marginBottom: 8 }}
-                            {...props}
-                          />
-                        ),
-                        ol: (props) => (
-                          <ol
-                            style={{ paddingLeft: 20, marginBottom: 8 }}
-                            {...props}
-                          />
-                        ),
-                        code: (props) => (
-                          <Typography.Text
-                            code
-                            style={{
-                              background: '#f5f5f5',
-                              padding: '2px 4px',
-                              borderRadius: 4,
-                              fontSize: 12,
-                            }}
-                            {...props}
-                          />
-                        ),
-                      }}>
-                      {aiSuggestionState.currentInstructions}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <Text type="secondary">No instructions available.</Text>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
+
+              {isKnowledgeSuggestion && suggestionText ? (
+                <div>
+                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                    {suggestionSectionLabel}
+                  </Text>
+                  {aiSuggestionState.isEditingSuggestion ? (
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Input.TextArea
+                        value={
+                          aiSuggestionState.editSuggestionDraft ??
+                          aiSuggestionState.manualSuggestedOverride ??
+                          aiSuggestionState.lastSuggestedInstructions ??
+                          ''
+                        }
+                        onChange={(e) =>
+                          setAiSuggestionState((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  editSuggestionDraft: e.target.value,
+                                }
+                              : prev,
+                          )
+                        }
+                        autoSize={{ minRows: 6, maxRows: 14 }}
+                        style={{ fontFamily: 'monospace' }}
+                      />
+                      <Space>
+                        <Button
+                          onClick={handleCancelEditSuggested}
+                          size="small">
+                          Cancel
+                        </Button>
+                        <Button
+                          type="primary"
+                          size="small"
+                          onClick={handleApplyEditSuggested}>
+                          Apply
+                        </Button>
+                      </Space>
+                    </Space>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          marginBottom: 8,
+                        }}>
+                        <AiSuggestionLink
+                          onClick={handleStartEditSuggested}
+                          label="Edit"
+                        />
+                      </div>
+                      <div
+                        style={{
+                          maxHeight: 360,
+                          overflowY: 'auto',
+                        }}>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: (props) => (
+                              <Typography.Paragraph
+                                style={{ marginBottom: 8 }}
+                                {...props}
+                              />
+                            ),
+                            ul: (props) => (
+                              <ul
+                                style={{ paddingLeft: 20, marginBottom: 8 }}
+                                {...props}
+                              />
+                            ),
+                            ol: (props) => (
+                              <ol
+                                style={{ paddingLeft: 20, marginBottom: 8 }}
+                                {...props}
+                              />
+                            ),
+                            code: (props) => (
+                              <Typography.Text
+                                code
+                                style={{
+                                  background: '#f5f5f5',
+                                  padding: '2px 4px',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                }}
+                                {...props}
+                              />
+                            ),
+                          }}>
+                          {suggestionText}
+                        </ReactMarkdown>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
 
               <div>
                 <Text strong style={{ display: 'block', marginBottom: 6 }}>
-                  What should be improved?
+                  {requestPromptLabel}
                 </Text>
                 <Input.TextArea
                   value={aiSuggestionState.userRequest}
@@ -1600,7 +2059,7 @@ export const NodeEditSidebar = React.memo(
                       prev ? { ...prev, userRequest: e.target.value } : prev,
                     )
                   }
-                  placeholder="Describe what you want to change or add"
+                  placeholder={requestPlaceholder}
                   autoSize={{ minRows: 3, maxRows: 6 }}
                 />
                 <div
@@ -1614,12 +2073,13 @@ export const NodeEditSidebar = React.memo(
                     onClick={handleAiSuggestionSubmit}
                     loading={aiSuggestionState.loading}
                     disabled={
+                      !isGraphRunning ||
                       aiSuggestionState.loading ||
                       !aiSuggestionState.userRequest.trim() ||
                       !graphId ||
                       !node?.id
                     }>
-                    Send
+                    {sendButtonLabel}
                   </Button>
                 </div>
               </div>
@@ -1738,7 +2198,14 @@ export const NodeEditSidebar = React.memo(
                       expandedTextarea.fieldKey,
                       expandedTextareaField?.name || expandedTextarea.fieldKey,
                       expandedTextarea.value,
+                      aiSuggestionMode,
                     )
+                  }
+                  disabled={!isGraphRunning}
+                  label={
+                    aiSuggestionMode === 'knowledge'
+                      ? 'Generate with AI'
+                      : 'Improve with AI'
                   }
                 />
               )}
@@ -1771,6 +2238,7 @@ export const NodeEditSidebar = React.memo(
       prevNodeData?.template === nextNodeData?.template &&
       configEqual &&
       prevProps.graphStatus === nextProps.graphStatus &&
+      prevProps.hasGlobalUnsavedChanges === nextProps.hasGlobalUnsavedChanges &&
       prevProps.selectedThreadId === nextProps.selectedThreadId &&
       prevProps.graphId === nextProps.graphId &&
       prevProps.compiledNodesLoading === nextProps.compiledNodesLoading &&
@@ -1783,7 +2251,8 @@ export const NodeEditSidebar = React.memo(
       prevProps.hasMoreMessages === nextProps.hasMoreMessages &&
       prevProps.loadingMoreMessages === nextProps.loadingMoreMessages &&
       prevProps.onLoadMoreMessages === nextProps.onLoadMoreMessages &&
-      prevProps.onRefreshMessages === nextProps.onRefreshMessages
+      prevProps.onRefreshMessages === nextProps.onRefreshMessages &&
+      prevProps.draftNodeConfigVersion === nextProps.draftNodeConfigVersion
     );
   },
 );

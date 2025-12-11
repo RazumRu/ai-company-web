@@ -87,12 +87,17 @@ import {
   GraphCanvas,
   resolveHandlesForNodes,
 } from './components/GraphCanvas';
-import { GraphStorageService } from '../../services/GraphStorageService';
+import {
+  GraphStorageService,
+  type GraphDiffKind,
+  type GraphDiffState,
+} from '../../services/GraphStorageService';
 import {
   buildNodeDisplayNames,
   buildTriggerNodes,
 } from '../../utils/graphThreads';
 import { useThreadMessageStore } from '../../hooks/useThreadMessageStore';
+import { useGraphDraftState } from '../../hooks/useGraphDraftState';
 import { extractApiErrorMessage } from '../../utils/errors';
 import type {
   GraphEdge,
@@ -226,18 +231,53 @@ export const GraphPage = () => {
   const [saving, setSaving] = useState(false);
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [graph, setGraph] = useState<GraphDto | null>(null);
+  
+  // Server state for the draft hook (initialized with empty state, updated after load)
+  const [serverGraphState, setServerGraphState] = useState<GraphDiffState>({
+    nodes: [],
+    edges: [],
+    viewport: { x: 0, y: 0, zoom: 1 },
+    selectedThreadId: undefined,
+  });
+  
+  // React Flow state (will be synced with draft state via onStateChange)
   const [nodes, setNodes, baseOnNodesChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<GraphEdge>([]);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [hasStructuralChanges, setHasStructuralChanges] = useState(false);
-  const [hasPositionChanges, setHasPositionChanges] = useState(false);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | undefined>();
+  const selectedThreadIdRef = useRef<string | undefined>();
+  useEffect(() => {
+    selectedThreadIdRef.current = selectedThreadId;
+  }, [selectedThreadId]);
+
+  // Callback to sync draft state changes to React Flow
+  const handleDraftStateChange = useCallback((newState: GraphDiffState) => {
+    // Set flag to prevent circular updates
+    isSyncingFromDraftRef.current = true;
+    
+    setNodes(newState.nodes);
+    setEdges(newState.edges);
+    setViewport(newState.viewport);
+    if (newState.selectedThreadId !== selectedThreadIdRef.current) {
+      setSelectedThreadId(newState.selectedThreadId);
+    }
+    
+    // Clear flag after state updates complete
+    requestAnimationFrame(() => {
+      isSyncingFromDraftRef.current = false;
+    });
+  }, [setNodes, setEdges]);
+
+  // Central draft state management - single source of truth!
+  const draftState = useGraphDraftState({
+    graphId: id || '',
+    serverState: serverGraphState,
+    onStateChange: handleDraftStateChange,
+  });
+  
   const isHydratingRef = useRef(true);
   const userInteractedRef = useRef(false);
-
-  const nodesRef = useRef<GraphNode[]>([]);
-  const edgesRef = useRef<GraphEdge[]>([]);
-  const viewportRef = useRef<Viewport>({ x: 0, y: 0, zoom: 1 });
+  const isSyncingFromDraftRef = useRef(false);
   const nodeChangeQueueRef = useRef<NodeChange[]>([]);
   const nodeChangeRafRef = useRef<number | null>(null);
 
@@ -249,6 +289,8 @@ export const GraphPage = () => {
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [nodeEditSidebarVisible, setNodeEditSidebarVisible] = useState(false);
   const [templates, setTemplates] = useState<TemplateDto[]>([]);
+  // Incremented after successful save to signal NodeEditSidebar to reset initialFormValues
+  const [draftNodeConfigVersion, setDraftNodeConfigVersion] = useState(0);
   const templatesById = useMemo(
     () =>
       templates.reduce<Record<string, TemplateDto>>((acc, template) => {
@@ -275,9 +317,6 @@ export const GraphPage = () => {
   const isGraphCompiling = graph?.status === GraphDtoStatusEnum.Compiling;
 
   const [threads, setThreads] = useState<ThreadDto[]>([]);
-  const [selectedThreadId, setSelectedThreadId] = useState<
-    string | undefined
-  >();
   const threadsRef = useRef<ThreadDto[]>([]);
   useEffect(() => {
     threadsRef.current = threads;
@@ -300,6 +339,96 @@ export const GraphPage = () => {
     externalThreadIds,
     setExternalThreadIds,
   } = useThreadMessageStore();
+
+  // Helper to rebuild state from server graph response
+  // This is called after loading graph from server
+
+  const rebuildStateFromGraph = useCallback(
+    (graphData: GraphDto): GraphDiffState => {
+      const metadata = (graphData.metadata as GraphMetadata) || {};
+      const nodeMetadata = metadata.nodes || [];
+
+      const nodeMetadataMap = nodeMetadata.reduce(
+        (acc, nodeMeta) => {
+          acc[nodeMeta.id] = nodeMeta;
+          return acc;
+        },
+        {} as Record<string, NodeMetadata>,
+      );
+
+      const apiNodes = graphData.schema?.nodes || [];
+      const refreshedNodes: GraphNode[] = apiNodes.map((node, index) => {
+        const nodeMeta = nodeMetadataMap[node.id];
+        const template = templates.find((t) => t.id === node.template);
+        return {
+          id: node.id,
+          type: 'custom',
+          position: nodeMeta
+            ? { x: nodeMeta.x, y: nodeMeta.y }
+            : {
+                x: 100 + (index % 3) * 250,
+                y: 100 + Math.floor(index / 3) * 150,
+              },
+          data: {
+            label: nodeMeta?.name || template?.name || node.template,
+            template: node.template,
+            templateKind: template?.kind,
+            templateSchema: template?.schema,
+            config: node.config || {},
+          },
+        };
+      });
+
+      const nodeById: Record<string, GraphNode> = Object.fromEntries(
+        refreshedNodes.map((n) => [n.id, n]),
+      );
+
+      const apiEdges = graphData.schema?.edges || [];
+      const refreshedEdges: GraphEdge[] = apiEdges.map((edge) => {
+        const src = nodeById[edge.from];
+        const dst = nodeById[edge.to];
+        const { sourceHandle, targetHandle } = resolveHandlesForNodes(
+          src,
+          dst,
+          templates,
+        );
+        return createEdge(
+          edge.from,
+          edge.to,
+          sourceHandle,
+          targetHandle,
+          typeof edge.label === 'string' ? edge.label : undefined,
+        );
+      });
+
+      const refreshedViewport: Viewport =
+        metadata.x !== undefined &&
+        metadata.y !== undefined &&
+        metadata.zoom !== undefined
+          ? {
+              x: metadata.x,
+              y: metadata.y,
+              zoom: metadata.zoom,
+            }
+          : viewport;
+
+      return {
+        nodes: refreshedNodes,
+        edges: refreshedEdges,
+        viewport: refreshedViewport,
+        selectedThreadId,
+      };
+    },
+    [templates, viewport, selectedThreadId],
+  );
+
+  // Use draft state flags - single source of truth!
+  const hasUnsavedChanges = draftState.hasUnsavedChanges;
+  const hasStructuralChanges = draftState.hasStructuralChanges;
+  const selectedNodeUnsavedFromServer = useMemo(() => {
+    if (!selectedNode?.id) return false;
+    return draftState.hasNodeChanges(selectedNode.id);
+  }, [selectedNode?.id, draftState]);
 
   const [messageMeta, setMessageMeta] = useState<MessageMetaState>({});
 
@@ -632,13 +761,7 @@ export const GraphPage = () => {
           metadata.y !== undefined &&
           metadata.zoom !== undefined
         ) {
-          const savedViewport = {
-            x: metadata.x,
-            y: metadata.y,
-            zoom: metadata.zoom,
-          };
-          setViewport(savedViewport);
-          viewportRef.current = savedViewport;
+          // Viewport will be set via server state below
         }
 
         const nodeMetadataMap = nodeMetadata.reduce(
@@ -671,9 +794,6 @@ export const GraphPage = () => {
             },
           };
         });
-        setNodes(reactFlowNodes);
-        nodesRef.current = reactFlowNodes;
-
         const nodeById: Record<string, GraphNode> = Object.fromEntries(
           reactFlowNodes.map((n) => [n.id, n]),
         );
@@ -695,69 +815,20 @@ export const GraphPage = () => {
             typeof edge.label === 'string' ? edge.label : undefined,
           );
         });
-        setEdges(reactFlowEdges);
-        edgesRef.current = reactFlowEdges;
 
-        const savedState = GraphStorageService.loadGraphState(id);
-        if (savedState) {
-          const nodesWithTemplates = savedState.nodes.map((node) => {
-            const template = templatesList.find(
-              (t) => t.id === (node.data as unknown as GraphNodeData).template,
-            );
-
-            if (!template) {
-              return node;
-            }
-
-            // Always refresh template metadata so new UI hints (e.g. x-ui:label)
-            // are visible even when a cached graph state exists.
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                templateKind: template.kind,
-                templateSchema: template.schema,
-              },
-            };
-          });
-
-          setNodes(nodesWithTemplates);
-          const nodeByIdRestored: Record<string, GraphNode> =
-            Object.fromEntries(nodesWithTemplates.map((n) => [n.id, n]));
-          const restoredEdges: GraphEdge[] = savedState.edges.map((e) => {
-            const src = nodeByIdRestored[e.source];
-            const dst = nodeByIdRestored[e.target];
-            const { sourceHandle, targetHandle } = resolveHandlesForNodes(
-              src,
-              dst,
-              templatesList,
-            );
-            return createEdge(
-              e.source,
-              e.target,
-              sourceHandle ?? e.sourceHandle ?? undefined,
-              targetHandle ?? e.targetHandle ?? undefined,
-              typeof e.label === 'string' ? e.label : undefined,
-            );
-          });
-          setEdges(restoredEdges);
-          setViewport(savedState.viewport);
-
-          nodesRef.current = nodesWithTemplates;
-          edgesRef.current = restoredEdges;
-          viewportRef.current = savedState.viewport;
-          setHasUnsavedChanges(!!savedState.dirty);
-          setHasStructuralChanges(!!savedState.hasStructuralChanges);
-          setHasPositionChanges(!!savedState.hasPositionChanges);
-
-          if (savedState.selectedThreadId) {
-            setSelectedThreadId(savedState.selectedThreadId);
-          }
-        } else {
-          setHasUnsavedChanges(false);
-          setHasStructuralChanges(false);
-          setHasPositionChanges(false);
-        }
+        // Create server baseline state from the loaded graph
+        const serverState: GraphDiffState = {
+          nodes: reactFlowNodes,
+          edges: reactFlowEdges,
+          viewport: metadata.x !== undefined && metadata.y !== undefined && metadata.zoom !== undefined
+            ? { x: metadata.x, y: metadata.y, zoom: metadata.zoom }
+            : { x: 0, y: 0, zoom: 1 },
+          selectedThreadId,
+        };
+        
+        // Update server baseline - the hook will automatically apply any stored local changes
+        setServerGraphState(serverState);
+        draftState.updateServerBaseline(serverState);
       } catch (e) {
         console.error('Error fetching graph:', e);
         const errorMessage = extractApiErrorMessage(e, 'Failed to load graph');
@@ -1038,9 +1109,9 @@ export const GraphPage = () => {
       const backupPayload = {
         exportedAt: new Date().toISOString(),
         graph,
-        nodes: nodesRef.current,
-        edges: edgesRef.current,
-        viewport: viewportRef.current,
+        nodes: draftState.draftState.nodes,
+        edges: draftState.draftState.edges,
+        viewport: draftState.draftState.viewport,
       };
 
       const blob = new Blob([JSON.stringify(backupPayload, null, 2)], {
@@ -1439,8 +1510,8 @@ export const GraphPage = () => {
             existing?.additionalNodeMetadata;
 
           if (!existing) {
-            const graphNode = nodesRef.current.find(
-              (n) => n.id === data.nodeId,
+            const graphNode = nodes.find(
+              (n: GraphNode) => n.id === data.nodeId,
             );
             if (!graphNode) {
               return prev;
@@ -1663,12 +1734,20 @@ export const GraphPage = () => {
   }, [loading]);
 
   useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
-
-  useEffect(() => {
-    edgesRef.current = edges;
-  }, [edges]);
+    // Keep selectedNode in sync with the latest node data from nodes array
+    // This ensures NodeEditSidebar always sees the current draftGraph state
+    if (selectedNode) {
+      const updatedNode = nodes.find((n) => n.id === selectedNode.id);
+      if (updatedNode && updatedNode !== selectedNode) {
+        // Only update if the node actually changed (by reference)
+        setSelectedNode(updatedNode);
+      } else if (!updatedNode) {
+        // Node was deleted, clear selection
+        setSelectedNode(null);
+        setNodeEditSidebarVisible(false);
+      }
+    }
+  }, [nodes, selectedNode]);
 
   useEffect(
     () => () => {
@@ -1680,34 +1759,26 @@ export const GraphPage = () => {
     [],
   );
 
+  const handleValidationError = useCallback((error: string) => {
+    message.error(`Connection validation failed: ${error}`);
+  }, []);
+
   const handleTemplateClick = useCallback((template: TemplateDto) => {
     setSelectedTemplate(template);
     setTemplateModalVisible(true);
   }, []);
 
-  const handleNodeAdd = useCallback(
-    (node: GraphNode) => {
-      setNodes((nds) => {
-        const newNodes = nds.concat(node);
-        nodesRef.current = newNodes;
-        setHasUnsavedChanges(true);
-        setHasStructuralChanges(true);
-        if (id) {
-          GraphStorageService.saveGraphState(id, {
-            nodes: newNodes,
-            edges: edgesRef.current,
-            viewport: viewportRef.current,
-            dirty: true,
-            hasStructuralChanges: true,
-            hasPositionChanges: hasPositionChanges,
-            selectedThreadId: selectedThreadId,
-          });
-        }
-        return newNodes;
-      });
-    },
-    [setNodes, id, hasPositionChanges, selectedThreadId],
-  );
+  // Stabilize callbacks to prevent nodeTypes recreation
+  // Use refs for draft state access to avoid dependencies
+  const draftStateRef = useRef(draftState);
+  useEffect(() => {
+    draftStateRef.current = draftState;
+  }, [draftState]);
+
+  const handleNodeAdd = useCallback((node: GraphNode) => {
+    const newNodes = [...draftStateRef.current.draftState.nodes, node];
+    draftStateRef.current.updateNodes(newNodes);
+  }, []);
 
   const handleNodeEdit = useCallback((node: GraphNode) => {
     setSelectedNode(node);
@@ -1724,71 +1795,32 @@ export const GraphPage = () => {
       nodeId: string,
       updates: { name?: string; config?: Record<string, unknown> },
     ) => {
-      setNodes((prevNodes) => {
-        const updatedNodes = prevNodes.map((node) => {
-          if (node.id !== nodeId) return node;
-          const nodeData = node.data;
-          return {
-            ...node,
-            data: {
-              ...nodeData,
-              label: updates.name ?? nodeData.label,
-              config: updates.config ?? nodeData.config,
-            },
-          };
-        });
-        nodesRef.current = updatedNodes;
-        setHasUnsavedChanges(true);
-        setHasStructuralChanges(true);
-        if (id) {
-          GraphStorageService.saveGraphState(id, {
-            nodes: updatedNodes,
-            edges: edgesRef.current,
-            viewport: viewportRef.current,
-            dirty: true,
-            hasStructuralChanges: true,
-            hasPositionChanges: hasPositionChanges,
-            selectedThreadId: selectedThreadId,
-          });
-        }
-        return updatedNodes;
-      });
+      // Use the draft state's updateNodeConfig method
+      draftStateRef.current.updateNodeConfig(nodeId, updates);
     },
-    [setNodes, id, hasPositionChanges, selectedThreadId],
+    [],
   );
 
-  const handleNodeDelete = useCallback(
-    (nodeId: string) => {
-      setNodes((prevNodes) => {
-        const newNodes = prevNodes.filter((node) => node.id !== nodeId);
-        nodesRef.current = newNodes;
-        setHasUnsavedChanges(true);
-        setHasStructuralChanges(true);
-        if (id) {
-          GraphStorageService.saveGraphState(id, {
-            nodes: newNodes,
-            edges: edgesRef.current.filter(
-              (edge) => edge.source !== nodeId && edge.target !== nodeId,
-            ),
-            viewport: viewportRef.current,
-            dirty: true,
-            hasStructuralChanges: true,
-            hasPositionChanges: hasPositionChanges,
-            selectedThreadId: selectedThreadId,
-          });
-        }
-        return newNodes;
-      });
-      setEdges((prevEdges) => {
-        const newEdges = prevEdges.filter(
-          (edge) => edge.source !== nodeId && edge.target !== nodeId,
-        );
-        edgesRef.current = newEdges;
-        return newEdges;
-      });
-    },
-    [setNodes, setEdges, id, hasPositionChanges, selectedThreadId],
-  );
+  const handleNodeDelete = useCallback((nodeId: string) => {
+    const newNodes = draftStateRef.current.draftState.nodes.filter(
+      (node) => node.id !== nodeId,
+    );
+    const newEdges = draftStateRef.current.draftState.edges.filter(
+      (edge) => edge.source !== nodeId && edge.target !== nodeId,
+    );
+    draftStateRef.current.updateNodes(newNodes);
+    draftStateRef.current.updateEdges(newEdges);
+  }, []);
+
+  // Store nodes and edges in refs to avoid recreating callbacks
+  const nodesRef = useRef<GraphNode[]>([]);
+  const edgesRef = useRef<GraphEdge[]>([]);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   const handleTriggerClick = useCallback((nodeId: string) => {
     const node = nodesRef.current.find((n) => n.id === nodeId);
@@ -1800,29 +1832,10 @@ export const GraphPage = () => {
 
   const handleThreadChange = useCallback(
     (newThreadId: string | undefined) => {
-      setSelectedThreadId(newThreadId);
-
-      if (id) {
-        GraphStorageService.saveGraphState(id, {
-          nodes: nodesRef.current,
-          edges: edgesRef.current,
-          viewport: viewportRef.current,
-          dirty: hasUnsavedChanges,
-          hasStructuralChanges: hasStructuralChanges,
-          hasPositionChanges: hasPositionChanges,
-          selectedThreadId: newThreadId,
-        });
-      }
-
+      draftStateRef.current.updateSelectedThread(newThreadId);
       void fetchCompiledNodes({ threadId: newThreadId });
     },
-    [
-      id,
-      hasUnsavedChanges,
-      hasStructuralChanges,
-      hasPositionChanges,
-      fetchCompiledNodes,
-    ],
+    [fetchCompiledNodes],
   );
 
   const handleThreadSelect = useCallback(
@@ -1900,15 +1913,17 @@ export const GraphPage = () => {
       }
 
       message.success('Graph saved successfully');
-      setHasUnsavedChanges(false);
-      setHasStructuralChanges(false);
-      setHasPositionChanges(false);
-      if (id) {
-        GraphStorageService.clearGraphState(id);
-      }
+      
+      // Clear draft and update server baseline
+      const refreshedState = rebuildStateFromGraph(updatedGraph);
+      setServerGraphState(refreshedState);
+      draftState.updateServerBaseline(refreshedState);
+      draftState.clearAllChanges();
       setGraph(updatedGraph);
       setEditingName(updatedGraph.name);
       userInteractedRef.current = false;
+      // Signal NodeEditSidebar to reset its initialFormValues baseline
+      setDraftNodeConfigVersion((prev) => prev + 1);
     } catch (e: unknown) {
       console.error('Error saving graph:', e);
       const errorMessage = extractApiErrorMessage(e, 'Failed to save graph');
@@ -1979,32 +1994,17 @@ export const GraphPage = () => {
     [triggerNodeId, id, threads, hasUnsavedChanges, handleSave],
   );
 
-  const handleViewportChange = useCallback(
-    (newViewport: Viewport) => {
-      setViewport(newViewport);
-      viewportRef.current = newViewport;
-      if (isHydratingRef.current) {
-        return;
-      }
-      if (!userInteractedRef.current) {
-        return;
-      }
-      setHasUnsavedChanges(true);
-      setHasPositionChanges(true);
-      if (id) {
-        GraphStorageService.saveGraphState(id, {
-          nodes: nodesRef.current,
-          edges: edgesRef.current,
-          viewport: newViewport,
-          dirty: true,
-          hasStructuralChanges: hasStructuralChanges,
-          hasPositionChanges: true,
-          selectedThreadId: selectedThreadId,
-        });
-      }
-    },
-    [id, hasStructuralChanges, selectedThreadId],
-  );
+  const handleViewportChange = useCallback((newViewport: Viewport) => {
+    if (isHydratingRef.current) {
+      return;
+    }
+    if (!userInteractedRef.current) {
+      return;
+    }
+    if (isSyncingFromDraftRef.current) return; // Don't update draft if we're syncing FROM draft
+    
+    draftStateRef.current.updateViewport(newViewport);
+  }, []);
 
   const handleDeleteThread = useCallback(
     async (threadId: string) => {
@@ -2068,25 +2068,16 @@ export const GraphPage = () => {
       if (isHydratingRef.current) return;
       if (!userInteractedRef.current) return;
       if (isDragging) return;
+      if (isSyncingFromDraftRef.current) return; // Don't update draft if we're syncing FROM draft
 
-      setHasUnsavedChanges(true);
-      setHasPositionChanges(true);
-
-      if (id) {
-        setTimeout(() => {
-          GraphStorageService.saveGraphState(id, {
-            nodes: nodesRef.current,
-            edges: edgesRef.current,
-            viewport: viewportRef.current,
-            dirty: true,
-            hasStructuralChanges: hasStructuralChanges,
-            hasPositionChanges: true,
-            selectedThreadId: selectedThreadId,
-          });
-        }, 100);
-      }
+      // Update draft state with the new nodes after changes are applied
+      setTimeout(() => {
+        if (!isSyncingFromDraftRef.current) {
+          draftStateRef.current.updateNodes(nodesRef.current);
+        }
+      }, 100);
     },
-    [baseOnNodesChange, id, hasStructuralChanges, selectedThreadId],
+    [baseOnNodesChange],
   );
 
   const handleEdgesChange = useCallback(
@@ -2098,23 +2089,16 @@ export const GraphPage = () => {
       if (!userInteractedRef.current) {
         return;
       }
-      setHasUnsavedChanges(true);
-      setHasStructuralChanges(true);
-      if (id) {
-        setTimeout(() => {
-          GraphStorageService.saveGraphState(id, {
-            nodes: nodesRef.current,
-            edges: edgesRef.current,
-            viewport: viewportRef.current,
-            dirty: true,
-            hasStructuralChanges: true,
-            hasPositionChanges: hasPositionChanges,
-            selectedThreadId: selectedThreadId,
-          });
-        }, 100);
-      }
+      if (isSyncingFromDraftRef.current) return; // Don't update draft if we're syncing FROM draft
+      
+      // Update draft state with the new edges after changes are applied
+      setTimeout(() => {
+        if (!isSyncingFromDraftRef.current) {
+          draftStateRef.current.updateEdges(edgesRef.current);
+        }
+      }, 100);
     },
-    [onEdgesChange, id, hasPositionChanges, selectedThreadId],
+    [onEdgesChange],
   );
 
   const handleNameEdit = () => {
@@ -3059,9 +3043,7 @@ export const GraphPage = () => {
               templates={templates}
               graphStatus={graph?.status}
               onTriggerClick={handleTriggerClick}
-              onValidationError={(error) => {
-                message.error(`Connection validation failed: ${error}`);
-              }}
+              onValidationError={handleValidationError}
               compiledNodes={compiledNodesMap}
               compiledNodesLoading={compiledNodesLoading}
             />
@@ -3072,9 +3054,11 @@ export const GraphPage = () => {
           node={selectedNode}
           visible={nodeEditSidebarVisible}
           onClose={() => setNodeEditSidebarVisible(false)}
-          onSave={handleNodeSave}
+          onNodeDraftChange={handleNodeSave}
           templates={templates}
           graphStatus={graph?.status}
+          hasGlobalUnsavedChanges={hasUnsavedChanges}
+          hasNodeUnsavedChangesFromServer={selectedNodeUnsavedFromServer}
           onTriggerClick={handleTriggerClick}
           selectedThreadId={selectedThreadId}
           compiledNode={
@@ -3123,6 +3107,7 @@ export const GraphPage = () => {
                   loadMessagesForScope(selectedThreadId, selectedNode?.id, true)
               : undefined
           }
+          draftNodeConfigVersion={draftNodeConfigVersion}
         />
       </Layout>
 

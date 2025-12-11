@@ -2,14 +2,16 @@
 
 All URIs are relative to _http://localhost_
 
-| Method                                              | HTTP request                                        | Description |
-| --------------------------------------------------- | --------------------------------------------------- | ----------- |
-| [**analyzeThread**](#analyzethread)                 | **POST** /api/v1/threads/{threadId}/analyze         |             |
-| [**deleteThread**](#deletethread)                   | **DELETE** /api/v1/threads/{threadId}               |             |
-| [**getThreadByExternalId**](#getthreadbyexternalid) | **GET** /api/v1/threads/external/{externalThreadId} |             |
-| [**getThreadById**](#getthreadbyid)                 | **GET** /api/v1/threads/{threadId}                  |             |
-| [**getThreadMessages**](#getthreadmessages)         | **GET** /api/v1/threads/{threadId}/messages         |             |
-| [**getThreads**](#getthreads)                       | **GET** /api/v1/threads                             |             |
+| Method                                                    | HTTP request                                                          | Description |
+| --------------------------------------------------------- | --------------------------------------------------------------------- | ----------- |
+| [**analyzeThread**](#analyzethread)                       | **POST** /api/v1/threads/{threadId}/analyze                           |             |
+| [**deleteThread**](#deletethread)                         | **DELETE** /api/v1/threads/{threadId}                                 |             |
+| [**getThreadByExternalId**](#getthreadbyexternalid)       | **GET** /api/v1/threads/external/{externalThreadId}                   |             |
+| [**getThreadById**](#getthreadbyid)                       | **GET** /api/v1/threads/{threadId}                                    |             |
+| [**getThreadMessages**](#getthreadmessages)               | **GET** /api/v1/threads/{threadId}/messages                           |             |
+| [**getThreads**](#getthreads)                             | **GET** /api/v1/threads                                               |             |
+| [**suggestAgentInstructions**](#suggestagentinstructions) | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions |             |
+| [**suggestKnowledgeContent**](#suggestknowledgecontent)   | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge    |             |
 
 # **analyzeThread**
 
@@ -293,5 +295,109 @@ const { status, data } = await apiInstance.getThreads(graphId, limit, offset);
 | Status code | Description | Response headers |
 | ----------- | ----------- | ---------------- |
 | **200**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suggestAgentInstructions**
+
+> SuggestAgentInstructionsResponseDto suggestAgentInstructions(suggestAgentInstructionsDto)
+
+### Example
+
+```typescript
+import { ThreadsApi, Configuration, SuggestAgentInstructionsDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new ThreadsApi(configuration);
+
+let graphId: string; // (default to undefined)
+let nodeId: string; // (default to undefined)
+let suggestAgentInstructionsDto: SuggestAgentInstructionsDto; //
+
+const { status, data } = await apiInstance.suggestAgentInstructions(
+  graphId,
+  nodeId,
+  suggestAgentInstructionsDto,
+);
+```
+
+### Parameters
+
+| Name                            | Type                            | Description | Notes                 |
+| ------------------------------- | ------------------------------- | ----------- | --------------------- |
+| **suggestAgentInstructionsDto** | **SuggestAgentInstructionsDto** |             |                       |
+| **graphId**                     | [**string**]                    |             | defaults to undefined |
+| **nodeId**                      | [**string**]                    |             | defaults to undefined |
+
+### Return type
+
+**SuggestAgentInstructionsResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suggestKnowledgeContent**
+
+> SuggestKnowledgeContentResponseDto suggestKnowledgeContent(suggestKnowledgeContentDto)
+
+### Example
+
+```typescript
+import { ThreadsApi, Configuration, SuggestKnowledgeContentDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new ThreadsApi(configuration);
+
+let graphId: string; // (default to undefined)
+let nodeId: string; // (default to undefined)
+let suggestKnowledgeContentDto: SuggestKnowledgeContentDto; //
+
+const { status, data } = await apiInstance.suggestKnowledgeContent(
+  graphId,
+  nodeId,
+  suggestKnowledgeContentDto,
+);
+```
+
+### Parameters
+
+| Name                           | Type                           | Description | Notes                 |
+| ------------------------------ | ------------------------------ | ----------- | --------------------- |
+| **suggestKnowledgeContentDto** | **SuggestKnowledgeContentDto** |             |                       |
+| **graphId**                    | [**string**]                   |             | defaults to undefined |
+| **nodeId**                     | [**string**]                   |             | defaults to undefined |
+
+### Return type
+
+**SuggestKnowledgeContentResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)

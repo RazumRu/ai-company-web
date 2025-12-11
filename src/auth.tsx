@@ -34,7 +34,7 @@ export const createAuthProvider = (keycloak: Keycloak): AuthProvider => {
     logout: async () => {
       try {
         // Clear all graph states from localStorage on logout
-        GraphStorageService.clearAllGraphStates();
+        GraphStorageService.clearAllDrafts();
 
         await keycloak.logout({
           redirectUri: window.location.origin,

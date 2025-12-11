@@ -54,6 +54,7 @@
     "vite": "^4.5.14"
   },
   "scripts": {
+    "full-check": "pnpm -s build --output-logs=errors-only && pnpm -s lint:fix --output-logs=errors-only",
     "dev": "pnpm exec refine dev --port 5174",
     "build": "pnpm tsc && pnpm exec refine build",
     "lint:fix": "pnpm prettier --write . && pnpm eslint \"src/**/*.{js,ts,tsx}\" --fix",

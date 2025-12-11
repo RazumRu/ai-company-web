@@ -4,6 +4,7 @@ All URIs are relative to _http://localhost_
 
 | Method                                                    | HTTP request                                                          | Description |
 | --------------------------------------------------------- | --------------------------------------------------------------------- | ----------- |
+| [**analyzeThread**](#analyzethread)                       | **POST** /api/v1/threads/{threadId}/analyze                           |             |
 | [**createGraph**](#creategraph)                           | **POST** /api/v1/graphs                                               |             |
 | [**deleteGraph**](#deletegraph)                           | **DELETE** /api/v1/graphs/{id}                                        |             |
 | [**destroyGraph**](#destroygraph)                         | **POST** /api/v1/graphs/{id}/destroy                                  |             |
@@ -13,7 +14,57 @@ All URIs are relative to _http://localhost_
 | [**getCompiledNodes**](#getcompilednodes)                 | **GET** /api/v1/graphs/{id}/nodes                                     |             |
 | [**runGraph**](#rungraph)                                 | **POST** /api/v1/graphs/{id}/run                                      |             |
 | [**suggestAgentInstructions**](#suggestagentinstructions) | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions |             |
+| [**suggestKnowledgeContent**](#suggestknowledgecontent)   | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge    |             |
 | [**updateGraph**](#updategraph)                           | **PUT** /api/v1/graphs/{id}                                           |             |
+
+# **analyzeThread**
+
+> ThreadAnalysisResponseDto analyzeThread(threadAnalysisRequestDto)
+
+### Example
+
+```typescript
+import { GraphsApi, Configuration, ThreadAnalysisRequestDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new GraphsApi(configuration);
+
+let threadId: string; // (default to undefined)
+let threadAnalysisRequestDto: ThreadAnalysisRequestDto; //
+
+const { status, data } = await apiInstance.analyzeThread(
+  threadId,
+  threadAnalysisRequestDto,
+);
+```
+
+### Parameters
+
+| Name                         | Type                         | Description | Notes                 |
+| ---------------------------- | ---------------------------- | ----------- | --------------------- |
+| **threadAnalysisRequestDto** | **ThreadAnalysisRequestDto** |             |                       |
+| **threadId**                 | [**string**]                 |             | defaults to undefined |
+
+### Return type
+
+**ThreadAnalysisResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **createGraph**
 
@@ -413,6 +464,58 @@ const { status, data } = await apiInstance.suggestAgentInstructions(
 ### Return type
 
 **SuggestAgentInstructionsResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suggestKnowledgeContent**
+
+> SuggestKnowledgeContentResponseDto suggestKnowledgeContent(suggestKnowledgeContentDto)
+
+### Example
+
+```typescript
+import { GraphsApi, Configuration, SuggestKnowledgeContentDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new GraphsApi(configuration);
+
+let graphId: string; // (default to undefined)
+let nodeId: string; // (default to undefined)
+let suggestKnowledgeContentDto: SuggestKnowledgeContentDto; //
+
+const { status, data } = await apiInstance.suggestKnowledgeContent(
+  graphId,
+  nodeId,
+  suggestKnowledgeContentDto,
+);
+```
+
+### Parameters
+
+| Name                           | Type                           | Description | Notes                 |
+| ------------------------------ | ------------------------------ | ----------- | --------------------- |
+| **suggestKnowledgeContentDto** | **SuggestKnowledgeContentDto** |             |                       |
+| **graphId**                    | [**string**]                   |             | defaults to undefined |
+| **nodeId**                     | [**string**]                   |             | defaults to undefined |
+
+### Return type
+
+**SuggestKnowledgeContentResponseDto**
 
 ### Authorization
 
