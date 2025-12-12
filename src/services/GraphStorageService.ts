@@ -18,6 +18,32 @@ export type GraphDiffKind = 'structure' | 'position' | 'metadata';
 
 export class GraphStorageService {
   private static readonly STORAGE_KEY_PREFIX = 'graph_draft_';
+  private static readonly VIEWPORT_KEY_PREFIX = 'graph_viewport_';
+
+  static loadViewport(graphId: string): Viewport | null {
+    try {
+      const key = `${this.VIEWPORT_KEY_PREFIX}${graphId}`;
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Partial<Viewport>;
+      return {
+        x: typeof parsed.x === 'number' ? parsed.x : 0,
+        y: typeof parsed.y === 'number' ? parsed.y : 0,
+        zoom: typeof parsed.zoom === 'number' ? parsed.zoom : 1,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  static saveViewport(graphId: string, viewport: Viewport): void {
+    try {
+      const key = `${this.VIEWPORT_KEY_PREFIX}${graphId}`;
+      localStorage.setItem(key, JSON.stringify(viewport));
+    } catch {
+      //
+    }
+  }
 
   /**
    * Load draft state from localStorage for a specific graph.
@@ -27,7 +53,7 @@ export class GraphStorageService {
       const key = `${this.STORAGE_KEY_PREFIX}${graphId}`;
       const raw = localStorage.getItem(key);
       if (!raw) return null;
-      
+
       const parsed = JSON.parse(raw) as GraphDiffState;
       return parsed;
     } catch (error) {

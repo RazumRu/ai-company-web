@@ -231,7 +231,7 @@ export const GraphPage = () => {
   const [saving, setSaving] = useState(false);
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [graph, setGraph] = useState<GraphDto | null>(null);
-  
+
   // Server state for the draft hook (initialized with empty state, updated after load)
   const [serverGraphState, setServerGraphState] = useState<GraphDiffState>({
     nodes: [],
@@ -239,34 +239,58 @@ export const GraphPage = () => {
     viewport: { x: 0, y: 0, zoom: 1 },
     selectedThreadId: undefined,
   });
-  
+
   // React Flow state (will be synced with draft state via onStateChange)
   const [nodes, setNodes, baseOnNodesChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<GraphEdge>([]);
-  const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
-  const [selectedThreadId, setSelectedThreadId] = useState<string | undefined>();
+  const [viewport, setViewport] = useState<Viewport>(() => {
+    if (!id) return { x: 0, y: 0, zoom: 1 };
+    if (GraphStorageService.hasDraft(id)) return { x: 0, y: 0, zoom: 1 };
+    return GraphStorageService.loadViewport(id) ?? { x: 0, y: 0, zoom: 1 };
+  });
+  const viewportRef = useRef<Viewport>(viewport);
+  useEffect(() => {
+    viewportRef.current = viewport;
+  }, [viewport]);
+
+  const [selectedThreadId, setSelectedThreadId] = useState<
+    string | undefined
+  >();
   const selectedThreadIdRef = useRef<string | undefined>();
   useEffect(() => {
     selectedThreadIdRef.current = selectedThreadId;
   }, [selectedThreadId]);
 
+  const pendingViewportSaveRef = useRef<Viewport | null>(null);
+  const viewportSaveRafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (viewportSaveRafRef.current != null) {
+        cancelAnimationFrame(viewportSaveRafRef.current);
+        viewportSaveRafRef.current = null;
+      }
+    };
+  }, []);
+
   // Callback to sync draft state changes to React Flow
-  const handleDraftStateChange = useCallback((newState: GraphDiffState) => {
-    // Set flag to prevent circular updates
-    isSyncingFromDraftRef.current = true;
-    
-    setNodes(newState.nodes);
-    setEdges(newState.edges);
-    setViewport(newState.viewport);
-    if (newState.selectedThreadId !== selectedThreadIdRef.current) {
-      setSelectedThreadId(newState.selectedThreadId);
-    }
-    
-    // Clear flag after state updates complete
-    requestAnimationFrame(() => {
-      isSyncingFromDraftRef.current = false;
-    });
-  }, [setNodes, setEdges]);
+  const handleDraftStateChange = useCallback(
+    (newState: GraphDiffState) => {
+      isSyncingFromDraftRef.current = true;
+
+      setNodes(newState.nodes);
+      setEdges(newState.edges);
+      setViewport(newState.viewport);
+      if (newState.selectedThreadId !== selectedThreadIdRef.current) {
+        setSelectedThreadId(newState.selectedThreadId);
+      }
+
+      requestAnimationFrame(() => {
+        isSyncingFromDraftRef.current = false;
+      });
+    },
+    [setNodes, setEdges, setViewport],
+  );
 
   // Central draft state management - single source of truth!
   const draftState = useGraphDraftState({
@@ -274,7 +298,13 @@ export const GraphPage = () => {
     serverState: serverGraphState,
     onStateChange: handleDraftStateChange,
   });
-  
+
+  // Ref for draft state to use in callbacks without recreating them
+  const draftStateRef = useRef(draftState);
+  useEffect(() => {
+    draftStateRef.current = draftState;
+  }, [draftState]);
+
   const isHydratingRef = useRef(true);
   const userInteractedRef = useRef(false);
   const isSyncingFromDraftRef = useRef(false);
@@ -410,7 +440,7 @@ export const GraphPage = () => {
               y: metadata.y,
               zoom: metadata.zoom,
             }
-          : viewport;
+          : viewportRef.current;
 
       return {
         nodes: refreshedNodes,
@@ -419,19 +449,45 @@ export const GraphPage = () => {
         selectedThreadId,
       };
     },
-    [templates, viewport, selectedThreadId],
+    [templates, selectedThreadId],
   );
 
   // Use draft state flags - single source of truth!
   const hasUnsavedChanges = draftState.hasUnsavedChanges;
   const hasStructuralChanges = draftState.hasStructuralChanges;
+  const handleViewportPersistChange = useCallback(
+    (nextViewport: Viewport) => {
+      setViewport(nextViewport);
+
+      if (!id) return;
+      if (loading) return;
+      if (isSyncingFromDraftRef.current) return;
+
+      // Update draft state immediately so it stays in sync
+      draftStateRef.current.updateViewport(nextViewport);
+
+      pendingViewportSaveRef.current = nextViewport;
+
+      if (viewportSaveRafRef.current != null) {
+        return;
+      }
+
+      viewportSaveRafRef.current = requestAnimationFrame(() => {
+        viewportSaveRafRef.current = null;
+        const vp = pendingViewportSaveRef.current;
+        if (!vp) return;
+
+        GraphStorageService.saveViewport(id, vp);
+      });
+    },
+    [id, loading, setViewport],
+  );
   const selectedNodeUnsavedFromServer = useMemo(() => {
     if (!selectedNode?.id) return false;
     return draftState.hasNodeChanges(selectedNode.id);
   }, [selectedNode?.id, draftState]);
 
   const [messageMeta, setMessageMeta] = useState<MessageMetaState>({});
-
   const defaultNewMessageMode = useMemo<
     'inject_after_tool_call' | 'wait_for_completion'
   >(() => {
@@ -439,6 +495,7 @@ export const GraphPage = () => {
       const data = n.data as unknown as GraphNodeData;
       return (data?.templateKind || '').toLowerCase() === 'simpleagent';
     });
+
     const modeFromNode = (firstAgentNode?.data as GraphNodeData | undefined)
       ?.config?.newMessageMode as
       | 'inject_after_tool_call'
@@ -817,15 +874,25 @@ export const GraphPage = () => {
         });
 
         // Create server baseline state from the loaded graph
+        // Prioritize localStorage viewport over server metadata
+        const storedViewport = !GraphStorageService.hasDraft(id)
+          ? GraphStorageService.loadViewport(id)
+          : null;
+        
+        const serverViewport =
+          metadata.x !== undefined &&
+          metadata.y !== undefined &&
+          metadata.zoom !== undefined
+            ? { x: metadata.x, y: metadata.y, zoom: metadata.zoom }
+            : null;
+        
         const serverState: GraphDiffState = {
           nodes: reactFlowNodes,
           edges: reactFlowEdges,
-          viewport: metadata.x !== undefined && metadata.y !== undefined && metadata.zoom !== undefined
-            ? { x: metadata.x, y: metadata.y, zoom: metadata.zoom }
-            : { x: 0, y: 0, zoom: 1 },
+          viewport: storedViewport ?? serverViewport ?? { x: 0, y: 0, zoom: 1 },
           selectedThreadId,
         };
-        
+
         // Update server baseline - the hook will automatically apply any stored local changes
         setServerGraphState(serverState);
         draftState.updateServerBaseline(serverState);
@@ -883,7 +950,10 @@ export const GraphPage = () => {
       }
 
       if (currentGraphStatus !== GraphDtoStatusEnum.Running) {
-        setCompiledNodesMap({});
+        setCompiledNodesMap((prev) => {
+          // Only update if not already empty to prevent unnecessary rerenders
+          return Object.keys(prev).length === 0 ? prev : {};
+        });
         setCompiledNodesLoading(false);
         return;
       }
@@ -903,14 +973,33 @@ export const GraphPage = () => {
           externalThreadId || undefined,
         );
         const nodesWithStatus = response.data || [];
-        setCompiledNodesMap(() => {
+        setCompiledNodesMap((prevMap) => {
           const next = nodesWithStatus.reduce<
             Record<string, GraphNodeWithStatusDto>
           >((acc, node) => {
             acc[node.id] = node;
             return acc;
           }, {});
-          return next;
+          
+          // Only update if the data actually changed to prevent unnecessary rerenders
+          const prevKeys = Object.keys(prevMap).sort();
+          const nextKeys = Object.keys(next).sort();
+          
+          if (prevKeys.length !== nextKeys.length || 
+              !prevKeys.every((key, i) => key === nextKeys[i])) {
+            return next;
+          }
+          
+          // Check if any node data changed
+          const hasChanges = nextKeys.some(key => {
+            const prevNode = prevMap[key];
+            const nextNode = next[key];
+            return !prevNode || 
+                   prevNode.status !== nextNode.status ||
+                   JSON.stringify(prevNode) !== JSON.stringify(nextNode);
+          });
+          
+          return hasChanges ? next : prevMap;
         });
       } catch (error) {
         console.error('Error loading compiled nodes:', error);
@@ -1285,7 +1374,10 @@ export const GraphPage = () => {
           newStatus === GraphDtoStatusEnum.Compiling ||
           newStatus === GraphDtoStatusEnum.Stopped
         ) {
-          setCompiledNodesMap({});
+          setCompiledNodesMap((prev) => {
+            // Only update if not already empty to prevent unnecessary rerenders
+            return Object.keys(prev).length === 0 ? prev : {};
+          });
         }
 
         setGraph((prev) => {
@@ -1770,10 +1862,7 @@ export const GraphPage = () => {
 
   // Stabilize callbacks to prevent nodeTypes recreation
   // Use refs for draft state access to avoid dependencies
-  const draftStateRef = useRef(draftState);
-  useEffect(() => {
-    draftStateRef.current = draftState;
-  }, [draftState]);
+  // (draftStateRef is already defined earlier in the component)
 
   const handleNodeAdd = useCallback((node: GraphNode) => {
     const newNodes = [...draftStateRef.current.draftState.nodes, node];
@@ -1913,7 +2002,7 @@ export const GraphPage = () => {
       }
 
       message.success('Graph saved successfully');
-      
+
       // Clear draft and update server baseline
       const refreshedState = rebuildStateFromGraph(updatedGraph);
       setServerGraphState(refreshedState);
@@ -1993,18 +2082,6 @@ export const GraphPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [triggerNodeId, id, threads, hasUnsavedChanges, handleSave],
   );
-
-  const handleViewportChange = useCallback((newViewport: Viewport) => {
-    if (isHydratingRef.current) {
-      return;
-    }
-    if (!userInteractedRef.current) {
-      return;
-    }
-    if (isSyncingFromDraftRef.current) return; // Don't update draft if we're syncing FROM draft
-    
-    draftStateRef.current.updateViewport(newViewport);
-  }, []);
 
   const handleDeleteThread = useCallback(
     async (threadId: string) => {
@@ -2090,7 +2167,7 @@ export const GraphPage = () => {
         return;
       }
       if (isSyncingFromDraftRef.current) return; // Don't update draft if we're syncing FROM draft
-      
+
       // Update draft state with the new edges after changes are applied
       setTimeout(() => {
         if (!isSyncingFromDraftRef.current) {
@@ -3038,7 +3115,7 @@ export const GraphPage = () => {
               onNodeEdit={handleNodeEdit}
               onNodeDelete={handleNodeDelete}
               onNodeSelect={handleNodeSelect}
-              onViewportChange={handleViewportChange}
+              onViewportChange={handleViewportPersistChange}
               initialViewport={viewport}
               templates={templates}
               graphStatus={graph?.status}

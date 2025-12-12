@@ -192,9 +192,26 @@ export const NodeEditSidebar = React.memo(
     const [aiSuggestionState, setAiSuggestionState] =
       useState<AiSuggestionState | null>(null);
 
-    const deepEqual = useCallback((a: unknown, b: unknown) => {
-      return JSON.stringify(a) === JSON.stringify(b);
+    const deepSortKeys = useCallback((obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(deepSortKeys);
+      
+      const sorted: any = {};
+      Object.keys(obj)
+        .sort()
+        .forEach(key => {
+          sorted[key] = deepSortKeys(obj[key]);
+        });
+      return sorted;
     }, []);
+
+    const deepEqual = useCallback((a: unknown, b: unknown) => {
+      // Sort keys before comparing to handle key ordering differences
+      const sortedA = deepSortKeys(a);
+      const sortedB = deepSortKeys(b);
+      return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+    }, [deepSortKeys]);
 
     const computeHasLocalUnsavedChanges = useCallback(() => {
       const currentValues = form.getFieldsValue(true);
@@ -693,8 +710,18 @@ export const NodeEditSidebar = React.memo(
     const buildProcessedConfig = useCallback((): Record<string, unknown> => {
       const currentConfig: Record<string, unknown> =
         (node?.data as unknown as GraphNodeData | undefined)?.config ?? {};
-      const configValues: Record<string, unknown> = { ...currentConfig };
+      
+      // Start with keys that are NOT in formFields (to preserve them)
+      const formFieldKeys = new Set(formFields.map(f => f.key));
+      const configValues: Record<string, unknown> = {};
+      Object.keys(currentConfig).forEach(key => {
+        if (!formFieldKeys.has(key)) {
+          configValues[key] = currentConfig[key];
+        }
+      });
 
+      // Process all form fields and include them in the config (even if they have default values)
+      // This ensures the server always has the full config
       formFields.forEach((field) => {
         const key = field.key;
 
@@ -725,12 +752,8 @@ export const NodeEditSidebar = React.memo(
           isEmptyArray ||
           isEmptyObject;
 
-        const currentValueExists = key in currentConfig;
+        // Skip truly empty values (but not booleans)
         if (isTrulyEmpty && field.type !== 'boolean') {
-          // Preserve existing value if the user didn't explicitly clear it.
-          if (currentValueExists) {
-            configValues[key] = currentConfig[key];
-          }
           return;
         }
 
@@ -819,6 +842,7 @@ export const NodeEditSidebar = React.memo(
      */
     const pushDraftChange = useCallback(() => {
       if (!node) return;
+      if (isHydratingRef.current) return; // Don't push during hydration
 
       const configValues = buildProcessedConfig();
       const currentConfig: Record<string, unknown> =
@@ -875,17 +899,16 @@ export const NodeEditSidebar = React.memo(
           return;
         }
         
+        // Always push changes to draft state
+        // The draft state layer will determine if there are unsaved changes vs server baseline
+        pushDraftChange();
+        
         // Compute whether the form has actually changed from the initial values
         const hasChanges = computeHasLocalUnsavedChanges();
         
         // Update local unsaved state - this can go from true to false
         // if the user reverts their changes back to the initial values
         setHasLocalUnsavedChanges(hasChanges);
-
-        // Only push draft changes if there are actual changes
-        if (hasChanges) {
-          pushDraftChange();
-        }
       },
       [computeHasLocalUnsavedChanges, pushDraftChange],
     );

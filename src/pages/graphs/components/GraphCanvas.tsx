@@ -18,7 +18,7 @@ import {
   PanOnScrollMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, memo } from 'react';
 import { CustomNode } from './CustomNode';
 import type { GraphNode, GraphEdge, GraphNodeData } from '../types';
 import {
@@ -64,14 +64,23 @@ export const createEdge = (
   sourceHandle?: string,
   targetHandle?: string,
   label?: string,
-): GraphEdge => ({
-  id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-  source,
-  target,
-  sourceHandle,
-  targetHandle,
-  label,
-});
+): GraphEdge => {
+  // Generate deterministic ID based on connection
+  // This ensures the same connection always gets the same ID
+  const idParts = [source, target];
+  if (sourceHandle) idParts.push(sourceHandle);
+  if (targetHandle) idParts.push(targetHandle);
+  const deterministicId = `edge-${idParts.join('-')}`;
+  
+  return {
+    id: deterministicId,
+    source,
+    target,
+    sourceHandle,
+    targetHandle,
+    label,
+  };
+};
 
 export const resolveHandlesForNodes = (
   sourceNode: GraphNode | undefined,
@@ -181,9 +190,33 @@ const GraphCanvasInner = ({
   compiledNodes,
   compiledNodesLoading,
 }: GraphCanvasProps) => {
-  const { screenToFlowPosition } = useReactFlow();
+  const {
+    screenToFlowPosition,
+    setViewport: setReactFlowViewport,
+    getViewport,
+  } = useReactFlow();
   const [connectionPreview, setConnectionPreview] =
     useState<ConnectionPreview | null>(null);
+
+  useEffect(() => {
+    if (!initialViewport) return;
+
+    const current = getViewport();
+    const same =
+      Math.abs(current.x - initialViewport.x) < 0.01 &&
+      Math.abs(current.y - initialViewport.y) < 0.01 &&
+      Math.abs(current.zoom - initialViewport.zoom) < 0.0001;
+
+    if (same) return;
+
+    setReactFlowViewport(initialViewport);
+  }, [
+    initialViewport?.x,
+    initialViewport?.y,
+    initialViewport?.zoom,
+    getViewport,
+    setReactFlowViewport,
+  ]);
 
   // Memoize nodeTypes to prevent recreation on every render
   // Only recreate when templates, graphStatus, or compiledNodesLoading change
@@ -486,8 +519,36 @@ const GraphCanvasInner = ({
   );
 };
 
+// Memoize GraphCanvasInner to prevent unnecessary rerenders
+const MemoizedGraphCanvasInner = memo(GraphCanvasInner, (prevProps, nextProps) => {
+  // Only rerender if these specific props change
+  // compiledNodes is intentionally omitted - it's accessed dynamically by node ID
+  return (
+    prevProps.nodes === nextProps.nodes &&
+    prevProps.edges === nextProps.edges &&
+    prevProps.onNodesChange === nextProps.onNodesChange &&
+    prevProps.onEdgesChange === nextProps.onEdgesChange &&
+    prevProps.onNodeAdd === nextProps.onNodeAdd &&
+    prevProps.onNodeEdit === nextProps.onNodeEdit &&
+    prevProps.onNodeDelete === nextProps.onNodeDelete &&
+    prevProps.onNodeSelect === nextProps.onNodeSelect &&
+    prevProps.onViewportChange === nextProps.onViewportChange &&
+    prevProps.initialViewport?.x === nextProps.initialViewport?.x &&
+    prevProps.initialViewport?.y === nextProps.initialViewport?.y &&
+    prevProps.initialViewport?.zoom === nextProps.initialViewport?.zoom &&
+    prevProps.templates === nextProps.templates &&
+    prevProps.graphStatus === nextProps.graphStatus &&
+    prevProps.onTriggerClick === nextProps.onTriggerClick &&
+    prevProps.onValidationError === nextProps.onValidationError &&
+    prevProps.compiledNodesLoading === nextProps.compiledNodesLoading
+    // compiledNodes prop is intentionally skipped in comparison
+  );
+});
+
+MemoizedGraphCanvasInner.displayName = 'GraphCanvasInner';
+
 export const GraphCanvas = (props: GraphCanvasProps) => (
   <ReactFlowProvider>
-    <GraphCanvasInner {...props} />
+    <MemoizedGraphCanvasInner {...props} />
   </ReactFlowProvider>
 );
