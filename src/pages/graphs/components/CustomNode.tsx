@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { Handle, NodeProps, Position, useStore } from '@xyflow/react';
-import { Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
+import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
 import {
   DeleteOutlined,
   ExclamationCircleOutlined,
@@ -11,6 +11,7 @@ import type { GraphEdge, GraphNode, GraphNodeData } from '../types';
 import { makeHandleId } from './GraphCanvas';
 import type { ConnectionPreview, ConnectionRule } from './GraphCanvas';
 import { GraphValidationService } from '../../../services/GraphValidationService';
+import { getAgentAvatarDataUri } from '../../../utils/agentAvatars';
 import {
   GraphDtoStatusEnum,
   GraphNodeWithStatusDto,
@@ -274,6 +275,7 @@ export const CustomNode = React.memo(
     };
 
     const templateKindLower = (nodeTemplate?.kind || '').toLowerCase();
+    const isAgentNode = templateKindLower === 'simpleagent';
     const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
       templateKindLower,
     );
@@ -322,6 +324,14 @@ export const CustomNode = React.memo(
       </Tooltip>
     ) : null;
 
+    const agentAvatar = isAgentNode ? (
+      <Avatar
+        size={24}
+        src={getAgentAvatarDataUri(nodeId, 48)}
+        style={{ flexShrink: 0 }}
+      />
+    ) : null;
+
     return (
       <Card
         size="small"
@@ -364,6 +374,7 @@ export const CustomNode = React.memo(
             <Space size="small" align="center">
               <Space size={8} align="center">
                 {statusDot}
+                {agentAvatar}
                 <Text
                   strong
                   style={{

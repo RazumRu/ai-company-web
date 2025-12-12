@@ -6,6 +6,8 @@
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
     "@ant-design/plots": "^1.2.6",
+    "@dicebear/collection": "^9.2.4",
+    "@dicebear/core": "^9.2.4",
     "@react-keycloak/web": "^3.4.0",
     "@refinedev/antd": "^5.47.0",
     "@refinedev/cli": "^2.16.49",

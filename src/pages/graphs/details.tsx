@@ -1105,6 +1105,14 @@ export const GraphPage = () => {
     return revisions[0];
   }, [revisions, graph?.version]);
 
+  const isRevisionApplying = useMemo(
+    () =>
+      revisions.some(
+        (revision) => revision.status === GraphRevisionDtoStatusEnum.Applying,
+      ),
+    [revisions],
+  );
+
   const displayedRevisionMeta: {
     label: string;
     color: string;
@@ -2945,7 +2953,13 @@ export const GraphPage = () => {
                 </Tooltip>
               )}
               <Tooltip
-                title={hasStructuralChanges ? 'Save (unsaved changes)' : 'Save'}
+                title={
+                  isRevisionApplying
+                    ? 'Applying revision...'
+                    : hasStructuralChanges
+                      ? 'Save (unsaved changes)'
+                      : 'Save'
+                }
                 placement="bottom">
                 <Popover
                   content="You have unsaved changes"
@@ -2955,6 +2969,7 @@ export const GraphPage = () => {
                   <span
                     role="button"
                     aria-label="Save graph"
+                    aria-disabled={saving || isRevisionApplying}
                     style={{
                       width: 36,
                       height: 36,
@@ -2963,11 +2978,12 @@ export const GraphPage = () => {
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: saving ? 'progress' : 'pointer',
+                      cursor:
+                        saving || isRevisionApplying ? 'progress' : 'pointer',
                       transition: 'background-color 0.2s',
                     }}
                     onClick={() => {
-                      if (!saving) {
+                      if (!saving && !isRevisionApplying) {
                         handleSave();
                       }
                     }}
@@ -2977,7 +2993,7 @@ export const GraphPage = () => {
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}>
-                    {saving ? (
+                    {saving || isRevisionApplying ? (
                       <LoadingOutlined style={{ fontSize: 20 }} spin />
                     ) : (
                       <SaveFilled style={{ fontSize: 20 }} />

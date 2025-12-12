@@ -18,6 +18,7 @@ import { MarkdownContent } from './threadMessages/MarkdownContent';
 import { ChatBubble } from './threadMessages/ChatBubble';
 import { ShellToolDisplay } from './threadMessages/ShellToolDisplay';
 import { ReasoningMessage } from './threadMessages/ReasoningMessage';
+import { getAgentAvatarDataUri } from '../../../utils/agentAvatars';
 import {
   formatMessageContent,
   isBlankContent,
@@ -797,12 +798,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       const messageColor = needsMoreInfo ? '#faad14' : '#52c41a';
       const statusTag = needsMoreInfo ? '⚠ Need more info' : '✓ Finished';
+      const avatarSrc = metadata?.nodeId
+        ? getAgentAvatarDataUri(metadata.nodeId)
+        : undefined;
 
       return (
         <ChatBubble
           isHuman={false}
           avatarLabel="AI"
           avatarColor={messageColor}
+          avatarSrc={avatarSrc}
           containerStyle={{ marginBottom: '8px' }}
           bubbleStyle={{
             backgroundColor: '#f3f3f3',
@@ -982,6 +987,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       if (isBlankContent(message.message?.content)) return null;
 
       const isHuman = role === 'human';
+      const avatarSeedNodeId = message.nodeId || nodeId;
+      const avatarSrc =
+        !isHuman && avatarSeedNodeId
+          ? getAgentAvatarDataUri(avatarSeedNodeId)
+          : undefined;
       const avatarColor = isHuman
         ? '#1890ff'
         : role === 'ai'
@@ -995,6 +1005,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           isHuman={isHuman}
           avatarLabel={isHuman ? 'ME' : 'AI'}
           avatarColor={avatarColor}
+          avatarSrc={avatarSrc}
           footer={
             metadataText ? (
               <Text
@@ -1019,6 +1030,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const renderPendingMessage = (message: PendingMessage) => {
       const isHuman = message.role === 'human';
       const content = message.content;
+      const avatarSrc =
+        !isHuman && nodeId ? getAgentAvatarDataUri(nodeId) : undefined;
 
       const sendTimeText =
         newMessageMode === 'inject_after_tool_call'
@@ -1032,6 +1045,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           isHuman={isHuman}
           avatarLabel={isHuman ? 'ME' : 'AI'}
           avatarColor={isHuman ? '#1890ff' : '#52c41a'}
+          avatarSrc={avatarSrc}
           containerStyle={{ opacity: 0.6 }}
           bubbleStyle={{ border: '2px dashed #d9d9d9' }}
           footer={

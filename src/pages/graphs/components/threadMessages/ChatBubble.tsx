@@ -5,6 +5,7 @@ interface ChatBubbleProps {
   isHuman: boolean;
   avatarLabel: string;
   avatarColor: string;
+  avatarSrc?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
   bubbleStyle?: React.CSSProperties;
@@ -15,6 +16,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   isHuman,
   avatarLabel,
   avatarColor,
+  avatarSrc,
   children,
   footer,
   bubbleStyle,
@@ -59,21 +61,19 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   return (
     <div style={mergedContainer}>
       {!isHuman && (
-        <Avatar
-          style={{ backgroundColor: avatarColor, flexShrink: 0 }}
-          size="small">
+        <Avatar src={avatarSrc} style={{ flexShrink: 0 }} size={27}>
           {avatarLabel}
         </Avatar>
       )}
       {ContentWrapper}
       {isHuman && (
         <Avatar
+          src={avatarSrc}
           style={{ backgroundColor: avatarColor, flexShrink: 0 }}
-          size="small">
+          size={27}>
           {avatarLabel}
         </Avatar>
       )}
     </div>
   );
 };
-

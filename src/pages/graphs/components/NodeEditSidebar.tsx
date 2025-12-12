@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import {
   Alert,
+  Avatar,
   Button,
   Form,
   Input,
@@ -56,6 +57,7 @@ import type { PendingMessage } from '../types/messages';
 import { KeyValuePairsInput } from './KeyValuePairsInput';
 import { NodeMessagesPanel } from './NodeMessagesPanel';
 import { extractApiErrorMessage } from '../../../utils/errors';
+import { getAgentAvatarDataUri } from '../../../utils/agentAvatars';
 import 'diff2html/bundles/css/diff2html.min.css';
 
 const DIFF_NO_LINE_NUMBERS_CSS = `
@@ -196,22 +198,25 @@ export const NodeEditSidebar = React.memo(
       if (obj === null || obj === undefined) return obj;
       if (typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(deepSortKeys);
-      
+
       const sorted: any = {};
       Object.keys(obj)
         .sort()
-        .forEach(key => {
+        .forEach((key) => {
           sorted[key] = deepSortKeys(obj[key]);
         });
       return sorted;
     }, []);
 
-    const deepEqual = useCallback((a: unknown, b: unknown) => {
-      // Sort keys before comparing to handle key ordering differences
-      const sortedA = deepSortKeys(a);
-      const sortedB = deepSortKeys(b);
-      return JSON.stringify(sortedA) === JSON.stringify(sortedB);
-    }, [deepSortKeys]);
+    const deepEqual = useCallback(
+      (a: unknown, b: unknown) => {
+        // Sort keys before comparing to handle key ordering differences
+        const sortedA = deepSortKeys(a);
+        const sortedB = deepSortKeys(b);
+        return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+      },
+      [deepSortKeys],
+    );
 
     const computeHasLocalUnsavedChanges = useCallback(() => {
       const currentValues = form.getFieldsValue(true);
@@ -244,7 +249,9 @@ export const NodeEditSidebar = React.memo(
     const nodeDirtyWarning = useMemo(() => {
       // Show warning if there are local form changes OR the node differs from the
       // server baseline (draft != server). The parent owns this comparison.
-      return shouldShowUnsavedWarning || Boolean(hasNodeUnsavedChangesFromServer);
+      return (
+        shouldShowUnsavedWarning || Boolean(hasNodeUnsavedChangesFromServer)
+      );
     }, [shouldShowUnsavedWarning, hasNodeUnsavedChangesFromServer]);
 
     // Track the previous node ID to detect node switches
@@ -710,11 +717,11 @@ export const NodeEditSidebar = React.memo(
     const buildProcessedConfig = useCallback((): Record<string, unknown> => {
       const currentConfig: Record<string, unknown> =
         (node?.data as unknown as GraphNodeData | undefined)?.config ?? {};
-      
+
       // Start with keys that are NOT in formFields (to preserve them)
-      const formFieldKeys = new Set(formFields.map(f => f.key));
+      const formFieldKeys = new Set(formFields.map((f) => f.key));
       const configValues: Record<string, unknown> = {};
-      Object.keys(currentConfig).forEach(key => {
+      Object.keys(currentConfig).forEach((key) => {
         if (!formFieldKeys.has(key)) {
           configValues[key] = currentConfig[key];
         }
@@ -767,8 +774,7 @@ export const NodeEditSidebar = React.memo(
               if (Number.isNaN(num)) {
                 return;
               }
-              processedValue =
-                field.type === 'integer' ? Math.trunc(num) : num;
+              processedValue = field.type === 'integer' ? Math.trunc(num) : num;
             } else if (typeof effectiveValue === 'number') {
               processedValue =
                 field.type === 'integer'
@@ -847,11 +853,12 @@ export const NodeEditSidebar = React.memo(
       const configValues = buildProcessedConfig();
       const currentConfig: Record<string, unknown> =
         (node.data as unknown as GraphNodeData | undefined)?.config ?? {};
-      const currentLabel = (node.data as unknown as GraphNodeData | undefined)?.label;
-      
+      const currentLabel = (node.data as unknown as GraphNodeData | undefined)
+        ?.label;
+
       const labelUnchanged = nodeName === currentLabel;
       const configUnchanged = deepEqual(configValues, currentConfig);
-      
+
       if (labelUnchanged && configUnchanged) {
         return;
       }
@@ -861,7 +868,6 @@ export const NodeEditSidebar = React.memo(
         config: configValues,
       });
     }, [node, nodeName, buildProcessedConfig, deepEqual, onNodeDraftChange]);
-
 
     // Cleanup effect: push any pending draft changes when unmounting
     // Note: This is a safety net, but ideally changes should be pushed immediately
@@ -884,7 +890,12 @@ export const NodeEditSidebar = React.memo(
         }
       }
       setExpandedTextarea(null);
-    }, [expandedTextarea, form, computeHasLocalUnsavedChanges, pushDraftChange]);
+    }, [
+      expandedTextarea,
+      form,
+      computeHasLocalUnsavedChanges,
+      pushDraftChange,
+    ]);
 
     const handleFormChange = useCallback(
       (
@@ -893,19 +904,19 @@ export const NodeEditSidebar = React.memo(
       ) => {
         void _changedValues;
         void _allValues;
-        
+
         // Ignore changes during form hydration (initial mount / node switch)
         if (isHydratingRef.current) {
           return;
         }
-        
+
         // Always push changes to draft state
         // The draft state layer will determine if there are unsaved changes vs server baseline
         pushDraftChange();
-        
+
         // Compute whether the form has actually changed from the initial values
         const hasChanges = computeHasLocalUnsavedChanges();
-        
+
         // Update local unsaved state - this can go from true to false
         // if the user reverts their changes back to the initial values
         setHasLocalUnsavedChanges(hasChanges);
@@ -1104,16 +1115,11 @@ export const NodeEditSidebar = React.memo(
       }
 
       setAiSuggestionState(null);
-      
+
       // Push the AI suggestion as a draft change
       setHasLocalUnsavedChanges(true);
       pushDraftChange();
-    }, [
-      aiSuggestionState,
-      expandedTextarea?.fieldKey,
-      form,
-      pushDraftChange,
-    ]);
+    }, [aiSuggestionState, expandedTextarea?.fieldKey, form, pushDraftChange]);
 
     const renderFormField = (field: FormField) => {
       const {
@@ -1595,6 +1601,13 @@ export const NodeEditSidebar = React.memo(
                   alignItems: 'center',
                   gap: 4,
                 }}>
+                {isAgentNode && node?.id && (
+                  <Avatar
+                    size={30}
+                    src={getAgentAvatarDataUri(node.id, 64)}
+                    style={{ flexShrink: 0 }}
+                  />
+                )}
                 <Text
                   strong
                   style={{
