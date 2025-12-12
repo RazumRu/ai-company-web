@@ -1354,35 +1354,64 @@ export const ChatsPage = () => {
               borderBottom: '1px solid #f0f0f0',
               flexShrink: 0,
             }}>
-            <Space
-              align="center"
-              style={{ width: '100%', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 12,
+                minWidth: 0,
+              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  minWidth: 0,
+                  flex: 1,
+                }}>
                 <Title level={4} style={{ margin: 0 }}>
                   Chats
                 </Title>
                 {graphFilterId && (
-                  <Space size={4} align="center">
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      Showing threads for graph:{' '}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      width: '100%',
+                      minWidth: 0,
+                      flexWrap: 'nowrap',
+                    }}>
+                    <span
+                      style={{
+                        flex: '1 1 auto',
+                        minWidth: 0,
+                        fontSize: 12,
+                        color: 'rgba(0, 0, 0, 0.45)', // matches Typography.Text type="secondary"
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'block',
+                      }}
+                      title={`Graph: ${filteredGraphLabel ?? ''}`}>
+                      Graph:{' '}
                       <span style={{ fontWeight: 600 }}>
                         {filteredGraphLabel}
                       </span>
-                    </Text>
+                    </span>
                     <CloseOutlined
                       onClick={handleClearGraphFilter}
                       style={{
-                        minWidth: 0,
+                        flexShrink: 0,
                         cursor: 'pointer',
-                        fontSize: 8,
-                        marginLeft: 5,
-                        position: 'relative',
-                        top: '-1px',
+                        fontSize: 10,
                         color: '#747474',
                       }}
                       aria-label="Clear graph filter"
                     />
-                  </Space>
+                  </div>
                 )}
               </div>
               <Space>
@@ -1406,7 +1435,7 @@ export const ChatsPage = () => {
                   }}
                 />
               </Space>
-            </Space>
+            </div>
           </div>
           <div
             ref={threadsContainerRef}

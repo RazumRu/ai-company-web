@@ -89,7 +89,6 @@ import {
 } from './components/GraphCanvas';
 import {
   GraphStorageService,
-  type GraphDiffKind,
   type GraphDiffState,
 } from '../../services/GraphStorageService';
 import {
@@ -354,6 +353,7 @@ export const GraphPage = () => {
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [threadPopoverVisible, setThreadPopoverVisible] = useState(false);
   const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null);
+  const [stoppingThreadId, setStoppingThreadId] = useState<string | null>(null);
   const [threadChatThreadId, setThreadChatThreadId] = useState<string | null>(
     null,
   );
@@ -878,14 +878,14 @@ export const GraphPage = () => {
         const storedViewport = !GraphStorageService.hasDraft(id)
           ? GraphStorageService.loadViewport(id)
           : null;
-        
+
         const serverViewport =
           metadata.x !== undefined &&
           metadata.y !== undefined &&
           metadata.zoom !== undefined
             ? { x: metadata.x, y: metadata.y, zoom: metadata.zoom }
             : null;
-        
+
         const serverState: GraphDiffState = {
           nodes: reactFlowNodes,
           edges: reactFlowEdges,
@@ -980,25 +980,29 @@ export const GraphPage = () => {
             acc[node.id] = node;
             return acc;
           }, {});
-          
+
           // Only update if the data actually changed to prevent unnecessary rerenders
           const prevKeys = Object.keys(prevMap).sort();
           const nextKeys = Object.keys(next).sort();
-          
-          if (prevKeys.length !== nextKeys.length || 
-              !prevKeys.every((key, i) => key === nextKeys[i])) {
+
+          if (
+            prevKeys.length !== nextKeys.length ||
+            !prevKeys.every((key, i) => key === nextKeys[i])
+          ) {
             return next;
           }
-          
+
           // Check if any node data changed
-          const hasChanges = nextKeys.some(key => {
+          const hasChanges = nextKeys.some((key) => {
             const prevNode = prevMap[key];
             const nextNode = next[key];
-            return !prevNode || 
-                   prevNode.status !== nextNode.status ||
-                   JSON.stringify(prevNode) !== JSON.stringify(nextNode);
+            return (
+              !prevNode ||
+              prevNode.status !== nextNode.status ||
+              JSON.stringify(prevNode) !== JSON.stringify(nextNode)
+            );
           });
-          
+
           return hasChanges ? next : prevMap;
         });
       } catch (error) {
@@ -2114,6 +2118,27 @@ export const GraphPage = () => {
     [handleThreadChange, selectedThreadId],
   );
 
+  const handleStopThread = useCallback(async (threadId: string) => {
+    try {
+      setStoppingThreadId(threadId);
+      const response = await threadsApi.stopThread(threadId);
+      const stoppedThread = response.data;
+      if (stoppedThread) {
+        setThreads((prev) =>
+          prev.map((t) => (t.id === stoppedThread.id ? stoppedThread : t)),
+        );
+      }
+      message.success('Thread stop requested');
+    } catch (error) {
+      console.error('Error stopping thread:', error);
+      message.error(
+        extractApiErrorMessage(error, 'Failed to stop thread execution'),
+      );
+    } finally {
+      setStoppingThreadId(null);
+    }
+  }, []);
+
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const isDragging = changes.some(
@@ -2727,6 +2752,89 @@ export const GraphPage = () => {
                                 </Typography.Text>
                                 {selectedThreadId && (
                                   <>
+                                    {t?.status ===
+                                      ThreadDtoStatusEnum.Running && (
+                                      <Tooltip title="Stop thread execution">
+                                        <span
+                                          role="button"
+                                          aria-label="Stop current thread"
+                                          tabIndex={0}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
+                                            color: '#ff4242',
+                                            backgroundColor: 'transparent',
+                                            transition: 'background-color 0.2s',
+                                            cursor:
+                                              stoppingThreadId ===
+                                              selectedThreadId
+                                                ? 'default'
+                                                : 'pointer',
+                                            marginLeft: 4,
+                                            opacity:
+                                              stoppingThreadId ===
+                                              selectedThreadId
+                                                ? 0.7
+                                                : 1,
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (
+                                              stoppingThreadId ===
+                                              selectedThreadId
+                                            ) {
+                                              return;
+                                            }
+                                            handleStopThread(selectedThreadId);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (
+                                              e.key === 'Enter' ||
+                                              e.key === ' '
+                                            ) {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              if (
+                                                stoppingThreadId ===
+                                                selectedThreadId
+                                              ) {
+                                                return;
+                                              }
+                                              handleStopThread(
+                                                selectedThreadId,
+                                              );
+                                            }
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            if (
+                                              stoppingThreadId ===
+                                              selectedThreadId
+                                            ) {
+                                              return;
+                                            }
+                                            e.currentTarget.style.backgroundColor =
+                                              'rgba(255, 66, 66, 0.08)';
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor =
+                                              'transparent';
+                                          }}>
+                                          {stoppingThreadId ===
+                                          selectedThreadId ? (
+                                            <LoadingOutlined
+                                              style={{ fontSize: 12 }}
+                                              spin
+                                            />
+                                          ) : (
+                                            <XFilled />
+                                          )}
+                                        </span>
+                                      </Tooltip>
+                                    )}
                                     <Tooltip title="Open chat for thread">
                                       <span
                                         role="button"

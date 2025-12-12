@@ -4369,6 +4369,109 @@ export const ThreadsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} threadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    stopThread: async (
+      threadId: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'threadId' is not null or undefined
+      assertParamExists('stopThread', 'threadId', threadId);
+      const localVarPath = `/api/v1/threads/{threadId}/stop`.replace(
+        `{${'threadId'}}`,
+        encodeURIComponent(String(threadId)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} externalThreadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    stopThreadByExternalId: async (
+      externalThreadId: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'externalThreadId' is not null or undefined
+      assertParamExists(
+        'stopThreadByExternalId',
+        'externalThreadId',
+        externalThreadId,
+      );
+      const localVarPath =
+        `/api/v1/threads/external/{externalThreadId}/stop`.replace(
+          `{${'externalThreadId'}}`,
+          encodeURIComponent(String(externalThreadId)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
      * @param {string} graphId
      * @param {string} nodeId
      * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
@@ -4718,6 +4821,65 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} threadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async stopThread(
+      threadId: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<ThreadDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.stopThread(
+        threadId,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.stopThread']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} externalThreadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async stopThreadByExternalId(
+      externalThreadId: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<ThreadDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.stopThreadByExternalId(
+          externalThreadId,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.stopThreadByExternalId']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
      * @param {string} graphId
      * @param {string} nodeId
      * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
@@ -4906,6 +5068,34 @@ export const ThreadsApiFactory = function (
     },
     /**
      *
+     * @param {string} threadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    stopThread(
+      threadId: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadDto> {
+      return localVarFp
+        .stopThread(threadId, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} externalThreadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    stopThreadByExternalId(
+      externalThreadId: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadDto> {
+      return localVarFp
+        .stopThreadByExternalId(externalThreadId, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
      * @param {string} graphId
      * @param {string} nodeId
      * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
@@ -5059,6 +5249,35 @@ export class ThreadsApi extends BaseAPI {
   ) {
     return ThreadsApiFp(this.configuration)
       .getThreads(graphId, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} threadId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public stopThread(threadId: string, options?: RawAxiosRequestConfig) {
+    return ThreadsApiFp(this.configuration)
+      .stopThread(threadId, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} externalThreadId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public stopThreadByExternalId(
+    externalThreadId: string,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .stopThreadByExternalId(externalThreadId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 

@@ -71,7 +71,7 @@ export const createEdge = (
   if (sourceHandle) idParts.push(sourceHandle);
   if (targetHandle) idParts.push(targetHandle);
   const deterministicId = `edge-${idParts.join('-')}`;
-  
+
   return {
     id: deterministicId,
     source,
@@ -520,30 +520,33 @@ const GraphCanvasInner = ({
 };
 
 // Memoize GraphCanvasInner to prevent unnecessary rerenders
-const MemoizedGraphCanvasInner = memo(GraphCanvasInner, (prevProps, nextProps) => {
-  // Only rerender if these specific props change
-  // compiledNodes is intentionally omitted - it's accessed dynamically by node ID
-  return (
-    prevProps.nodes === nextProps.nodes &&
-    prevProps.edges === nextProps.edges &&
-    prevProps.onNodesChange === nextProps.onNodesChange &&
-    prevProps.onEdgesChange === nextProps.onEdgesChange &&
-    prevProps.onNodeAdd === nextProps.onNodeAdd &&
-    prevProps.onNodeEdit === nextProps.onNodeEdit &&
-    prevProps.onNodeDelete === nextProps.onNodeDelete &&
-    prevProps.onNodeSelect === nextProps.onNodeSelect &&
-    prevProps.onViewportChange === nextProps.onViewportChange &&
-    prevProps.initialViewport?.x === nextProps.initialViewport?.x &&
-    prevProps.initialViewport?.y === nextProps.initialViewport?.y &&
-    prevProps.initialViewport?.zoom === nextProps.initialViewport?.zoom &&
-    prevProps.templates === nextProps.templates &&
-    prevProps.graphStatus === nextProps.graphStatus &&
-    prevProps.onTriggerClick === nextProps.onTriggerClick &&
-    prevProps.onValidationError === nextProps.onValidationError &&
-    prevProps.compiledNodesLoading === nextProps.compiledNodesLoading
-    // compiledNodes prop is intentionally skipped in comparison
-  );
-});
+const MemoizedGraphCanvasInner = memo(
+  GraphCanvasInner,
+  (prevProps, nextProps) => {
+    // Only rerender if these specific props change
+    // compiledNodes is intentionally omitted - it's accessed dynamically by node ID
+    return (
+      prevProps.nodes === nextProps.nodes &&
+      prevProps.edges === nextProps.edges &&
+      prevProps.onNodesChange === nextProps.onNodesChange &&
+      prevProps.onEdgesChange === nextProps.onEdgesChange &&
+      prevProps.onNodeAdd === nextProps.onNodeAdd &&
+      prevProps.onNodeEdit === nextProps.onNodeEdit &&
+      prevProps.onNodeDelete === nextProps.onNodeDelete &&
+      prevProps.onNodeSelect === nextProps.onNodeSelect &&
+      prevProps.onViewportChange === nextProps.onViewportChange &&
+      prevProps.initialViewport?.x === nextProps.initialViewport?.x &&
+      prevProps.initialViewport?.y === nextProps.initialViewport?.y &&
+      prevProps.initialViewport?.zoom === nextProps.initialViewport?.zoom &&
+      prevProps.templates === nextProps.templates &&
+      prevProps.graphStatus === nextProps.graphStatus &&
+      prevProps.onTriggerClick === nextProps.onTriggerClick &&
+      prevProps.onValidationError === nextProps.onValidationError &&
+      prevProps.compiledNodesLoading === nextProps.compiledNodesLoading
+      // compiledNodes prop is intentionally skipped in comparison
+    );
+  },
+);
 
 MemoizedGraphCanvasInner.displayName = 'GraphCanvasInner';
 
