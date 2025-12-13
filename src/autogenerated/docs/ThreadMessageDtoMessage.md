@@ -6,6 +6,7 @@
 | -------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------- | --------------------------------- |
 | **role**             | **string**                                                                                                     | Message role                            | [default to undefined]            |
 | **content**          | **{ [key: string]: any; }**                                                                                    | Parsed tool result as JSON              | [default to undefined]            |
+| **runId**            | **string**                                                                                                     |                                         | [optional] [default to undefined] |
 | **additionalKwargs** | **{ [key: string]: any; }**                                                                                    | Additional message metadata             | [optional] [default to undefined] |
 | **id**               | **string**                                                                                                     | Message ID                              | [optional] [default to undefined] |
 | **rawContent**       | **any**                                                                                                        |                                         | [optional] [default to undefined] |
@@ -22,6 +23,7 @@ import { ThreadMessageDtoMessage } from './api';
 const instance: ThreadMessageDtoMessage = {
   role,
   content,
+  runId,
   additionalKwargs,
   id,
   rawContent,

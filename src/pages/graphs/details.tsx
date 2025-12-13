@@ -3262,6 +3262,12 @@ export const GraphPage = () => {
           hasNodeUnsavedChangesFromServer={selectedNodeUnsavedFromServer}
           onTriggerClick={handleTriggerClick}
           selectedThreadId={selectedThreadId}
+          selectedThreadStatus={
+            threads.find((t) => t.id === selectedThreadId)?.status
+          }
+          selectedThreadLastRunId={
+            threads.find((t) => t.id === selectedThreadId)?.lastRunId
+          }
           compiledNode={
             selectedNode ? compiledNodesMap[selectedNode.id] : undefined
           }

@@ -16,7 +16,7 @@ type JsonValue =
 
 export interface ShellToolDisplayProps {
   name: string;
-  status: 'calling' | 'executed';
+  status: 'calling' | 'executed' | 'stopped';
   resultContent?: unknown;
   shellCommand?: string;
   toolOptions?: Record<string, JsonValue>;
@@ -289,7 +289,9 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                 aria-label={
                   status === 'executed'
                     ? `View shell result for ${toolNameText}`
-                    : `Shell ${toolNameText} is calling`
+                    : status === 'stopped'
+                      ? `Shell ${toolNameText} is stopped`
+                      : `Shell ${toolNameText} is calling`
                 }
                 title={toolNameText}>
                 {toolNameText}
@@ -308,7 +310,16 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
           )}
 
           {status === 'calling' ? (
-            <span style={{ color: '#c4c4c4' }}>executing…</span>
+            <span
+              style={{
+                color: '#c4c4c4',
+                animation:
+                  'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
+              }}>
+              executing...
+            </span>
+          ) : status === 'stopped' ? (
+            <span style={{ color: '#ff4d4f' }}>stopped</span>
           ) : (
             <span
               style={{

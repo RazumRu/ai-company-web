@@ -280,6 +280,10 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       if (isDraft && returnedExternalThreadId && onDraftMessageSent) {
         // For draft threads, store the external thread ID to match with thread.create event
         pendingDraftExternalIdRef.current = returnedExternalThreadId;
+        // Also set it in the parent's pending ref so thread.create event can match it
+        if (onRequestThreadSwitch) {
+          onRequestThreadSwitch(returnedExternalThreadId);
+        }
         // Fallback: if thread.create event doesn't fire, try to fetch by external ID after a delay
         setTimeout(async () => {
           if (
@@ -584,7 +588,11 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
           onLoadMoreMessages={memoizedOnLoadMoreMessages}
           hasMoreMessages={hasMoreMessages}
           loadingMore={loadingMoreMessages}
-          isNodeRunning={thread.status === ThreadDtoStatusEnum.Running}
+          isNodeRunning={isThreadRunning}
+          isThreadStopped={
+            effectiveThreadStatus === ThreadDtoStatusEnum.Stopped
+          }
+          currentThreadLastRunId={thread.lastRunId}
           nodeDisplayNames={nodeDisplayNames}
           showNodeHeadings
           pendingMessages={pendingMessages}

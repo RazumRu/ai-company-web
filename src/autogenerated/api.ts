@@ -857,6 +857,12 @@ export interface ThreadDto {
    * @type {string}
    * @memberof ThreadDto
    */
+  'lastRunId'?: string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof ThreadDto
+   */
   'createdAt': string;
   /**
    *
@@ -980,6 +986,12 @@ export interface ThreadMessageDtoMessageOneOf {
    */
   'content': string;
   /**
+   *
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf
+   */
+  'runId'?: string | null;
+  /**
    * Additional message metadata
    * @type {{ [key: string]: any; }}
    * @memberof ThreadMessageDtoMessageOneOf
@@ -1018,6 +1030,12 @@ export interface ThreadMessageDtoMessageOneOf1 {
    * @memberof ThreadMessageDtoMessageOneOf1
    */
   'id'?: string;
+  /**
+   *
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf1
+   */
+  'runId'?: string | null;
   /**
    *
    * @type {any}
@@ -1101,6 +1119,12 @@ export interface ThreadMessageDtoMessageOneOf2 {
    */
   'content': string;
   /**
+   *
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf2
+   */
+  'runId'?: string | null;
+  /**
    * Additional message metadata
    * @type {{ [key: string]: any; }}
    * @memberof ThreadMessageDtoMessageOneOf2
@@ -1133,6 +1157,12 @@ export interface ThreadMessageDtoMessageOneOf3 {
    * @memberof ThreadMessageDtoMessageOneOf3
    */
   'content': string;
+  /**
+   *
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf3
+   */
+  'runId'?: string | null;
   /**
    * Additional message metadata
    * @type {{ [key: string]: any; }}
@@ -1178,6 +1208,12 @@ export interface ThreadMessageDtoMessageOneOf4 {
    * @memberof ThreadMessageDtoMessageOneOf4
    */
   'toolCallId': string;
+  /**
+   *
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf4
+   */
+  'runId'?: string | null;
   /**
    * Additional message metadata
    * @type {{ [key: string]: any; }}
@@ -1254,6 +1290,12 @@ export interface ThreadMessageDtoMessageOneOf5 {
    * @memberof ThreadMessageDtoMessageOneOf5
    */
   'toolCallId': string;
+  /**
+   *
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf5
+   */
+  'runId'?: string | null;
   /**
    * Optional human-readable tool call title
    * @type {string}

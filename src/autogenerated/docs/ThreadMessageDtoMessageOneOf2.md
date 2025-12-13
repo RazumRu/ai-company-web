@@ -7,6 +7,7 @@
 | **id**               | **string**                  | Message ID                           | [optional] [default to undefined] |
 | **role**             | **string**                  | Message role                         | [default to undefined]            |
 | **content**          | **string**                  | Reasoning trace emitted by the model | [default to undefined]            |
+| **runId**            | **string**                  |                                      | [optional] [default to undefined] |
 | **additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata          | [optional] [default to undefined] |
 
 ## Example
@@ -18,6 +19,7 @@ const instance: ThreadMessageDtoMessageOneOf2 = {
   id,
   role,
   content,
+  runId,
   additionalKwargs,
 };
 ```

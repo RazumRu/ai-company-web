@@ -70,6 +70,16 @@ export interface ThreadMessagesViewProps {
   hasMoreMessages?: boolean;
   loadingMore?: boolean;
   isNodeRunning?: boolean;
+  /**
+   * When true, the thread was explicitly stopped by the user. In this state we
+   * must never render tool calls as "in progress" (e.g. with a spinner).
+   */
+  isThreadStopped?: boolean;
+  /**
+   * Current thread run identifier. Tool calls from a different run must never
+   * render as "in progress".
+   */
+  currentThreadLastRunId?: string | null;
   pendingMessages?: PendingMessage[];
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
 }
@@ -163,6 +173,31 @@ const getMessageString = (
   return typeof value === 'string' ? value : undefined;
 };
 
+const getMessageRunId = (payload?: MessagePayload): string | undefined => {
+  const record = getMessageRecord(payload);
+  if (!record) return undefined;
+
+  // Prefer the normalized field coming from the API response.
+  const direct = (record.runId as unknown) ?? (record.run_id as unknown);
+  if (typeof direct === 'string' && direct.length > 0) {
+    return direct;
+  }
+
+  const additional =
+    (record.additionalKwargs as Record<string, unknown> | undefined) ??
+    (record.additional_kwargs as Record<string, unknown> | undefined);
+
+  const fromAdditional =
+    additional && typeof additional === 'object'
+      ? ((additional.run_id as unknown) ?? (additional.runId as unknown))
+      : undefined;
+
+  if (typeof fromAdditional === 'string' && fromAdditional.length > 0) {
+    return fromAdditional;
+  }
+  return undefined;
+};
+
 const fullHeightColumnStyle: React.CSSProperties = {
   height: '100%',
   display: 'flex',
@@ -204,6 +239,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     hasMoreMessages,
     loadingMore,
     isNodeRunning = false,
+    isThreadStopped = false,
+    currentThreadLastRunId,
     pendingMessages = [],
     newMessageMode,
   }) => {
@@ -478,6 +515,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
+    type ToolRenderStatus = 'calling' | 'executed' | 'stopped';
+
     type PreparedMessage =
       | {
           type: 'system';
@@ -503,7 +542,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       | {
           type: 'tool';
           name: string;
-          status: 'calling' | 'executed';
+          status: ToolRenderStatus;
           result?: unknown;
           id: string;
           toolKind?: 'generic' | 'shell';
@@ -517,6 +556,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
     const prepareReadyMessages = useCallback(
       (msgs: ThreadMessageDto[]): PreparedMessage[] => {
+        const allowCallingIndicators = isNodeRunning && !isThreadStopped;
+        const isLatestRun = (runId?: string): boolean => {
+          if (!currentThreadLastRunId) return true;
+          if (!runId) return false;
+          return runId === currentThreadLastRunId;
+        };
         const toolCallResultsById = buildToolCallResultIndex(msgs);
         const consumedToolCallIds = new Set<string>();
         const consumedToolMessageKeys = new Set<string>();
@@ -547,6 +592,31 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           markToolMessageConsumed(next);
           return next;
         };
+
+        // First pass: identify all tool calls from AI messages and mark their results as consumed
+        // This prevents tool results from being rendered as standalone before we process the AI message
+        msgs.forEach((m) => {
+          const role = (m.message?.role as string) || '';
+          if (role === 'ai') {
+            const messageToolCalls = getMessageValue<ToolCall[]>(
+              m.message,
+              'toolCalls',
+            );
+            if (messageToolCalls && messageToolCalls.length > 0) {
+              messageToolCalls.forEach((tc) => {
+                if (tc.id) {
+                  // Check if result exists for this tool call
+                  const queue = toolCallResultsById[tc.id];
+                  if (queue && queue.length > 0) {
+                    // Mark as consumed so it won't be rendered as standalone
+                    markToolCallConsumed(tc.id);
+                    markToolMessageConsumed(queue[0]);
+                  }
+                }
+              });
+            }
+          }
+        });
 
         const prepared: PreparedMessage[] = [];
         let i = 0;
@@ -652,11 +722,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               const toolOptions = argsToObject(toolArgs);
               const matchedTitle = getMessageString(matched?.message, 'title');
               const effectiveTitle = matchedTitle || callTitle;
+              const toolCallRunId =
+                getMessageRunId(m.message) ?? getMessageRunId(matched?.message);
 
               prepared.push({
                 type: 'tool',
                 name: name || 'tool',
-                status: matched ? 'executed' : 'calling',
+                status: matched
+                  ? 'executed'
+                  : allowCallingIndicators && isLatestRun(toolCallRunId)
+                    ? 'calling'
+                    : 'stopped',
                 result: resultContent,
                 id: `tool-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
                 toolKind: isShell ? 'shell' : 'generic',
@@ -729,7 +805,14 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
         return prepared;
       },
-      [argsToObject, buildToolCallResultIndex, extractShellCommandFromArgs],
+      [
+        argsToObject,
+        buildToolCallResultIndex,
+        extractShellCommandFromArgs,
+        isNodeRunning,
+        isThreadStopped,
+        currentThreadLastRunId,
+      ],
     );
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -769,11 +852,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     };
 
     const renderFinishTool = (
-      status: 'calling' | 'executed',
+      status: ToolRenderStatus,
       resultContent?: unknown,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
     ) => {
-      if (status === 'calling') {
+      if (status !== 'executed') {
         return undefined;
       }
 
@@ -840,28 +923,40 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
     const renderToolStatusLine = (
       name: string,
-      status: 'calling' | 'executed',
+      status: ToolRenderStatus,
       resultContent?: unknown,
       toolOptions?: Record<string, JsonValue>,
       titleText?: string,
     ) => {
       const isClickable = status === 'executed' && resultContent !== undefined;
+      const isCalling = status === 'calling';
+      const statusText =
+        status === 'calling'
+          ? 'calling...'
+          : status === 'stopped'
+            ? 'stopped'
+            : 'executed';
       const displayTitle =
         (titleText && titleText.trim().length > 0 ? titleText : undefined) ??
         (toolOptions?.purpose
           ? `${name} | ${String(toolOptions.purpose)}`
-          : `tool ${name} is ${status === 'calling' ? 'calling...' : 'executed'}`);
+          : `tool ${name} is ${statusText}`);
       const accessibleName = displayTitle || name;
       const line = (
         <div
           className="hoverable-chat-message"
           style={{
             cursor: isClickable ? 'pointer' : 'default',
+            animation: isCalling
+              ? 'messages-tab-thinking-pulse 1.6s ease-in-out infinite'
+              : undefined,
           }}
           aria-label={
             status === 'executed'
               ? `View tool result for ${accessibleName}`
-              : `Tool ${accessibleName} is calling`
+              : status === 'stopped'
+                ? `Tool ${accessibleName} is stopped`
+                : `Tool ${accessibleName} is calling`
           }
           tabIndex={isClickable ? 0 : -1}>
           <div
@@ -869,9 +964,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
             }}>
-            {status === 'calling' && <Spin size="small" />}
             <Text
               type="secondary"
               className="tool-status-line__text"
@@ -903,7 +996,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
     const renderShellStatusLine = (
       name: string,
-      status: 'calling' | 'executed',
+      status: ToolRenderStatus,
       resultContent?: unknown,
       shellCommand?: string,
       toolOptions?: Record<string, JsonValue>,

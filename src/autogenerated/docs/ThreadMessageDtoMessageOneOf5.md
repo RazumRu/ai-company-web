@@ -8,6 +8,7 @@
 | **name**             | **string**                  | Tool name                               | [default to undefined]            |
 | **content**          | **{ [key: string]: any; }** | Parsed tool result as JSON              | [default to undefined]            |
 | **toolCallId**       | **string**                  | Tool call ID                            | [default to undefined]            |
+| **runId**            | **string**                  |                                         | [optional] [default to undefined] |
 | **title**            | **string**                  | Optional human-readable tool call title | [optional] [default to undefined] |
 | **additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata             | [optional] [default to undefined] |
 
@@ -21,6 +22,7 @@ const instance: ThreadMessageDtoMessageOneOf5 = {
   name,
   content,
   toolCallId,
+  runId,
   title,
   additionalKwargs,
 };

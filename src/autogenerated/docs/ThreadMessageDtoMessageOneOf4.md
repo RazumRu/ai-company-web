@@ -8,6 +8,7 @@
 | **name**             | **string**                                                                          | Tool name - shell           | [default to undefined]            |
 | **content**          | [**ThreadMessageDtoMessageOneOf4Content**](ThreadMessageDtoMessageOneOf4Content.md) |                             | [default to undefined]            |
 | **toolCallId**       | **string**                                                                          | Tool call ID                | [default to undefined]            |
+| **runId**            | **string**                                                                          |                             | [optional] [default to undefined] |
 | **additionalKwargs** | **{ [key: string]: any; }**                                                         | Additional message metadata | [optional] [default to undefined] |
 
 ## Example
@@ -20,6 +21,7 @@ const instance: ThreadMessageDtoMessageOneOf4 = {
   name,
   content,
   toolCallId,
+  runId,
   additionalKwargs,
 };
 ```

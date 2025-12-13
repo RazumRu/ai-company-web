@@ -40,7 +40,6 @@ import {
   mergeMessagesReplacingStreaming,
   narrowReasoningContainer,
   upsertReasoningEntries,
-  clearStreamingReasoningForContext,
 } from '../../utils/threadMessages';
 import ThreadChatPanel from './components/ThreadChatPanel';
 import {
@@ -383,7 +382,9 @@ export const ChatsPage = () => {
   }, [selectedThreadId]);
 
   useEffect(() => {
+    // Don't load messages for draft threads
     if (!selectedThread || (selectedThread as DraftThread)?.isDraft) return;
+
     const meta = getMessageMeta(selectedThread.id);
     const existingMessages = messages[selectedThread.id]?.['all'] ?? [];
 
@@ -703,6 +704,13 @@ export const ChatsPage = () => {
       if (graphFilterId && newThread.graphId !== graphFilterId) {
         return;
       }
+
+      // Check if this is replacing a draft thread
+      const isDraftReplacement =
+        draftThread &&
+        pendingThreadSelectionRef.current &&
+        pendingThreadSelectionRef.current === newThread.externalThreadId;
+
       setThreads((prev) => {
         const exists = prev.some((thread) => thread.id === newThread.id);
         if (exists) {
@@ -723,10 +731,55 @@ export const ChatsPage = () => {
         }));
       }
 
-      if (
+      if (isDraftReplacement) {
+        // Replace draft thread with real thread
+        const draftId = draftThread.id;
+
+        // Migrate messages and pending messages from draft to real thread
+        const draftThreadMessages = messages[draftId];
+        if (draftThreadMessages) {
+          Object.entries(draftThreadMessages).forEach(([scopeKey, msgs]) => {
+            const nodeScope = scopeKey === 'all' ? undefined : scopeKey;
+            // Update threadId in all migrated messages to match the new thread
+            const migratedMessages = msgs.map((msg) => ({
+              ...msg,
+              threadId: newThread.id,
+              externalThreadId:
+                newThread.externalThreadId || msg.externalThreadId,
+            }));
+            updateMessages(newThread.id, () => migratedMessages, nodeScope);
+          });
+
+          // Carry over meta so we don't refetch immediately and flash loader
+          const draftAllMessages = draftThreadMessages['all'] ?? [];
+          setMessageMeta((prev) => ({
+            ...prev,
+            [newThread.id]: {
+              loading: false,
+              loadingMore: false,
+              hasMore: true,
+              offset: draftAllMessages.length,
+            },
+          }));
+        }
+
+        const draftPending = pendingMessages[draftId];
+        if (draftPending) {
+          Object.entries(draftPending).forEach(([scopeKey, msgs]) => {
+            const nodeScope = scopeKey === 'all' ? undefined : scopeKey;
+            updatePendingMessages(newThread.id, () => msgs ?? [], nodeScope);
+          });
+        }
+
+        // Clear draft and select new thread
+        setDraftThread(null);
+        setSelectedThreadId(newThread.id);
+        pendingThreadSelectionRef.current = null;
+      } else if (
         pendingThreadSelectionRef.current &&
         pendingThreadSelectionRef.current === newThread.externalThreadId
       ) {
+        // Regular thread switch (not draft)
         setSelectedThreadId(newThread.id);
         pendingThreadSelectionRef.current = null;
       }
@@ -736,6 +789,11 @@ export const ChatsPage = () => {
       setExternalThreadIds,
       sortThreadsByTimestampDesc,
       graphFilterId,
+      draftThread,
+      messages,
+      pendingMessages,
+      updateMessages,
+      updatePendingMessages,
     ],
   );
 
@@ -868,23 +926,14 @@ export const ChatsPage = () => {
       const reasoningChunks =
         data.data?.additionalNodeMetadata?.reasoningChunks;
 
-      const applyUpdateToKeys = [undefined, data.nodeId];
-
+      // Only process reasoning chunks if they exist
+      // Don't clear streaming reasoning when chunks are absent - they should persist
+      // until replaced by final non-streaming reasoning messages
       if (!reasoningChunks) {
-        applyUpdateToKeys.forEach((key) => {
-          updateMessages(
-            targetThreadId,
-            (prev) =>
-              clearStreamingReasoningForContext(prev, {
-                targetThreadId: externalThreadIdForTarget,
-                selectedThreadId: targetThreadId,
-                runIds: targetRunIds,
-              }),
-            key,
-          );
-        });
         return;
       }
+
+      const applyUpdateToKeys = [undefined, data.nodeId];
 
       const reasoningContainer = narrowReasoningContainer(reasoningChunks, [
         eventThreadId,
@@ -896,42 +945,29 @@ export const ChatsPage = () => {
         runId: data.runId ?? metadataRunId,
       });
 
-      if (!reasoningEntries.length) {
+      // Only upsert if we have valid reasoning entries
+      if (reasoningEntries.length > 0) {
         applyUpdateToKeys.forEach((key) => {
           updateMessages(
             targetThreadId,
             (prev) =>
-              clearStreamingReasoningForContext(prev, {
-                targetThreadId: externalThreadIdForTarget,
+              upsertReasoningEntries(prev, reasoningEntries, {
+                externalThreadId: externalThreadIdForTarget,
+                runId: data.runId ?? metadataRunId,
                 selectedThreadId: targetThreadId,
-                runIds: targetRunIds,
+                nodeId: key,
               }),
             key,
           );
         });
-        return;
       }
-
-      applyUpdateToKeys.forEach((key) => {
-        updateMessages(
-          targetThreadId,
-          (prev) =>
-            upsertReasoningEntries(prev, reasoningEntries, {
-              externalThreadId: externalThreadIdForTarget,
-              runId: data.runId ?? metadataRunId,
-              selectedThreadId: targetThreadId,
-              nodeId: key,
-            }),
-          key,
-        );
-      });
     },
     [
-      clearStreamingReasoningForContext,
       resolveInternalThreadId,
       externalThreadIds,
       updateMessages,
       upsertReasoningEntries,
+      setExternalThreadIds,
     ],
   );
 
@@ -1144,7 +1180,12 @@ export const ChatsPage = () => {
         if (draftThreadMessages) {
           Object.entries(draftThreadMessages).forEach(([scopeKey, msgs]) => {
             const nodeScope = scopeKey === 'all' ? undefined : scopeKey;
-            updateMessages(newThreadId, () => msgs ?? [], nodeScope);
+            // Update threadId in all migrated messages to match the new thread
+            const migratedMessages = msgs.map((msg) => ({
+              ...msg,
+              threadId: newThreadId,
+            }));
+            updateMessages(newThreadId, () => migratedMessages, nodeScope);
           });
 
           // Carry over meta so we don't refetch immediately and flash loader

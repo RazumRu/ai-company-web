@@ -17,6 +17,8 @@ export interface NodeMessagesPanelProps {
   hasMoreMessages?: boolean;
   loadingMoreMessages?: boolean;
   isNodeRunning: boolean;
+  isThreadStopped?: boolean;
+  currentThreadLastRunId?: string | null;
   pendingMessages?: PendingMessage[];
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
   onRefreshMessages?: () => void;
@@ -32,6 +34,8 @@ export const NodeMessagesPanel: React.FC<NodeMessagesPanelProps> = ({
   hasMoreMessages,
   loadingMoreMessages,
   isNodeRunning,
+  isThreadStopped,
+  currentThreadLastRunId,
   pendingMessages,
   newMessageMode,
   onRefreshMessages,
@@ -87,6 +91,8 @@ export const NodeMessagesPanel: React.FC<NodeMessagesPanelProps> = ({
           hasMoreMessages={hasMoreMessages}
           loadingMore={loadingMoreMessages}
           isNodeRunning={isNodeRunning}
+          isThreadStopped={isThreadStopped}
+          currentThreadLastRunId={currentThreadLastRunId}
           pendingMessages={pendingMessages}
           newMessageMode={newMessageMode}
         />
