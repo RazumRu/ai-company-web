@@ -1093,6 +1093,12 @@ export interface ThreadMessageDtoMessageOneOf1ToolCallsInner {
    * @memberof ThreadMessageDtoMessageOneOf1ToolCallsInner
    */
   'id': string;
+  /**
+   * Optional human-readable tool call title
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf1ToolCallsInner
+   */
+  'title'?: string;
 }
 /**
  *

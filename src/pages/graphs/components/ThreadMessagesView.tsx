@@ -28,6 +28,7 @@ interface ToolCallFunction {
   name?: string;
   arguments?: string | Record<string, unknown>;
   title?: string;
+  __title?: string;
 }
 
 interface ToolCall {
@@ -36,6 +37,7 @@ interface ToolCall {
   function?: ToolCallFunction;
   args?: string | Record<string, unknown>;
   title?: string;
+  __title?: string;
 }
 
 interface ShellResult {
@@ -171,6 +173,20 @@ const getMessageString = (
 ): string | undefined => {
   const value = getMessageValue(payload, key);
   return typeof value === 'string' ? value : undefined;
+};
+
+const getMessageTitle = (payload?: MessagePayload): string | undefined => {
+  const title = getMessageString(payload, 'title');
+  if (title && title.trim().length > 0) {
+    return title;
+  }
+
+  const legacy = getMessageString(payload, '__title');
+  if (legacy && legacy.trim().length > 0) {
+    return legacy;
+  }
+
+  return undefined;
 };
 
 const getMessageRunId = (payload?: MessagePayload): string | undefined => {
@@ -695,7 +711,19 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             for (let idx = 0; idx < toolCalls.length; idx++) {
               const tc = toolCalls[idx];
               const name = tc.name || tc.function?.name || 'tool';
-              const callTitle = tc.title || tc.function?.title;
+              const callTitle =
+                (tc.title && tc.title.trim().length > 0
+                  ? tc.title
+                  : undefined) ??
+                (tc.__title && tc.__title.trim().length > 0
+                  ? tc.__title
+                  : undefined) ??
+                (tc.function?.title && tc.function.title.trim().length > 0
+                  ? tc.function.title
+                  : undefined) ??
+                (tc.function?.__title && tc.function.__title.trim().length > 0
+                  ? tc.function.__title
+                  : undefined);
               let matched = consumeToolResultById(tc.id);
               if (!matched) {
                 matched = followingTools.find(
@@ -720,7 +748,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               const shellCommand = shellCmdFromArgs || resultObj?.command;
               const isShell = (name || '').toLowerCase() === 'shell';
               const toolOptions = argsToObject(toolArgs);
-              const matchedTitle = getMessageString(matched?.message, 'title');
+              const matchedTitle = getMessageTitle(matched?.message);
               const effectiveTitle = matchedTitle || callTitle;
               const toolCallRunId =
                 getMessageRunId(m.message) ?? getMessageRunId(matched?.message);
@@ -761,7 +789,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             }
 
             const name = getMessageString(m.message, 'name') || 'tool';
-            const title = getMessageString(m.message, 'title');
+            const title = getMessageTitle(m.message);
             const resultContent = m.message?.content;
             const resultObj =
               typeof resultContent === 'object' &&
@@ -1066,7 +1094,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       if (isToolLikeRole(role)) {
         const name = getMessageString(message.message, 'name') || 'tool';
-        const title = getMessageString(message.message, 'title');
+        const title = getMessageTitle(message.message);
         const resultContent = message.message?.content;
         return renderToolStatusLine(
           name,
