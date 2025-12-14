@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Viewport } from '@xyflow/react';
-import type { GraphNode, GraphEdge } from '../pages/graphs/types';
-import { GraphStorageService } from '../services/GraphStorageService';
 import { isEqual } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import type { GraphEdge, GraphNode } from '../pages/graphs/types';
+import { GraphStorageService } from '../services/GraphStorageService';
 
 /**
  * Central state management hook for graph draft changes.
@@ -61,16 +62,16 @@ export interface UseGraphDraftStateReturn {
  * Recursively sorts object keys to ensure consistent JSON.stringify output.
  * This is crucial for detecting when values are truly equal regardless of key order.
  */
-function deepSortKeys(obj: any): any {
+function deepSortKeys(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(deepSortKeys);
 
-  const sorted: any = {};
-  Object.keys(obj)
+  const sorted: Record<string, unknown> = {};
+  Object.keys(obj as Record<string, unknown>)
     .sort()
     .forEach((key) => {
-      sorted[key] = deepSortKeys(obj[key]);
+      sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
     });
   return sorted;
 }
@@ -80,40 +81,41 @@ function deepSortKeys(obj: any): any {
  * Strips callbacks and React Flow internal properties, sorts arrays deterministically.
  */
 function normalizeState(state: GraphDraftState): GraphDraftState {
-  const stripCallbacks = (data: any) => {
+  const stripCallbacks = (data: unknown): unknown => {
     if (!data || typeof data !== 'object') return data;
-    const { onEdit, onDelete, ...rest } = data;
+    const {
+      onEdit: _onEdit,
+      onDelete: _onDelete,
+      ...rest
+    } = data as Record<string, unknown>;
     return rest;
   };
 
   return {
     nodes: state.nodes
       .map((node) => {
-        // Strip React Flow internal properties like selected, dragging, width, height, etc.
         const {
-          selected,
-          dragging,
-          draggable,
-          selectable,
-          connectable,
-          deletable,
-          width,
-          height,
-          positionAbsolute,
-          measured,
+          selected: _selected,
+          dragging: _dragging,
+          draggable: _draggable,
+          selectable: _selectable,
+          connectable: _connectable,
+          deletable: _deletable,
+          width: _width,
+          height: _height,
           ...coreNode
-        } = node as any;
+        } = node;
         const strippedData = stripCallbacks(node.data);
+        const strippedDataRecord = strippedData as Record<string, unknown>;
         return {
           ...coreNode,
           data: {
-            ...strippedData,
-            // Sort config keys to ensure consistent comparison
-            config: strippedData?.config
-              ? deepSortKeys(strippedData.config)
-              : strippedData?.config,
+            ...strippedDataRecord,
+            config: strippedDataRecord?.config
+              ? deepSortKeys(strippedDataRecord.config)
+              : strippedDataRecord?.config,
           },
-        };
+        } as GraphNode;
       })
       .sort((a, b) => a.id.localeCompare(b.id)),
     edges: state.edges
@@ -174,7 +176,7 @@ export function useGraphDraftState({
   const serverBaselineRef = useRef<GraphDraftState>(
     normalizeState(serverState),
   );
-  const [baselineVersion, setBaselineVersion] = useState(0);
+  const [, setBaselineVersion] = useState(0);
 
   // Use ref for onStateChange to avoid dependency issues
   const onStateChangeRef = useRef(onStateChange);
@@ -282,7 +284,7 @@ export function useGraphDraftState({
       const updatedNodes = draftState.nodes.map((node: GraphNode) => {
         if (node.id !== nodeId) return node;
 
-        const currentData = node.data as any;
+        const currentData = node.data as Record<string, unknown>;
         const newData = { ...currentData };
 
         if (updates.name !== undefined) {
@@ -307,10 +309,7 @@ export function useGraphDraftState({
     [draftState],
   );
 
-  const normalizedServer = useMemo(
-    () => serverBaselineRef.current,
-    [baselineVersion],
-  );
+  const normalizedServer = serverBaselineRef.current;
 
   const hasUnsavedChanges = useMemo(() => {
     // Compare without viewport - viewport changes (pan/zoom) are not "unsaved changes"
@@ -359,8 +358,8 @@ export function useGraphDraftState({
       }
 
       // Compare node data (label, config, etc) - ignore position
-      const draftData = draftNode.data as any;
-      const serverData = serverNode.data as any;
+      const draftData = draftNode.data as Record<string, unknown>;
+      const serverData = serverNode.data as Record<string, unknown>;
 
       const draftCore = {
         label: draftData?.label,

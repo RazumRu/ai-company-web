@@ -1,7 +1,8 @@
-import { AuthProvider } from '@refinedev/core';
 import { useKeycloak } from '@react-keycloak/web';
+import { AuthProvider } from '@refinedev/core';
 import axios from 'axios';
 import Keycloak from 'keycloak-js';
+
 import { KEYCLOAK_CLIENT_ID, KEYCLOAK_REALM, KEYCLOAK_URL } from './config';
 import { GraphStorageService } from './services/GraphStorageService';
 
@@ -51,9 +52,11 @@ export const createAuthProvider = (keycloak: Keycloak): AuthProvider => {
         };
       }
     },
-    onError: async (error) => {
+    onError: async (error: unknown) => {
       console.error(error);
-      return { error };
+      return {
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
     },
     check: async () => {
       try {
@@ -93,12 +96,17 @@ export const createAuthProvider = (keycloak: Keycloak): AuthProvider => {
     getPermissions: async () => null,
     getIdentity: async () => {
       if (keycloak?.tokenParsed) {
+        const tokenParsed = keycloak.tokenParsed as {
+          name?: string;
+          email?: string;
+          picture?: string;
+        };
         return {
-          name: keycloak.tokenParsed.name,
-          email: keycloak.tokenParsed.email,
+          name: tokenParsed.name,
+          email: tokenParsed.email,
           avatar:
-            keycloak.tokenParsed.picture ||
-            `https://api.dicebear.com/7.x/pixel-art/svg?seed=${keycloak.tokenParsed.name}`,
+            tokenParsed.picture ||
+            `https://api.dicebear.com/7.x/pixel-art/svg?seed=${tokenParsed.name}`,
         };
       }
       return null;

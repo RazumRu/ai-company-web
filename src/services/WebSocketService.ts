@@ -4,11 +4,12 @@
  */
 
 import { io, Socket } from 'socket.io-client';
+
 import { API_URL } from '../config';
 import type {
   GraphRevisionEventType,
-  SocketNotification,
   ServerErrorNotification,
+  SocketNotification,
   SubscribeGraphPayload,
   UnsubscribeGraphPayload,
 } from './WebSocketTypes';

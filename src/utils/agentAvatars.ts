@@ -1,5 +1,5 @@
-import { createAvatar } from '@dicebear/core';
 import { micah } from '@dicebear/collection';
+import { createAvatar } from '@dicebear/core';
 
 const avatarCache = new Map<string, string>();
 

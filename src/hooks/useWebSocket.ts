@@ -3,12 +3,13 @@
  * Provides easy access to WebSocket service in React components
  */
 
-import { useEffect, useCallback, useRef } from 'react';
-import {
-  webSocketService,
-  SocketEventHandler,
-} from '../services/WebSocketService';
+import { useCallback, useEffect, useRef } from 'react';
+
 import { useAuth } from '../auth';
+import {
+  SocketEventHandler,
+  webSocketService,
+} from '../services/WebSocketService';
 
 interface UseWebSocketOptions {
   /**
@@ -78,7 +79,7 @@ export const useWebSocket = (
   const { autoConnect = true, graphId, handlers } = options;
   const { keycloak } = useAuth();
   const handlersRef = useRef(handlers);
-  const unsubscribeFnsRef = useRef<Array<() => void>>([]);
+  const unsubscribeFnsRef = useRef<(() => void)[]>([]);
 
   // Update handlers ref when they change
   useEffect(() => {

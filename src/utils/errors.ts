@@ -37,7 +37,7 @@ const extractMessageFromUnknown = (value: unknown): string | null => {
 
 const extractDetailFromError = (error: unknown): string | null => {
   if (isAxiosError(error)) {
-    const data = error.response?.data;
+    const data: unknown = error.response?.data;
 
     if (typeof data === 'string') {
       return data;

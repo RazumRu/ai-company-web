@@ -1,13 +1,18 @@
-import { Authenticated, AuthProvider, Refine } from '@refinedev/core';
+import '@refinedev/antd/dist/reset.css';
 
+import {
+  HomeOutlined,
+  MessageOutlined,
+  NodeIndexOutlined,
+} from '@ant-design/icons';
+import { useKeycloak } from '@react-keycloak/web';
 import {
   ErrorComponent,
   ThemedLayoutV2,
   ThemedTitleV2,
   useNotificationProvider,
 } from '@refinedev/antd';
-import '@refinedev/antd/dist/reset.css';
-
+import { Authenticated, AuthProvider, Refine } from '@refinedev/core';
 import routerBindings, {
   CatchAllNavigate,
   DocumentTitleHandler,
@@ -15,22 +20,17 @@ import routerBindings, {
 } from '@refinedev/react-router';
 import dataProvider from '@refinedev/simple-rest';
 import { App as AntdApp } from 'antd';
+import { useEffect } from 'react';
 import { BrowserRouter, Outlet, Route, Routes } from 'react-router';
+
+import { createAuthProvider, useAuth } from './auth';
 import { Header } from './components/header';
 import { CustomSider } from './components/layout/CustomSider';
 import { API_URL, PROJECT_ID } from './config';
-import { MainPage } from './pages/main/page';
+import { ChatsPage } from './pages/chats/page';
 import { GraphPage } from './pages/graphs/details';
 import { GraphsListPage } from './pages/graphs/list';
-import { ChatsPage } from './pages/chats/page';
-import { createAuthProvider, useAuth } from './auth';
-import { useKeycloak } from '@react-keycloak/web';
-import { useEffect } from 'react';
-import {
-  HomeOutlined,
-  MessageOutlined,
-  NodeIndexOutlined,
-} from '@ant-design/icons';
+import { MainPage } from './pages/main/page';
 
 // Login page component that redirects to Keycloak
 const LoginPage = ({ authProvider }: { authProvider: AuthProvider }) => {

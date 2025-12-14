@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Button, Card, Input, Space } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Input, Space } from 'antd';
+import React, { useEffect, useState } from 'react';
+
 import type { KeyValuePair } from '../types';
 
 interface KeyValuePairsInputProps {

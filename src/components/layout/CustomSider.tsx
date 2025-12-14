@@ -1,11 +1,10 @@
+import {
+  type RefineThemedLayoutV2SiderProps,
+  ThemedSiderV2,
+} from '@refinedev/antd';
+import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { CSSProperties } from 'react';
-
-import {
-  ThemedSiderV2,
-  type RefineThemedLayoutV2SiderProps,
-} from '@refinedev/antd';
 
 const SIDEBAR_WIDTH = {
   expanded: 200,

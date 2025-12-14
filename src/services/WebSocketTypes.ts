@@ -31,16 +31,16 @@ export interface BaseNotification {
 
 // Graph schema type
 export interface GraphSchemaType {
-  nodes: Array<{
+  nodes: {
     id: string;
     template: string;
     config?: Record<string, unknown>;
-  }>;
-  edges?: Array<{
+  }[];
+  edges?: {
     from: string;
     to: string;
     label?: string;
-  }>;
+  }[];
 }
 
 // Graph execution metadata

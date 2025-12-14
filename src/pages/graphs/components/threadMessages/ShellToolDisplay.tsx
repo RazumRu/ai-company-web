@@ -1,18 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { Popover, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
+import { message, Popover } from 'antd';
+import isPlainObject from 'lodash/isPlainObject';
+import React, { useMemo, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+import type { JsonValue } from 'type-fest';
 
 export interface ShellToolDisplayProps {
   name: string;
@@ -39,7 +33,7 @@ const renderToolPopoverContent = (
   let parsed: JsonValue | null = null;
   if (typeof value === 'string') {
     parsed = parseJsonSafe(value);
-  } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+  } else if (isPlainObject(value)) {
     parsed = value as JsonValue;
   }
 
@@ -123,23 +117,24 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const [commandExpanded, setCommandExpanded] = useState(false);
   const [outputExpanded, setOutputExpanded] = useState(false);
 
-  const resultObj =
-    typeof resultContent === 'object' &&
-    resultContent !== null &&
-    !Array.isArray(resultContent)
-      ? (resultContent as Record<string, unknown>)
-      : null;
+  const resultObj = isPlainObject(resultContent)
+    ? (resultContent as Record<string, unknown>)
+    : null;
+  const stdoutCandidate = resultObj?.stdout;
   const stdoutText =
-    resultObj && typeof resultObj.stdout === 'string' ? resultObj.stdout : null;
+    typeof stdoutCandidate === 'string' ? stdoutCandidate : null;
+  const stderrCandidate = resultObj?.stderr;
   const stderrText =
-    resultObj && typeof resultObj.stderr === 'string' ? resultObj.stderr : null;
+    typeof stderrCandidate === 'string' ? stderrCandidate : null;
   const rawStringResult =
     typeof resultContent === 'string' ? resultContent : null;
+  const outputCandidate = resultObj?.output;
   const outputFieldText =
-    resultObj && typeof resultObj.output === 'string' ? resultObj.output : null;
+    typeof outputCandidate === 'string' ? outputCandidate : null;
+  const exitCodeCandidate = resultObj?.exitCode;
   const exitCode =
-    typeof resultObj?.exitCode === 'number'
-      ? (resultObj.exitCode as number)
+    typeof exitCodeCandidate === 'number'
+      ? (exitCodeCandidate as number)
       : null;
   const exitCodeColor =
     exitCode === null || exitCode === 0 ? '#9d9d9d' : '#ff4d4f';
@@ -159,7 +154,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const getOutputText = (): string | null => {
     if (outputFieldText) return outputFieldText;
     if (rawStringResult) return rawStringResult;
-    if (resultObj && typeof resultObj === 'object') {
+    if (resultObj) {
       const displayText =
         resultObj.output || resultObj.stdout || resultObj.stderr;
       if (typeof displayText === 'string') {

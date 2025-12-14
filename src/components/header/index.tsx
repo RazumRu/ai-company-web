@@ -1,3 +1,4 @@
+import { LeftOutlined } from '@ant-design/icons';
 import type { RefineThemedLayoutV2HeaderProps } from '@refinedev/antd';
 import {
   useBack,
@@ -7,14 +8,13 @@ import {
 } from '@refinedev/core';
 import type { MenuProps } from 'antd';
 import {
-  Layout as AntdLayout,
   Avatar,
   Button,
+  Dropdown,
+  Layout as AntdLayout,
   theme,
   Typography,
-  Dropdown,
 } from 'antd';
-import { LeftOutlined } from '@ant-design/icons';
 import React, { useMemo, useState } from 'react';
 
 const { Text } = Typography;
