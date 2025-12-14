@@ -19,7 +19,7 @@ import {
   useReactFlow,
   Viewport,
 } from '@xyflow/react';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   GraphDtoStatusEnum,
@@ -192,6 +192,7 @@ const GraphCanvasInner = ({
   compiledNodes,
   compiledNodesLoading,
 }: GraphCanvasProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const {
     screenToFlowPosition,
     setViewport: setReactFlowViewport,
@@ -482,8 +483,40 @@ const GraphCanvasInner = ({
     [onViewportChange],
   );
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    // On macOS trackpads, horizontal two-finger swipes generate wheel events with deltaX.
+    // If the browser treats that as "overscroll", it can trigger Back/Forward navigation.
+    // Prevent the default wheel behavior while still letting ReactFlow handle panning.
+    const handleWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) > 0) {
+        event.preventDefault();
+      }
+    };
+
+    const addOptions: AddEventListenerOptions = {
+      passive: false,
+      capture: true,
+    };
+    const removeOptions: EventListenerOptions = { capture: true };
+
+    el.addEventListener('wheel', handleWheel, addOptions);
+    return () => {
+      el.removeEventListener('wheel', handleWheel, removeOptions);
+    };
+  }, []);
+
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        overscrollBehavior: 'none',
+        overscrollBehaviorX: 'none',
+      }}>
       <ReactFlow
         nodes={enhancedNodes as Node[]}
         edges={edges}

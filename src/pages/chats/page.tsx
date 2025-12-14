@@ -7,6 +7,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import {
+  Avatar,
   Button,
   Dropdown,
   Empty,
@@ -34,6 +35,7 @@ import type {
   ThreadDeleteNotification,
   ThreadUpdateNotification,
 } from '../../services/WebSocketTypes';
+import { getAgentAvatarDataUri } from '../../utils/agentAvatars';
 import { extractApiErrorMessage } from '../../utils/errors';
 import {
   buildNodeDisplayNames,
@@ -81,6 +83,9 @@ export const ChatsPage = () => {
 
   const [selectedThreadId, setSelectedThreadId] = useState<string | undefined>(
     undefined,
+  );
+  const [selectedAgentNodeId, setSelectedAgentNodeId] = useState<string | null>(
+    null,
   );
   const [draftThread, setDraftThread] = useState<DraftThread | null>(null);
 
@@ -373,6 +378,11 @@ export const ChatsPage = () => {
     }
     return threads.find((thread) => thread.id === selectedThreadId);
   }, [threads, selectedThreadId, draftThread]);
+
+  useEffect(() => {
+    // Reset agent filter when changing threads
+    setSelectedAgentNodeId(null);
+  }, [selectedThreadId]);
 
   useEffect(() => {
     setAnalyzeModalOpen(false);
@@ -1107,6 +1117,108 @@ export const ChatsPage = () => {
     return `…${graphFilterId.slice(-6)}`;
   }, [graphFilterId, graphCache]);
 
+  const selectedThreadAllMessages = useMemo(() => {
+    if (!selectedThreadId) return [];
+    return messages[selectedThreadId]?.['all'] || [];
+  }, [messages, selectedThreadId]);
+
+  const selectedThreadNodeDisplayNames = useMemo(() => {
+    if (!selectedThread || selectedThreadIsDraft) return undefined;
+    return graphCache[selectedThread.graphId]?.nodeDisplayNames;
+  }, [graphCache, selectedThread, selectedThreadIsDraft]);
+
+  const selectedThreadGraph = useMemo(() => {
+    if (!selectedThread || selectedThreadIsDraft) return undefined;
+    return graphCache[selectedThread.graphId]?.graph;
+  }, [graphCache, selectedThread, selectedThreadIsDraft]);
+
+  const getNodeConfigString = useCallback(
+    (nodeId: string, key: 'name' | 'description'): string | undefined => {
+      const graph = selectedThreadGraph;
+      if (!graph) return undefined;
+      const node = (graph.schema?.nodes ?? []).find((n) => n.id === nodeId);
+      if (!node) return undefined;
+      const config = node.config as unknown;
+      if (!config || typeof config !== 'object') return undefined;
+      const value = (config as Record<string, unknown>)[key];
+      return typeof value === 'string' && value.trim().length > 0
+        ? value.trim()
+        : undefined;
+    },
+    [selectedThreadGraph],
+  );
+
+  const formatNodeLabel = useCallback(
+    (nodeIdentifier: string): string => {
+      const mapped = selectedThreadNodeDisplayNames?.[nodeIdentifier];
+      if (mapped && mapped.trim().length > 0) {
+        return mapped;
+      }
+      if (nodeIdentifier.length <= 10) {
+        return nodeIdentifier;
+      }
+      return `Node ${nodeIdentifier.slice(-6)}`;
+    },
+    [selectedThreadNodeDisplayNames],
+  );
+
+  const agentsForSelectedThread = useMemo(() => {
+    if (!selectedThreadId || !selectedThread || selectedThreadIsDraft) {
+      return [];
+    }
+
+    const seen = new Set<string>();
+    const agents: {
+      nodeId: string;
+      label: string;
+      description?: string;
+      avatarSrc?: string;
+    }[] = [];
+
+    selectedThreadAllMessages.forEach((msg) => {
+      const nodeId = msg.nodeId;
+      if (!nodeId) return;
+      const role = msg.message?.role as string | undefined;
+      const isAgentMessage = role === 'ai' || role === 'reasoning';
+      if (!isAgentMessage) return;
+      if (seen.has(nodeId)) return;
+      seen.add(nodeId);
+
+      const configName = getNodeConfigString(nodeId, 'name');
+      const configDescription = getNodeConfigString(nodeId, 'description');
+
+      agents.push({
+        nodeId,
+        label: configName ?? formatNodeLabel(nodeId),
+        description: configDescription,
+        avatarSrc: getAgentAvatarDataUri(nodeId),
+      });
+    });
+
+    return agents;
+  }, [
+    formatNodeLabel,
+    getNodeConfigString,
+    selectedThread,
+    selectedThreadAllMessages,
+    selectedThreadId,
+    selectedThreadIsDraft,
+  ]);
+
+  const visibleMessagesForSelectedThread = useMemo(() => {
+    if (!selectedThreadId) return [];
+    if (!selectedAgentNodeId) return selectedThreadAllMessages;
+    return selectedThreadAllMessages.filter(
+      (msg) => msg.nodeId === selectedAgentNodeId,
+    );
+  }, [selectedAgentNodeId, selectedThreadAllMessages, selectedThreadId]);
+
+  const visiblePendingMessagesForSelectedThread = useMemo(() => {
+    if (!selectedThreadId) return [];
+    if (selectedAgentNodeId) return [];
+    return pendingMessages[selectedThreadId]?.['all'] || [];
+  }, [pendingMessages, selectedAgentNodeId, selectedThreadId]);
+
   const handleClearGraphFilter = useCallback(() => {
     const params = new URLSearchParams(location.search);
     params.delete('graphId');
@@ -1357,6 +1469,132 @@ export const ChatsPage = () => {
           <Text type="secondary" style={{ fontSize: 12 }}>
             Created {createdAt}
           </Text>
+          {isActive && !isDraft && (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAgentNodeId(null);
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedAgentNodeId) {
+                      e.currentTarget.style.backgroundColor = '#fafafa';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = selectedAgentNodeId
+                      ? '#fff'
+                      : '#e6f4ff';
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 10px',
+                    borderRadius: 10,
+                    border: `1px solid ${
+                      selectedAgentNodeId ? '#f0f0f0' : '#91caff'
+                    }`,
+                    backgroundColor: selectedAgentNodeId ? '#fff' : '#e6f4ff',
+                    cursor: 'pointer',
+                    transition:
+                      'background-color 0.15s ease, border-color 0.15s ease',
+                  }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Text strong style={{ display: 'block', fontSize: 13 }}>
+                      All agents
+                    </Text>
+                    <Text
+                      type="secondary"
+                      style={{
+                        fontSize: 12,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}>
+                      show the full thread
+                    </Text>
+                  </div>
+                </div>
+
+                {agentsForSelectedThread.length > 0 ? (
+                  agentsForSelectedThread.map((agent) => {
+                    const isSelected = selectedAgentNodeId === agent.nodeId;
+                    return (
+                      <div
+                        key={agent.nodeId}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAgentNodeId(agent.nodeId);
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = '#fafafa';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = '#fff';
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '8px 10px',
+                          borderRadius: 10,
+                          border: `1px solid ${
+                            isSelected ? '#91caff' : '#f0f0f0'
+                          }`,
+                          backgroundColor: isSelected ? '#e6f4ff' : '#fff',
+                          cursor: 'pointer',
+                          transition:
+                            'background-color 0.15s ease, border-color 0.15s ease',
+                        }}>
+                        <Avatar
+                          size={28}
+                          src={agent.avatarSrc}
+                          style={{ background: '#f0f0f0', flexShrink: 0 }}
+                        />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <Text
+                            strong
+                            style={{
+                              display: 'block',
+                              fontSize: 13,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                            {agent.label}
+                          </Text>
+                          <Text
+                            type="secondary"
+                            style={{
+                              fontSize: 12,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                            {agent.description || ''}
+                          </Text>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    No agents yet
+                  </Text>
+                )}
+              </div>
+            </div>
+          )}
         </Space>
       </div>
     );
@@ -1416,45 +1654,6 @@ export const ChatsPage = () => {
                 <Title level={4} style={{ margin: 0 }}>
                   Chats
                 </Title>
-                {graphFilterId && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      width: '100%',
-                      minWidth: 0,
-                      flexWrap: 'nowrap',
-                    }}>
-                    <span
-                      style={{
-                        flex: '1 1 auto',
-                        minWidth: 0,
-                        fontSize: 12,
-                        color: 'rgba(0, 0, 0, 0.45)', // matches Typography.Text type="secondary"
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: 'block',
-                      }}
-                      title={`Graph: ${filteredGraphLabel ?? ''}`}>
-                      Graph:{' '}
-                      <span style={{ fontWeight: 600 }}>
-                        {filteredGraphLabel}
-                      </span>
-                    </span>
-                    <CloseOutlined
-                      onClick={handleClearGraphFilter}
-                      style={{
-                        flexShrink: 0,
-                        cursor: 'pointer',
-                        fontSize: 10,
-                        color: '#747474',
-                      }}
-                      aria-label="Clear graph filter"
-                    />
-                  </div>
-                )}
               </div>
               <Space>
                 <Button
@@ -1479,6 +1678,49 @@ export const ChatsPage = () => {
               </Space>
             </div>
           </div>
+          {graphFilterId && (
+            <div
+              style={{
+                padding: '10px 16px',
+                borderBottom: '1px solid #f0f0f0',
+                background: '#fafafa',
+                flexShrink: 0,
+              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  minWidth: 0,
+                }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: 11,
+                      display: 'block',
+                      marginBottom: 2,
+                    }}>
+                    Current graph
+                  </Text>
+                  <Text
+                    strong
+                    ellipsis={{ tooltip: filteredGraphLabel }}
+                    style={{ display: 'block' }}>
+                    {filteredGraphLabel}
+                  </Text>
+                </div>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CloseOutlined />}
+                  onClick={handleClearGraphFilter}
+                  aria-label="Clear graph filter"
+                />
+              </div>
+            </div>
+          )}
           <div
             ref={threadsContainerRef}
             onScroll={handleThreadsScroll}
@@ -1618,9 +1860,7 @@ export const ChatsPage = () => {
                     isDraft={draftThread?.id === selectedThreadId}
                     onDraftMessageSent={handleDraftMessageSent}
                     messages={
-                      selectedThreadId
-                        ? messages[selectedThreadId]?.['all'] || []
-                        : []
+                      selectedThreadId ? visibleMessagesForSelectedThread : []
                     }
                     messagesLoading={
                       selectedThreadId
@@ -1639,7 +1879,7 @@ export const ChatsPage = () => {
                     }
                     pendingMessages={
                       selectedThreadId
-                        ? pendingMessages[selectedThreadId]?.['all'] || []
+                        ? visiblePendingMessagesForSelectedThread
                         : []
                     }
                     externalThreadId={
