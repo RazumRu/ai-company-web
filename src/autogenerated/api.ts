@@ -894,6 +894,12 @@ export interface ThreadDto {
    * @memberof ThreadDto
    */
   'status': ThreadDtoStatusEnum;
+  /**
+   *
+   * @type {ThreadDtoTokenUsage}
+   * @memberof ThreadDto
+   */
+  'tokenUsage'?: ThreadDtoTokenUsage | null;
 }
 
 export const ThreadDtoStatusEnum = {
@@ -906,6 +912,98 @@ export const ThreadDtoStatusEnum = {
 export type ThreadDtoStatusEnum =
   (typeof ThreadDtoStatusEnum)[keyof typeof ThreadDtoStatusEnum];
 
+/**
+ *
+ * @export
+ * @interface ThreadDtoTokenUsage
+ */
+export interface ThreadDtoTokenUsage {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'totalPrice'?: number;
+  /**
+   * Token usage breakdown by node ID
+   * @type {{ [key: string]: ThreadDtoTokenUsageByNodeValue; }}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'byNode'?: { [key: string]: ThreadDtoTokenUsageByNodeValue };
+}
+/**
+ *
+ * @export
+ * @interface ThreadDtoTokenUsageByNodeValue
+ */
+export interface ThreadDtoTokenUsageByNodeValue {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'totalPrice'?: number;
+}
 /**
  *
  * @export
@@ -954,6 +1052,12 @@ export interface ThreadMessageDto {
    * @memberof ThreadMessageDto
    */
   'message': ThreadMessageDtoMessage;
+  /**
+   *
+   * @type {ThreadMessageDtoTokenUsage}
+   * @memberof ThreadMessageDto
+   */
+  'tokenUsage'?: ThreadMessageDtoTokenUsage | null;
 }
 /**
  * @type ThreadMessageDtoMessage
@@ -1323,6 +1427,25 @@ export const ThreadMessageDtoMessageOneOf5RoleEnum = {
 export type ThreadMessageDtoMessageOneOf5RoleEnum =
   (typeof ThreadMessageDtoMessageOneOf5RoleEnum)[keyof typeof ThreadMessageDtoMessageOneOf5RoleEnum];
 
+/**
+ *
+ * @export
+ * @interface ThreadMessageDtoTokenUsage
+ */
+export interface ThreadMessageDtoTokenUsage {
+  /**
+   * Total tokens for this message
+   * @type {number}
+   * @memberof ThreadMessageDtoTokenUsage
+   */
+  'totalTokens': number;
+  /**
+   * Total price for this message in USD
+   * @type {number}
+   * @memberof ThreadMessageDtoTokenUsage
+   */
+  'totalPrice'?: number;
+}
 /**
  *
  * @export

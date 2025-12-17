@@ -15,6 +15,7 @@ import {
   message as antdMessage,
   Modal,
   Popconfirm,
+  Popover,
   Space,
   Spin,
   Tag,
@@ -30,6 +31,7 @@ import { useThreadMessageStore } from '../../hooks/useThreadMessageStore';
 import { useWebSocket, useWebSocketEvent } from '../../hooks/useWebSocket';
 import type {
   AgentMessageNotification,
+  AgentStateUpdateNotification,
   GraphNodeUpdateNotification,
   ThreadCreateNotification,
   ThreadDeleteNotification,
@@ -56,6 +58,112 @@ import ThreadChatPanel from './components/ThreadChatPanel';
 const THREADS_PAGE_SIZE = 30;
 
 const { Title, Text } = Typography;
+
+type ThreadTokenUsageSnapshot = {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  outputTokens?: number;
+  reasoningTokens?: number;
+  totalTokens?: number;
+  totalPrice?: number;
+};
+
+const formatUsd = (amount?: number | null): string => {
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return '$—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6,
+  }).format(amount);
+};
+
+const safeNumber = (value: unknown): number | undefined => {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
+};
+
+const sumUsage = (
+  usages: ThreadTokenUsageSnapshot[],
+): ThreadTokenUsageSnapshot => {
+  const sumField = (
+    key: keyof ThreadTokenUsageSnapshot,
+  ): number | undefined => {
+    let hasAny = false;
+    const total = usages.reduce((acc, usage) => {
+      const value = usage[key];
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        hasAny = true;
+        return acc + value;
+      }
+      return acc;
+    }, 0);
+    return hasAny ? total : undefined;
+  };
+
+  return {
+    inputTokens: sumField('inputTokens'),
+    cachedInputTokens: sumField('cachedInputTokens'),
+    outputTokens: sumField('outputTokens'),
+    reasoningTokens: sumField('reasoningTokens'),
+    totalTokens: sumField('totalTokens'),
+    totalPrice: sumField('totalPrice'),
+  };
+};
+
+const ThreadTokenUsageLine: React.FC<{
+  usage?: ThreadTokenUsageSnapshot | null;
+  withPopover?: boolean;
+}> = ({ usage, withPopover = false }) => {
+  const totalTokens = usage?.totalTokens;
+  const totalPrice = usage?.totalPrice;
+  if (typeof totalTokens !== 'number') return null;
+
+  const line = (
+    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+      Token usage: {totalTokens} ({formatUsd(totalPrice)})
+    </Text>
+  );
+
+  if (!withPopover) return line;
+
+  const popoverContent = (
+    <Space direction="vertical" size={2} style={{ maxWidth: 340 }}>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Input tokens: {usage?.inputTokens ?? '—'}
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Cached input tokens: {usage?.cachedInputTokens ?? '—'}
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Output tokens: {usage?.outputTokens ?? '—'}
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Reasoning tokens: {usage?.reasoningTokens ?? '—'}
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Total tokens: {usage?.totalTokens ?? '—'}
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Total cost: {formatUsd(usage?.totalPrice)}
+      </Text>
+    </Space>
+  );
+
+  return (
+    <Popover
+      content={popoverContent}
+      trigger={['hover']}
+      placement="bottomLeft">
+      <span style={{ display: 'inline-block' }}>{line}</span>
+    </Popover>
+  );
+};
+
+const isDraftThreadId = (threadId?: string | null): boolean => {
+  return Boolean(threadId && threadId.startsWith('draft-'));
+};
 
 interface GraphCacheEntry {
   graph: GraphDto;
@@ -96,6 +204,10 @@ export const ChatsPage = () => {
     Record<string, TemplateDto>
   >({});
   const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  const [threadTokenUsageByNode, setThreadTokenUsageByNode] = useState<
+    Record<string, Record<string, ThreadTokenUsageSnapshot>>
+  >({});
 
   const [triggerNodesForSelectedThread, setTriggerNodesForSelectedThread] =
     useState<TriggerNodeInfo[]>([]);
@@ -233,6 +345,18 @@ export const ChatsPage = () => {
 
   const loadMessagesForThread = useCallback(
     async (threadId: string, force = false) => {
+      // Draft threads are local-only; they can never have persisted messages.
+      if (isDraftThreadId(threadId)) {
+        updateMessageMeta(threadId, (prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+          hasMore: false,
+          offset: prev.offset,
+        }));
+        return;
+      }
+
       const meta = getMessageMeta(threadId);
       if (!force && (meta.loading || meta.offset > 0)) {
         return;
@@ -298,6 +422,16 @@ export const ChatsPage = () => {
 
   const loadMoreMessagesForThread = useCallback(
     async (threadId: string) => {
+      // Draft threads are local-only; there is nothing to paginate from the API.
+      if (isDraftThreadId(threadId)) {
+        updateMessageMeta(threadId, (prev) => ({
+          ...prev,
+          loadingMore: false,
+          hasMore: false,
+        }));
+        return;
+      }
+
       const meta = getMessageMeta(threadId);
       if (meta.loading || meta.loadingMore || !meta.hasMore) {
         return;
@@ -1041,6 +1175,48 @@ export const ChatsPage = () => {
     },
     [updateMessages, updatePendingMessages, setExternalThreadIds],
   );
+
+  useWebSocketEvent(
+    'agent.state.update',
+    (notification) => {
+      const data = notification as AgentStateUpdateNotification;
+      const internalThreadId =
+        (typeof data.internalThreadId === 'string' && data.internalThreadId) ||
+        resolveInternalThreadId(data.threadId);
+      if (!internalThreadId) return;
+      if (!data.nodeId) return;
+
+      const usage: ThreadTokenUsageSnapshot = {
+        inputTokens: safeNumber(data.data?.inputTokens),
+        cachedInputTokens: safeNumber(data.data?.cachedInputTokens),
+        outputTokens: safeNumber(data.data?.outputTokens),
+        reasoningTokens: safeNumber(data.data?.reasoningTokens),
+        totalTokens: safeNumber(data.data?.totalTokens),
+        totalPrice: safeNumber(data.data?.totalPrice),
+      };
+
+      const hasAnyUsageField = Object.values(usage).some(
+        (value) => typeof value === 'number',
+      );
+      if (!hasAnyUsageField) return;
+
+      setThreadTokenUsageByNode((prev) => {
+        const existingThread = prev[internalThreadId] ?? {};
+        const existingNode = existingThread[data.nodeId] ?? {};
+        return {
+          ...prev,
+          [internalThreadId]: {
+            ...existingThread,
+            [data.nodeId]: {
+              ...existingNode,
+              ...usage,
+            },
+          },
+        };
+      });
+    },
+    [resolveInternalThreadId],
+  );
   const threadStatusMeta = selectedThread
     ? 'isDraft' in selectedThread && selectedThread.isDraft
       ? null
@@ -1121,6 +1297,26 @@ export const ChatsPage = () => {
     if (!selectedThreadId) return [];
     return messages[selectedThreadId]?.['all'] || [];
   }, [messages, selectedThreadId]);
+
+  const selectedThreadUsageByNode = useMemo(() => {
+    if (!selectedThreadId) return {};
+    return threadTokenUsageByNode[selectedThreadId] ?? {};
+  }, [selectedThreadId, threadTokenUsageByNode]);
+
+  const selectedThreadAggregateUsage = useMemo(() => {
+    const nodeUsages = Object.values(selectedThreadUsageByNode);
+    if (!nodeUsages.length) return undefined;
+    return sumUsage(nodeUsages);
+  }, [selectedThreadUsageByNode]);
+
+  const selectedThreadThreadUsage = useMemo(() => {
+    if (!selectedThread || selectedThreadIsDraft) return undefined;
+    const apiUsage = (selectedThread as ThreadDto).tokenUsage as
+      | ThreadTokenUsageSnapshot
+      | null
+      | undefined;
+    return selectedThreadAggregateUsage ?? apiUsage ?? undefined;
+  }, [selectedThread, selectedThreadAggregateUsage, selectedThreadIsDraft]);
 
   const selectedThreadNodeDisplayNames = useMemo(() => {
     if (!selectedThread || selectedThreadIsDraft) return undefined;
@@ -1516,12 +1712,14 @@ export const ChatsPage = () => {
                       }}>
                       show the full thread
                     </Text>
+                    <ThreadTokenUsageLine usage={selectedThreadThreadUsage} />
                   </div>
                 </div>
 
                 {agentsForSelectedThread.length > 0 ? (
                   agentsForSelectedThread.map((agent) => {
                     const isSelected = selectedAgentNodeId === agent.nodeId;
+                    const agentUsage = selectedThreadUsageByNode[agent.nodeId];
                     return (
                       <div
                         key={agent.nodeId}
@@ -1583,6 +1781,7 @@ export const ChatsPage = () => {
                             }}>
                             {agent.description || ''}
                           </Text>
+                          <ThreadTokenUsageLine usage={agentUsage} />
                         </div>
                       </div>
                     );
@@ -1838,6 +2037,12 @@ export const ChatsPage = () => {
                       )}
                     </Space>
                   </div>
+                  <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                    <ThreadTokenUsageLine
+                      usage={selectedThreadThreadUsage}
+                      withPopover
+                    />
+                  </div>
                 </div>
 
                 <div
@@ -1869,7 +2074,9 @@ export const ChatsPage = () => {
                     }
                     hasMoreMessages={
                       selectedThreadId
-                        ? getMessageMeta(selectedThreadId).hasMore
+                        ? isDraftThreadId(selectedThreadId)
+                          ? false
+                          : getMessageMeta(selectedThreadId).hasMore
                         : false
                     }
                     loadingMoreMessages={
@@ -1889,7 +2096,9 @@ export const ChatsPage = () => {
                     }
                     onLoadMoreMessages={
                       selectedThreadId
-                        ? () => loadMoreMessagesForThread(selectedThreadId)
+                        ? isDraftThreadId(selectedThreadId)
+                          ? undefined
+                          : () => loadMoreMessagesForThread(selectedThreadId)
                         : undefined
                     }
                     onUpdateSharedMessages={updateMessages}

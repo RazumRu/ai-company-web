@@ -114,6 +114,10 @@ const { Title } = Typography;
 const REVISION_FETCH_LIMIT = 50;
 const MESSAGE_PAGE_SIZE = 50;
 
+const isDraftThreadId = (threadId?: string | null): boolean => {
+  return Boolean(threadId && threadId.startsWith('draft-'));
+};
+
 const ensureThreadStatusPulseStyle = (() => {
   let injected = false;
   return () => {
@@ -600,6 +604,17 @@ export const GraphPage = () => {
 
   const loadMessagesForScope = useCallback(
     async (threadId: string, nodeId?: string, force = false) => {
+      // Draft threads are local-only; they can never have persisted messages.
+      if (isDraftThreadId(threadId)) {
+        updateMessageMeta(threadId, nodeId, (prev) => ({
+          ...prev,
+          loading: false,
+          loadingMore: false,
+          hasMore: false,
+        }));
+        return;
+      }
+
       const meta = getMessageMeta(threadId, nodeId);
       if (!force && (meta.loading || meta.offset > 0)) {
         return;
@@ -659,6 +674,16 @@ export const GraphPage = () => {
 
   const loadMoreMessagesForScope = useCallback(
     async (threadId: string, nodeId?: string) => {
+      // Draft threads are local-only; there is nothing to paginate from the API.
+      if (isDraftThreadId(threadId)) {
+        updateMessageMeta(threadId, nodeId, (prev) => ({
+          ...prev,
+          loadingMore: false,
+          hasMore: false,
+        }));
+        return;
+      }
+
       const meta = getMessageMeta(threadId, nodeId);
       if (meta.loadingMore || !meta.hasMore || meta.loading) {
         return;
@@ -723,6 +748,9 @@ export const GraphPage = () => {
     ) {
       return;
     }
+    if (isDraftThreadId(selectedThreadId)) {
+      return;
+    }
     const nodeData = selectedNode.data as unknown as GraphNodeData;
     const isAgentNode =
       (nodeData?.templateKind || '').toLowerCase() === 'simpleagent';
@@ -779,6 +807,7 @@ export const GraphPage = () => {
 
   useEffect(() => {
     if (!selectedThreadId) return;
+    if (isDraftThreadId(selectedThreadId)) return;
     const meta = getMessageMeta(selectedThreadId, undefined);
     if (meta.offset === 0 && !meta.loading && meta.hasMore) {
       void loadMessagesForScope(selectedThreadId);
@@ -787,6 +816,7 @@ export const GraphPage = () => {
 
   useEffect(() => {
     if (!chatThread) return;
+    if (isDraftThreadId(chatThread.id)) return;
     const meta = getMessageMeta(chatThread.id, undefined);
     if (meta.offset === 0 && !meta.loading && meta.hasMore) {
       void loadMessagesForScope(chatThread.id);
@@ -3332,14 +3362,22 @@ export const GraphPage = () => {
           graphId={id}
           onLoadMoreMessages={
             selectedThreadId
-              ? () =>
-                  loadMoreMessagesForScope(selectedThreadId, selectedNode?.id)
+              ? isDraftThreadId(selectedThreadId)
+                ? undefined
+                : () =>
+                    loadMoreMessagesForScope(selectedThreadId, selectedNode?.id)
               : undefined
           }
           onRefreshMessages={
             selectedThreadId
-              ? () =>
-                  loadMessagesForScope(selectedThreadId, selectedNode?.id, true)
+              ? isDraftThreadId(selectedThreadId)
+                ? undefined
+                : () =>
+                    loadMessagesForScope(
+                      selectedThreadId,
+                      selectedNode?.id,
+                      true,
+                    )
               : undefined
           }
           draftNodeConfigVersion={draftNodeConfigVersion}

@@ -83,6 +83,12 @@ export interface AgentStateUpdateNotification extends BaseNotification {
     needsMoreInfo?: boolean;
     toolUsageGuardActivated?: boolean;
     toolUsageGuardActivatedCount?: number;
+    inputTokens?: number;
+    cachedInputTokens?: number;
+    outputTokens?: number;
+    reasoningTokens?: number;
+    totalTokens?: number;
+    totalPrice?: number;
   };
 }
 
