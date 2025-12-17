@@ -89,6 +89,7 @@ export interface AgentStateUpdateNotification extends BaseNotification {
     reasoningTokens?: number;
     totalTokens?: number;
     totalPrice?: number;
+    currentContext?: number;
   };
 }
 

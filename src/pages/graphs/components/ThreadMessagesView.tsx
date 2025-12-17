@@ -63,8 +63,17 @@ const formatUsd = (amount?: number | null): string => {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
+    maximumFractionDigits: 2,
   }).format(amount);
+};
+
+const formatCompactNumber = (value: number): string => {
+  if (!Number.isFinite(value)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits: 0,
+  }).format(value);
 };
 
 const TokenUsageSummary: React.FC<{
@@ -75,7 +84,9 @@ const TokenUsageSummary: React.FC<{
   const totalTokens = tokenUsage.totalTokens;
   const totalPrice = tokenUsage.totalPrice;
 
-  const summary = `Token usage: ${totalTokens} (${formatUsd(totalPrice)})`;
+  const summary = `Token usage: ${formatCompactNumber(totalTokens)} (${formatUsd(
+    totalPrice,
+  )})`;
 
   return (
     <Text
@@ -500,6 +511,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const renderToolPopoverContent = (
       value: unknown,
       toolOptions?: Record<string, JsonValue>,
+      toolLabel?: string,
     ): React.ReactNode => {
       let parsed: JsonValue | null = null;
       if (typeof value === 'string') {
@@ -537,6 +549,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       return (
         <div style={containerStyle}>
+          {toolLabel && toolLabel.trim().length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <Text strong style={{ fontSize: 13 }}>
+                Tool: {toolLabel}
+              </Text>
+            </div>
+          )}
           {toolOptions && Object.keys(toolOptions).length > 0 && (
             <div style={sectionStyle}>
               <div style={sectionTitleStyle}>Tool Options:</div>
@@ -601,6 +620,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           shellCommand?: string;
           toolOptions?: Record<string, JsonValue>;
           tokenUsage?: ThreadMessageDtoTokenUsage | null;
+          tokenUsageIn?: ThreadMessageDtoTokenUsage | null;
+          tokenUsageOut?: ThreadMessageDtoTokenUsage | null;
           nodeId?: string;
           createdAt?: string;
           roleLabel?: string;
@@ -801,6 +822,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 shellCommand,
                 toolOptions: toolOptions || undefined,
                 tokenUsage: matched?.tokenUsage ?? m.tokenUsage,
+                tokenUsageIn: m.tokenUsage,
+                tokenUsageOut: matched?.tokenUsage,
                 nodeId: matched?.nodeId ?? m.nodeId,
                 createdAt: matched?.createdAt ?? m.createdAt,
                 roleLabel: effectiveTitle || name || 'tool',
@@ -843,6 +866,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               shellCommand,
               toolOptions,
               tokenUsage: m.tokenUsage,
+              tokenUsageOut: m.tokenUsage,
               nodeId: m.nodeId,
               createdAt: m.createdAt,
               roleLabel: title || name || 'tool',
@@ -1040,6 +1064,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         const contentNode = renderToolPopoverContent(
           resultContent,
           toolOptions,
+          name,
         );
         baseLine = (
           <Popover
@@ -1062,6 +1087,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       toolOptions?: Record<string, JsonValue>,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
       titleText?: string,
+      tokenUsageIn?: ThreadMessageDtoTokenUsage | null,
+      tokenUsageOut?: ThreadMessageDtoTokenUsage | null,
     ) => {
       return (
         <ShellToolDisplay
@@ -1072,6 +1099,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           toolOptions={toolOptions}
           title={titleText}
           metadata={metadata}
+          tokenUsageIn={tokenUsageIn}
+          tokenUsageOut={tokenUsageOut}
         />
       );
     };
@@ -1379,6 +1408,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   roleLabel: item.roleLabel ?? item.name,
                 },
                 item.title,
+                item.tokenUsageIn,
+                item.tokenUsageOut,
               ),
             );
             i++;

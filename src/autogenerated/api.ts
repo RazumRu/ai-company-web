@@ -955,6 +955,12 @@ export interface ThreadDtoTokenUsage {
    */
   'totalPrice'?: number;
   /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadDtoTokenUsage
+   */
+  'currentContext'?: number;
+  /**
    * Token usage breakdown by node ID
    * @type {{ [key: string]: ThreadDtoTokenUsageByNodeValue; }}
    * @memberof ThreadDtoTokenUsage
@@ -1003,6 +1009,12 @@ export interface ThreadDtoTokenUsageByNodeValue {
    * @memberof ThreadDtoTokenUsageByNodeValue
    */
   'totalPrice'?: number;
+  /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadDtoTokenUsageByNodeValue
+   */
+  'currentContext'?: number;
 }
 /**
  *

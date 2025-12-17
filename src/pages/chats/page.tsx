@@ -66,6 +66,19 @@ type ThreadTokenUsageSnapshot = {
   reasoningTokens?: number;
   totalTokens?: number;
   totalPrice?: number;
+  currentContext?: number;
+};
+
+const mergeTokenUsageByNode = (
+  baseline: Record<string, ThreadTokenUsageSnapshot>,
+  overrides: Record<string, ThreadTokenUsageSnapshot>,
+): Record<string, ThreadTokenUsageSnapshot> => {
+  const keys = new Set([...Object.keys(baseline), ...Object.keys(overrides)]);
+  const merged: Record<string, ThreadTokenUsageSnapshot> = {};
+  keys.forEach((key) => {
+    merged[key] = { ...(baseline[key] ?? {}), ...(overrides[key] ?? {}) };
+  });
+  return merged;
 };
 
 const formatUsd = (amount?: number | null): string => {
@@ -74,14 +87,53 @@ const formatUsd = (amount?: number | null): string => {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
+    maximumFractionDigits: 2,
   }).format(amount);
+};
+
+const formatCompactNumber = (value?: number | null): string => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits: 0,
+  }).format(value);
 };
 
 const safeNumber = (value: unknown): number | undefined => {
   return typeof value === 'number' && Number.isFinite(value)
     ? value
     : undefined;
+};
+
+const compactUsageUpdate = (
+  source: AgentStateUpdateNotification['data'],
+): Partial<ThreadTokenUsageSnapshot> => {
+  const next: Partial<ThreadTokenUsageSnapshot> = {};
+
+  const inputTokens = safeNumber(source?.inputTokens);
+  if (inputTokens !== undefined) next.inputTokens = inputTokens;
+
+  const cachedInputTokens = safeNumber(source?.cachedInputTokens);
+  if (cachedInputTokens !== undefined)
+    next.cachedInputTokens = cachedInputTokens;
+
+  const outputTokens = safeNumber(source?.outputTokens);
+  if (outputTokens !== undefined) next.outputTokens = outputTokens;
+
+  const reasoningTokens = safeNumber(source?.reasoningTokens);
+  if (reasoningTokens !== undefined) next.reasoningTokens = reasoningTokens;
+
+  const totalTokens = safeNumber(source?.totalTokens);
+  if (totalTokens !== undefined) next.totalTokens = totalTokens;
+
+  const totalPrice = safeNumber(source?.totalPrice);
+  if (totalPrice !== undefined) next.totalPrice = totalPrice;
+
+  const currentContext = safeNumber(source?.currentContext);
+  if (currentContext !== undefined) next.currentContext = currentContext;
+
+  return next;
 };
 
 const sumUsage = (
@@ -102,6 +154,24 @@ const sumUsage = (
     return hasAny ? total : undefined;
   };
 
+  const maxField = (
+    key: keyof ThreadTokenUsageSnapshot,
+  ): number | undefined => {
+    let hasAny = false;
+    const max = usages.reduce(
+      (acc, usage) => {
+        const value = usage[key];
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          hasAny = true;
+          return acc === undefined || value > acc ? value : acc;
+        }
+        return acc;
+      },
+      undefined as number | undefined,
+    );
+    return hasAny ? max : undefined;
+  };
+
   return {
     inputTokens: sumField('inputTokens'),
     cachedInputTokens: sumField('cachedInputTokens'),
@@ -109,21 +179,104 @@ const sumUsage = (
     reasoningTokens: sumField('reasoningTokens'),
     totalTokens: sumField('totalTokens'),
     totalPrice: sumField('totalPrice'),
+    currentContext: maxField('currentContext'),
   };
+};
+
+const clampPercent = (value: number): number => {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+};
+
+const getPercentColor = (percent: number): string => {
+  if (percent >= 90) return '#ff4d4f';
+  if (percent >= 75) return '#faad14';
+  return '#52c41a';
+};
+
+const ContextUsageGauge: React.FC<{
+  percent: number;
+  size?: number;
+}> = ({ percent, size = 15 }) => {
+  const safePercent = clampPercent(percent);
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference * (1 - safePercent / 100);
+  const color = getPercentColor(safePercent);
+  const label = `${Math.round(safePercent)}%`;
+
+  return (
+    <span
+      style={{
+        width: size,
+        height: size,
+        position: 'relative',
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+      }}
+      aria-label={`Context usage ${label}`}>
+      <svg width={size} height={size} style={{ display: 'block' }}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#d9d9d9"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+    </span>
+  );
 };
 
 const ThreadTokenUsageLine: React.FC<{
   usage?: ThreadTokenUsageSnapshot | null;
   withPopover?: boolean;
-}> = ({ usage, withPopover = false }) => {
+  contextMaxTokens?: number;
+  contextPercent?: number;
+}> = ({ usage, withPopover = false, contextMaxTokens, contextPercent }) => {
   const totalTokens = usage?.totalTokens;
   const totalPrice = usage?.totalPrice;
+  const currentContext = usage?.currentContext;
   if (typeof totalTokens !== 'number') return null;
 
+  const percent =
+    typeof contextPercent === 'number'
+      ? contextPercent
+      : typeof currentContext === 'number' &&
+          typeof contextMaxTokens === 'number' &&
+          Number.isFinite(contextMaxTokens) &&
+          contextMaxTokens > 0
+        ? (currentContext / contextMaxTokens) * 100
+        : undefined;
+
   const line = (
-    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-      Token usage: {totalTokens} ({formatUsd(totalPrice)})
-    </Text>
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+      }}>
+      <Text type="secondary" style={{ fontSize: 12, margin: 0 }}>
+        Token usage: {formatCompactNumber(totalTokens)} ({formatUsd(totalPrice)}
+        )
+      </Text>
+      {typeof percent === 'number' && <ContextUsageGauge percent={percent} />}
+    </span>
   );
 
   if (!withPopover) return line;
@@ -148,6 +301,14 @@ const ThreadTokenUsageLine: React.FC<{
       <Text type="secondary" style={{ fontSize: 12 }}>
         Total cost: {formatUsd(usage?.totalPrice)}
       </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Current context: {usage?.currentContext ?? '—'}
+      </Text>
+      {typeof percent === 'number' && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Context usage: {Math.round(clampPercent(percent))}%
+        </Text>
+      )}
     </Space>
   );
 
@@ -1186,19 +1347,8 @@ export const ChatsPage = () => {
       if (!internalThreadId) return;
       if (!data.nodeId) return;
 
-      const usage: ThreadTokenUsageSnapshot = {
-        inputTokens: safeNumber(data.data?.inputTokens),
-        cachedInputTokens: safeNumber(data.data?.cachedInputTokens),
-        outputTokens: safeNumber(data.data?.outputTokens),
-        reasoningTokens: safeNumber(data.data?.reasoningTokens),
-        totalTokens: safeNumber(data.data?.totalTokens),
-        totalPrice: safeNumber(data.data?.totalPrice),
-      };
-
-      const hasAnyUsageField = Object.values(usage).some(
-        (value) => typeof value === 'number',
-      );
-      if (!hasAnyUsageField) return;
+      const usageUpdate = compactUsageUpdate(data.data ?? {});
+      if (Object.keys(usageUpdate).length === 0) return;
 
       setThreadTokenUsageByNode((prev) => {
         const existingThread = prev[internalThreadId] ?? {};
@@ -1209,7 +1359,7 @@ export const ChatsPage = () => {
             ...existingThread,
             [data.nodeId]: {
               ...existingNode,
-              ...usage,
+              ...usageUpdate,
             },
           },
         };
@@ -1298,10 +1448,29 @@ export const ChatsPage = () => {
     return messages[selectedThreadId]?.['all'] || [];
   }, [messages, selectedThreadId]);
 
+  const selectedThreadTokenUsageFromApi = useMemo(() => {
+    if (!selectedThread || selectedThreadIsDraft) return undefined;
+    const usage = (selectedThread as ThreadDto).tokenUsage as
+      | (ThreadTokenUsageSnapshot & {
+          byNode?: Record<string, ThreadTokenUsageSnapshot>;
+        })
+      | null
+      | undefined;
+    return usage ?? undefined;
+  }, [selectedThread, selectedThreadIsDraft]);
+
   const selectedThreadUsageByNode = useMemo(() => {
     if (!selectedThreadId) return {};
-    return threadTokenUsageByNode[selectedThreadId] ?? {};
-  }, [selectedThreadId, threadTokenUsageByNode]);
+    return (
+      threadTokenUsageByNode[selectedThreadId] ??
+      selectedThreadTokenUsageFromApi?.byNode ??
+      {}
+    );
+  }, [
+    selectedThreadId,
+    selectedThreadTokenUsageFromApi?.byNode,
+    threadTokenUsageByNode,
+  ]);
 
   const selectedThreadAggregateUsage = useMemo(() => {
     const nodeUsages = Object.values(selectedThreadUsageByNode);
@@ -1311,12 +1480,37 @@ export const ChatsPage = () => {
 
   const selectedThreadThreadUsage = useMemo(() => {
     if (!selectedThread || selectedThreadIsDraft) return undefined;
-    const apiUsage = (selectedThread as ThreadDto).tokenUsage as
-      | ThreadTokenUsageSnapshot
-      | null
-      | undefined;
-    return selectedThreadAggregateUsage ?? apiUsage ?? undefined;
-  }, [selectedThread, selectedThreadAggregateUsage, selectedThreadIsDraft]);
+    return (
+      selectedThreadAggregateUsage ??
+      selectedThreadTokenUsageFromApi ??
+      undefined
+    );
+  }, [
+    selectedThread,
+    selectedThreadAggregateUsage,
+    selectedThreadIsDraft,
+    selectedThreadTokenUsageFromApi,
+  ]);
+
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    if (!selectedThread || selectedThreadIsDraft) return;
+    const byNode = selectedThreadTokenUsageFromApi?.byNode;
+    if (!byNode || Object.keys(byNode).length === 0) return;
+
+    setThreadTokenUsageByNode((prev) => {
+      const existing = prev[selectedThreadId] ?? {};
+      // Baseline from API, but keep any live socket-updated overrides.
+      const merged = mergeTokenUsageByNode(byNode, existing);
+      if (prev[selectedThreadId] === merged) return prev;
+      return { ...prev, [selectedThreadId]: merged };
+    });
+  }, [
+    selectedThread,
+    selectedThreadId,
+    selectedThreadIsDraft,
+    selectedThreadTokenUsageFromApi?.byNode,
+  ]);
 
   const selectedThreadNodeDisplayNames = useMemo(() => {
     if (!selectedThread || selectedThreadIsDraft) return undefined;
@@ -1343,6 +1537,54 @@ export const ChatsPage = () => {
     },
     [selectedThreadGraph],
   );
+
+  const getNodeConfigNumber = useCallback(
+    (nodeId: string, key: string): number | undefined => {
+      const graph = selectedThreadGraph;
+      if (!graph) return undefined;
+      const node = (graph.schema?.nodes ?? []).find((n) => n.id === nodeId);
+      if (!node) return undefined;
+      const config = node.config as unknown;
+      if (!config || typeof config !== 'object') return undefined;
+      const value = (config as Record<string, unknown>)[key];
+      return typeof value === 'number' && Number.isFinite(value)
+        ? value
+        : undefined;
+    },
+    [selectedThreadGraph],
+  );
+
+  const getNodeTemplateId = useCallback(
+    (nodeId: string): string | undefined => {
+      const graph = selectedThreadGraph;
+      if (!graph) return undefined;
+      const node = (graph.schema?.nodes ?? []).find((n) => n.id === nodeId);
+      return node?.template;
+    },
+    [selectedThreadGraph],
+  );
+
+  const selectedThreadContextPercent = useMemo(() => {
+    const entries = Object.entries(selectedThreadUsageByNode);
+    if (!entries.length) return undefined;
+
+    let maxPercent: number | undefined = undefined;
+    entries.forEach(([nodeId, usage]) => {
+      if (!usage) return;
+      if (getNodeTemplateId(nodeId) !== 'simple-agent') return;
+      const maxTokens = getNodeConfigNumber(nodeId, 'summarizeMaxTokens');
+      if (!maxTokens || maxTokens <= 0) return;
+      const current = usage.currentContext;
+      if (typeof current !== 'number' || !Number.isFinite(current)) return;
+      const percent = (current / maxTokens) * 100;
+      if (!Number.isFinite(percent)) return;
+      if (maxPercent === undefined || percent > maxPercent) {
+        maxPercent = percent;
+      }
+    });
+
+    return maxPercent;
+  }, [getNodeConfigNumber, getNodeTemplateId, selectedThreadUsageByNode]);
 
   const formatNodeLabel = useCallback(
     (nodeIdentifier: string): string => {
@@ -1712,7 +1954,10 @@ export const ChatsPage = () => {
                       }}>
                       show the full thread
                     </Text>
-                    <ThreadTokenUsageLine usage={selectedThreadThreadUsage} />
+                    <ThreadTokenUsageLine
+                      usage={selectedThreadThreadUsage}
+                      contextPercent={selectedThreadContextPercent}
+                    />
                   </div>
                 </div>
 
@@ -1720,6 +1965,14 @@ export const ChatsPage = () => {
                   agentsForSelectedThread.map((agent) => {
                     const isSelected = selectedAgentNodeId === agent.nodeId;
                     const agentUsage = selectedThreadUsageByNode[agent.nodeId];
+                    const templateId = getNodeTemplateId(agent.nodeId);
+                    const summarizeMaxTokens =
+                      templateId === 'simple-agent'
+                        ? getNodeConfigNumber(
+                            agent.nodeId,
+                            'summarizeMaxTokens',
+                          )
+                        : undefined;
                     return (
                       <div
                         key={agent.nodeId}
@@ -1781,7 +2034,10 @@ export const ChatsPage = () => {
                             }}>
                             {agent.description || ''}
                           </Text>
-                          <ThreadTokenUsageLine usage={agentUsage} />
+                          <ThreadTokenUsageLine
+                            usage={agentUsage}
+                            contextMaxTokens={summarizeMaxTokens}
+                          />
                         </div>
                       </div>
                     );
@@ -2041,6 +2297,7 @@ export const ChatsPage = () => {
                     <ThreadTokenUsageLine
                       usage={selectedThreadThreadUsage}
                       withPopover
+                      contextPercent={selectedThreadContextPercent}
                     />
                   </div>
                 </div>
