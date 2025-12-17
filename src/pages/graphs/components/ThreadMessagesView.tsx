@@ -59,6 +59,7 @@ const { Text } = Typography;
 
 const formatUsd = (amount?: number | null): string => {
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return '$—';
+  if (amount === 0 || (amount > 0 && amount < 0.01)) return '<$0.01';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

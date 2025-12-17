@@ -83,6 +83,7 @@ const mergeTokenUsageByNode = (
 
 const formatUsd = (amount?: number | null): string => {
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return '$—';
+  if (amount === 0 || (amount > 0 && amount < 0.01)) return '<$0.01';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -307,6 +308,11 @@ const ThreadTokenUsageLine: React.FC<{
       {typeof percent === 'number' && (
         <Text type="secondary" style={{ fontSize: 12 }}>
           Context usage: {Math.round(clampPercent(percent))}%
+          {typeof contextMaxTokens === 'number' &&
+            Number.isFinite(contextMaxTokens) &&
+            contextMaxTokens > 0 && (
+              <> ({formatCompactNumber(contextMaxTokens)})</>
+            )}
         </Text>
       )}
     </Space>
@@ -1568,7 +1574,10 @@ export const ChatsPage = () => {
     const entries = Object.entries(selectedThreadUsageByNode);
     if (!entries.length) return undefined;
 
-    let maxPercent: number | undefined = undefined;
+    let sumContext = 0;
+    let sumMaxTokens = 0;
+    let hasAny = false;
+
     entries.forEach(([nodeId, usage]) => {
       if (!usage) return;
       if (getNodeTemplateId(nodeId) !== 'simple-agent') return;
@@ -1576,15 +1585,85 @@ export const ChatsPage = () => {
       if (!maxTokens || maxTokens <= 0) return;
       const current = usage.currentContext;
       if (typeof current !== 'number' || !Number.isFinite(current)) return;
-      const percent = (current / maxTokens) * 100;
-      if (!Number.isFinite(percent)) return;
-      if (maxPercent === undefined || percent > maxPercent) {
-        maxPercent = percent;
-      }
+      sumContext += current;
+      sumMaxTokens += maxTokens;
+      hasAny = true;
     });
 
-    return maxPercent;
+    if (!hasAny || sumMaxTokens <= 0) return undefined;
+    const percent = (sumContext / sumMaxTokens) * 100;
+    return Number.isFinite(percent) ? percent : undefined;
   }, [getNodeConfigNumber, getNodeTemplateId, selectedThreadUsageByNode]);
+
+  const selectedThreadContextMaxTokens = useMemo(() => {
+    const entries = Object.entries(selectedThreadUsageByNode);
+    if (!entries.length) return undefined;
+    let sumMaxTokens = 0;
+    let hasAny = false;
+    entries.forEach(([nodeId]) => {
+      if (getNodeTemplateId(nodeId) !== 'simple-agent') return;
+      const maxTokens = getNodeConfigNumber(nodeId, 'summarizeMaxTokens');
+      if (!maxTokens || maxTokens <= 0) return;
+      sumMaxTokens += maxTokens;
+      hasAny = true;
+    });
+    return hasAny && sumMaxTokens > 0 ? sumMaxTokens : undefined;
+  }, [getNodeConfigNumber, getNodeTemplateId, selectedThreadUsageByNode]);
+
+  const selectedThreadHeaderUsage = useMemo(() => {
+    if (selectedAgentNodeId) {
+      return selectedThreadUsageByNode[selectedAgentNodeId];
+    }
+    return selectedThreadThreadUsage;
+  }, [
+    selectedAgentNodeId,
+    selectedThreadUsageByNode,
+    selectedThreadThreadUsage,
+  ]);
+
+  const selectedThreadHeaderContextPercent = useMemo(() => {
+    if (selectedAgentNodeId) {
+      const usage = selectedThreadUsageByNode[selectedAgentNodeId];
+      if (!usage) return undefined;
+      const templateId = getNodeTemplateId(selectedAgentNodeId);
+      if (templateId !== 'simple-agent') return undefined;
+      const maxTokens = getNodeConfigNumber(
+        selectedAgentNodeId,
+        'summarizeMaxTokens',
+      );
+      if (!maxTokens || maxTokens <= 0) return undefined;
+      const current = usage.currentContext;
+      if (typeof current !== 'number' || !Number.isFinite(current))
+        return undefined;
+      const percent = (current / maxTokens) * 100;
+      return Number.isFinite(percent) ? percent : undefined;
+    }
+    return selectedThreadContextPercent;
+  }, [
+    selectedAgentNodeId,
+    selectedThreadUsageByNode,
+    selectedThreadContextPercent,
+    getNodeConfigNumber,
+    getNodeTemplateId,
+  ]);
+
+  const selectedThreadHeaderContextMaxTokens = useMemo(() => {
+    if (selectedAgentNodeId) {
+      const templateId = getNodeTemplateId(selectedAgentNodeId);
+      if (templateId !== 'simple-agent') return undefined;
+      const maxTokens = getNodeConfigNumber(
+        selectedAgentNodeId,
+        'summarizeMaxTokens',
+      );
+      return maxTokens && maxTokens > 0 ? maxTokens : undefined;
+    }
+    return selectedThreadContextMaxTokens;
+  }, [
+    selectedAgentNodeId,
+    selectedThreadContextMaxTokens,
+    getNodeConfigNumber,
+    getNodeTemplateId,
+  ]);
 
   const formatNodeLabel = useCallback(
     (nodeIdentifier: string): string => {
@@ -1957,6 +2036,7 @@ export const ChatsPage = () => {
                     <ThreadTokenUsageLine
                       usage={selectedThreadThreadUsage}
                       contextPercent={selectedThreadContextPercent}
+                      contextMaxTokens={selectedThreadContextMaxTokens}
                     />
                   </div>
                 </div>
@@ -2295,9 +2375,10 @@ export const ChatsPage = () => {
                   </div>
                   <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
                     <ThreadTokenUsageLine
-                      usage={selectedThreadThreadUsage}
+                      usage={selectedThreadHeaderUsage}
                       withPopover
-                      contextPercent={selectedThreadContextPercent}
+                      contextPercent={selectedThreadHeaderContextPercent}
+                      contextMaxTokens={selectedThreadHeaderContextMaxTokens}
                     />
                   </div>
                 </div>
