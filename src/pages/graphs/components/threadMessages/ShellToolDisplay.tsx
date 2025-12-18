@@ -140,6 +140,27 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const resultObj = isPlainObject(resultContent)
     ? (resultContent as Record<string, unknown>)
     : null;
+
+  const toolErrorText = useMemo(() => {
+    if (!resultObj) return undefined;
+    const errorValue = resultObj.error;
+    if (typeof errorValue === 'string') {
+      const trimmed = errorValue.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+    if (errorValue === null || errorValue === undefined) return undefined;
+    try {
+      const serialized = JSON.stringify(errorValue, null, 2);
+      const trimmed = serialized.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    } catch {
+      const asString = String(errorValue);
+      const trimmed = asString.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    }
+  }, [resultObj]);
+  const hasToolError = Boolean(toolErrorText);
+
   const stdoutCandidate = resultObj?.stdout;
   const stdoutText =
     typeof stdoutCandidate === 'string' ? stdoutCandidate : null;
@@ -157,9 +178,15 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
       ? (exitCodeCandidate as number)
       : null;
   const exitCodeColor =
-    exitCode === null || exitCode === 0 ? '#9d9d9d' : '#ff4d4f';
+    hasToolError || (exitCode !== null && exitCode !== 0) ? '#ff4d4f' : '#9d9d9d';
   const tint =
-    exitCode === null ? '#2b2b2b' : exitCode === 0 ? '#1d2b1f' : '#2b1d1d';
+    hasToolError
+      ? '#2b1d1d'
+      : exitCode === null
+        ? '#2b2b2b'
+        : exitCode === 0
+          ? '#1d2b1f'
+          : '#2b1d1d';
 
   const toolNameText = useMemo(() => {
     const displayName = title && title.trim().length > 0 ? title.trim() : name;
@@ -292,13 +319,18 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     (tokenUsageIn && typeof tokenUsageIn.totalTokens === 'number') ||
     (tokenUsageOut && typeof tokenUsageOut.totalTokens === 'number');
 
+  const toolHeaderSuffix = hasToolError ? toolErrorText : undefined;
+  const toolHeaderTitle = toolHeaderSuffix
+    ? `${toolNameText} - ${toolHeaderSuffix}`
+    : toolNameText;
+
   return (
     <div>
       <div
         style={{
           background: '#1e1e1e',
           borderRadius: 6,
-          border: '1px solid #333',
+          border: `1px solid ${hasToolError ? '#5c2c2c' : '#333'}`,
           color: '#e8e8e8',
           fontFamily:
             'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
@@ -337,16 +369,24 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  flex: 1,
+                  minWidth: 0,
                 }}
                 aria-label={
                   status === 'executed'
-                    ? `View shell result for ${toolNameText}`
+                    ? `View shell result for ${toolHeaderTitle}`
                     : status === 'stopped'
-                      ? `Shell ${toolNameText} is stopped`
-                      : `Shell ${toolNameText} is calling`
+                      ? `Shell ${toolHeaderTitle} is stopped`
+                      : `Shell ${toolHeaderTitle} is calling`
                 }
-                title={toolNameText}>
-                {toolNameText}
+                title={toolHeaderTitle}>
+                <span>{toolNameText}</span>
+                {toolHeaderSuffix && (
+                  <span style={{ color: '#ff4d4f' }}>
+                    {' '}
+                    - {toolHeaderSuffix}
+                  </span>
+                )}
               </div>
             </Popover>
           ) : (
@@ -355,9 +395,17 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                flex: 1,
+                minWidth: 0,
               }}
-              title={toolNameText}>
-              {toolNameText}
+              title={toolHeaderTitle}>
+              <span>{toolNameText}</span>
+              {toolHeaderSuffix && (
+                <span style={{ color: '#ff4d4f' }}>
+                  {' '}
+                  - {toolHeaderSuffix}
+                </span>
+              )}
             </div>
           )}
 

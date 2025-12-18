@@ -233,6 +233,31 @@ const getMessageTitle = (payload?: MessagePayload): string | undefined => {
   return undefined;
 };
 
+const extractToolErrorText = (resultContent: unknown): string | undefined => {
+  if (!isPlainObject(resultContent)) return undefined;
+  const record = resultContent as Record<string, unknown>;
+  const errorValue = record.error;
+
+  if (typeof errorValue === 'string') {
+    const trimmed = errorValue.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  if (errorValue === null || errorValue === undefined) {
+    return undefined;
+  }
+
+  try {
+    const serialized = JSON.stringify(errorValue, null, 2);
+    const trimmed = serialized.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  } catch {
+    const asString = String(errorValue);
+    const trimmed = asString.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+};
+
 const getMessageRunId = (payload?: MessagePayload): string | undefined => {
   const record = getMessageRecord(payload);
   if (!record) return undefined;
@@ -1015,17 +1040,23 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     ) => {
       const isClickable = status === 'executed' && resultContent !== undefined;
       const isCalling = status === 'calling';
+      const errorText =
+        status === 'executed' ? extractToolErrorText(resultContent) : undefined;
+      const hasError = Boolean(errorText);
       const statusText =
         status === 'calling'
           ? 'calling...'
           : status === 'stopped'
             ? 'stopped'
             : 'executed';
-      const displayTitle =
+      const displayTitleBase =
         (titleText && titleText.trim().length > 0 ? titleText : undefined) ??
         (toolOptions?.purpose
           ? `${name} | ${String(toolOptions.purpose)}`
           : `tool ${name} is ${statusText}`);
+      const displayTitle = hasError
+        ? `${displayTitleBase} - ${errorText}`
+        : displayTitleBase;
       const accessibleName = displayTitle || name;
       const line = (
         <div
@@ -1035,6 +1066,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             animation: isCalling
               ? 'messages-tab-thinking-pulse 1.6s ease-in-out infinite'
               : undefined,
+            ...(hasError ? { color: '#ff4d4f' } : null),
           }}
           aria-label={
             status === 'executed'
@@ -1053,7 +1085,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             <Text
               type="secondary"
               className="tool-status-line__text"
-              style={{ fontSize: '12px', color: 'inherit' }}>
+              style={{
+                fontSize: '12px',
+                color: 'inherit',
+                fontWeight: hasError ? 600 : undefined,
+              }}>
               {displayTitle}
             </Text>
           </div>

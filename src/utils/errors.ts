@@ -74,3 +74,4 @@ export const extractApiErrorMessage = (
 
   return `${fallback}: ${detail}`;
 };
+

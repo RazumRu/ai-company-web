@@ -19,3 +19,4 @@ export function getAgentAvatarDataUri(nodeId: string, size = 64): string {
   avatarCache.set(key, dataUri);
   return dataUri;
 }
+
