@@ -50,6 +50,9 @@ export const MainPage = () => {
         <Paragraph type="secondary" style={{ fontSize: 16, marginBottom: 0 }}>
           Select "Graphs" from the sidebar to view your agent graphs.
         </Paragraph>
+        <Paragraph style={{ marginTop: 16, marginBottom: 0 }}>
+          <Text strong>Sergey</Text>
+        </Paragraph>
       </Typography>
     </div>
   );
