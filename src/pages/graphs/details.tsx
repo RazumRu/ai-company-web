@@ -242,6 +242,7 @@ export const GraphPage = () => {
     edges: [],
     viewport: { x: 0, y: 0, zoom: 1 },
     selectedThreadId: undefined,
+    graphName: '',
   });
 
   // React Flow state (will be synced with draft state via onStateChange)
@@ -466,6 +467,7 @@ export const GraphPage = () => {
         edges: refreshedEdges,
         viewport: refreshedViewport,
         selectedThreadId,
+        graphName: graphData.name,
         baseVersion: graphData.version,
       };
     },
@@ -854,7 +856,8 @@ export const GraphPage = () => {
 
         const graphData = res.data;
         setGraph(graphData);
-        setEditingName(graphData.name);
+        const storedDraftName = GraphStorageService.loadDraft(id)?.graphName;
+        setEditingName(storedDraftName ?? graphData.name);
 
         const metadata = (graphData.metadata as GraphMetadata) || {};
         const nodeMetadata = metadata.nodes || [];
@@ -937,6 +940,7 @@ export const GraphPage = () => {
           edges: reactFlowEdges,
           viewport: storedViewport ?? serverViewport ?? { x: 0, y: 0, zoom: 1 },
           selectedThreadId,
+          graphName: graphData.name,
           baseVersion: graphData.version,
         };
 
@@ -2187,7 +2191,7 @@ export const GraphPage = () => {
       };
 
       const response = await graphsApi.updateGraph(id, {
-        name: graph.name,
+        name: draftStateRef.current.draftState.graphName ?? graph.name,
         description: graph.description || undefined,
         schema: {
           nodes: apiNodes,
@@ -2235,6 +2239,7 @@ export const GraphPage = () => {
           edges,
           viewport,
           selectedThreadId,
+          graphName: updatedGraph.name,
           baseVersion: updatedGraph.version,
         };
         setServerGraphState(currentState);
@@ -2502,45 +2507,32 @@ export const GraphPage = () => {
   );
 
   const handleNameEdit = () => {
+    setEditingName(
+      draftStateRef.current.draftState.graphName ?? (graph?.name || ''),
+    );
     setIsEditingName(true);
   };
 
   const handleNameSave = async () => {
     if (!graph || !id) return;
 
-    try {
-      const response = await graphsApi.updateGraph(id, {
-        name: editingName,
-        description: graph.description || undefined,
-        schema: graph.schema,
-        metadata: graph.metadata || undefined,
-        currentVersion: graph.version,
-      });
-
-      const updatedGraph = response.data.graph;
-      const revision = response.data.revision;
-
-      if (revision) {
-        upsertRevision(revision);
-      }
-
-      setGraph(updatedGraph);
-      setEditingName(updatedGraph.name);
-      setIsEditingName(false);
-      message.success('Graph name updated');
-    } catch (e: unknown) {
-      console.error('Error updating graph name:', e);
-      const errorMessage = extractApiErrorMessage(
-        e,
-        'Failed to update graph name',
-      );
-      message.error(errorMessage);
-      setEditingName(graph.name);
+    const nextName = editingName.trim();
+    if (!nextName) {
+      message.warning('Graph name cannot be empty');
+      return;
     }
+
+    // Local-only: treat name change as an unsaved draft change.
+    draftStateRef.current.updateGraphName(nextName);
+    setGraph((prev) => (prev ? { ...prev, name: nextName } : prev));
+    setEditingName(nextName);
+    setIsEditingName(false);
   };
 
   const handleNameCancel = () => {
-    setEditingName(graph?.name || '');
+    setEditingName(
+      draftStateRef.current.draftState.graphName ?? (graph?.name || ''),
+    );
     setIsEditingName(false);
   };
 
@@ -2659,7 +2651,9 @@ export const GraphPage = () => {
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Title level={4} style={{ margin: 0 }}>
-                  {graph?.name || 'Graph Editor'}
+                  {draftState.draftState.graphName ||
+                    graph?.name ||
+                    'Graph Editor'}
                 </Title>
                 <Button
                   type="text"
@@ -3707,12 +3701,12 @@ export const GraphPage = () => {
         destroyOnClose>
         {revisionDiffRevision ? (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {revisionDiffRevision.configurationDiff.length === 0 ? (
+            {revisionDiffRevision.configDiff.length === 0 ? (
               <Typography.Text type="secondary">
                 No configuration changes.
               </Typography.Text>
             ) : (
-              revisionDiffRevision.configurationDiff.map((operation, index) => {
+              revisionDiffRevision.configDiff.map((operation, index) => {
                 const meta = REVISION_DIFF_OP_META[operation.op] ?? {
                   label: operation.op,
                   color: '#d9d9d9',

@@ -21,6 +21,7 @@ export interface GraphDraftState {
   edges: GraphEdge[];
   viewport: Viewport;
   selectedThreadId?: string;
+  graphName?: string;
   baseVersion?: string; // The server version this draft is based on
 }
 
@@ -39,6 +40,7 @@ export interface UseGraphDraftStateReturn {
   updateEdges: (edges: GraphEdge[]) => void;
   updateViewport: (viewport: Viewport) => void;
   updateSelectedThread: (threadId?: string) => void;
+  updateGraphName: (name: string) => void;
   updateNodeConfig: (
     nodeId: string,
     updates: { name?: string; config?: Record<string, unknown> },
@@ -131,6 +133,7 @@ function normalizeState(state: GraphDraftState): GraphDraftState {
       .sort((a, b) => a.id.localeCompare(b.id)),
     viewport: state.viewport,
     selectedThreadId: state.selectedThreadId,
+    graphName: state.graphName,
     baseVersion: state.baseVersion,
   };
 }
@@ -157,6 +160,7 @@ function normalizeStateWithoutViewport(
 function extractStructure(state: GraphDraftState) {
   return {
     selectedThreadId: state.selectedThreadId,
+    graphName: state.graphName,
     nodes: state.nodes.map((n) => ({
       id: n.id,
       type: n.type,
@@ -194,7 +198,9 @@ export function useGraphDraftState({
   const [draftState, setDraftState] = useState<GraphDraftState>(() => {
     // On mount, apply any stored local changes to server state
     const stored = GraphStorageService.loadDraft(graphId);
-    return stored || serverState;
+    if (!stored) return serverState;
+    // Merge to ensure newly added fields (e.g. graphName) default to server baseline
+    return { ...serverState, ...stored };
   });
 
   // Notify parent whenever draft state changes
@@ -213,6 +219,10 @@ export function useGraphDraftState({
       if (!currentDraft) {
         setDraftState(newServerState);
         // The useEffect will handle calling onStateChange
+      } else {
+        // Keep local draft changes, but backfill any newly added fields from server baseline
+        // (e.g. graphName introduced after an API/schema update).
+        setDraftState((prev) => ({ ...newServerState, ...prev }));
       }
     },
     [graphId],
@@ -278,6 +288,13 @@ export function useGraphDraftState({
   const updateSelectedThread = useCallback(
     (threadId?: string) => {
       updateDraft({ ...draftState, selectedThreadId: threadId });
+    },
+    [draftState, updateDraft],
+  );
+
+  const updateGraphName = useCallback(
+    (name: string) => {
+      updateDraft({ ...draftState, graphName: name });
     },
     [draftState, updateDraft],
   );
@@ -420,6 +437,7 @@ export function useGraphDraftState({
     updateEdges,
     updateViewport,
     updateSelectedThread,
+    updateGraphName,
     updateNodeConfig,
     hasUnsavedChanges,
     hasStructuralChanges,

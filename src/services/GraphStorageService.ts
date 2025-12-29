@@ -13,6 +13,7 @@ export interface GraphDiffState {
   edges: GraphEdge[];
   viewport: Viewport;
   selectedThreadId?: string;
+  graphName?: string;
   baseVersion?: string; // The server version this draft is based on
 }
 

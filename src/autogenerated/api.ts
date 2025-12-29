@@ -413,6 +413,7 @@ export const GraphNodeWithStatusDtoTypeEnum = {
   Trigger: 'trigger',
   Resource: 'resource',
   Knowledge: 'knowledge',
+  Mcp: 'mcp',
 } as const;
 
 export type GraphNodeWithStatusDtoTypeEnum =
@@ -484,22 +485,22 @@ export interface GraphRevisionDto {
   'toVersion': string;
   /**
    * JSON Patch (RFC 6902) operations between old and new schemas
-   * @type {Array<UpdateGraphResponseDtoRevisionConfigurationDiffInner>}
+   * @type {Array<UpdateGraphResponseDtoRevisionConfigDiffInner>}
    * @memberof GraphRevisionDto
    */
-  'configurationDiff': Array<UpdateGraphResponseDtoRevisionConfigurationDiffInner>;
+  'configDiff': Array<UpdateGraphResponseDtoRevisionConfigDiffInner>;
   /**
    *
-   * @type {UpdateGraphResponseDtoRevisionClientSchema}
+   * @type {UpdateGraphResponseDtoRevisionClientConfig}
    * @memberof GraphRevisionDto
    */
-  'clientSchema': UpdateGraphResponseDtoRevisionClientSchema;
+  'clientConfig': UpdateGraphResponseDtoRevisionClientConfig;
   /**
    *
-   * @type {UpdateGraphResponseDtoRevisionNewSchema}
+   * @type {UpdateGraphResponseDtoRevisionNewConfig}
    * @memberof GraphRevisionDto
    */
-  'newSchema': UpdateGraphResponseDtoRevisionNewSchema;
+  'newConfig': UpdateGraphResponseDtoRevisionNewConfig;
   /**
    *
    * @type {string}
@@ -688,6 +689,7 @@ export const TemplateDtoKindEnum = {
   Trigger: 'trigger',
   Resource: 'resource',
   Knowledge: 'knowledge',
+  Mcp: 'mcp',
 } as const;
 
 export type TemplateDtoKindEnum =
@@ -746,6 +748,7 @@ export const TemplateDtoInputsInnerOneOfValueEnum = {
   Trigger: 'trigger',
   Resource: 'resource',
   Knowledge: 'knowledge',
+  Mcp: 'mcp',
 } as const;
 
 export type TemplateDtoInputsInnerOneOfValueEnum =
@@ -1790,22 +1793,22 @@ export interface UpdateGraphResponseDtoRevision {
   'toVersion': string;
   /**
    * JSON Patch (RFC 6902) operations between old and new schemas
-   * @type {Array<UpdateGraphResponseDtoRevisionConfigurationDiffInner>}
+   * @type {Array<UpdateGraphResponseDtoRevisionConfigDiffInner>}
    * @memberof UpdateGraphResponseDtoRevision
    */
-  'configurationDiff': Array<UpdateGraphResponseDtoRevisionConfigurationDiffInner>;
+  'configDiff': Array<UpdateGraphResponseDtoRevisionConfigDiffInner>;
   /**
    *
-   * @type {UpdateGraphResponseDtoRevisionClientSchema}
+   * @type {UpdateGraphResponseDtoRevisionClientConfig}
    * @memberof UpdateGraphResponseDtoRevision
    */
-  'clientSchema': UpdateGraphResponseDtoRevisionClientSchema;
+  'clientConfig': UpdateGraphResponseDtoRevisionClientConfig;
   /**
    *
-   * @type {UpdateGraphResponseDtoRevisionNewSchema}
+   * @type {UpdateGraphResponseDtoRevisionNewConfig}
    * @memberof UpdateGraphResponseDtoRevision
    */
-  'newSchema': UpdateGraphResponseDtoRevisionNewSchema;
+  'newConfig': UpdateGraphResponseDtoRevisionNewConfig;
   /**
    *
    * @type {string}
@@ -1843,251 +1846,270 @@ export type UpdateGraphResponseDtoRevisionStatusEnum =
   (typeof UpdateGraphResponseDtoRevisionStatusEnum)[keyof typeof UpdateGraphResponseDtoRevisionStatusEnum];
 
 /**
- * Schema submitted by the client
+ * Config submitted by the client
  * @export
- * @interface UpdateGraphResponseDtoRevisionClientSchema
+ * @interface UpdateGraphResponseDtoRevisionClientConfig
  */
-export interface UpdateGraphResponseDtoRevisionClientSchema {
+export interface UpdateGraphResponseDtoRevisionClientConfig {
   /**
    *
-   * @type {Array<CreateGraphDtoSchemaNodesInner>}
-   * @memberof UpdateGraphResponseDtoRevisionClientSchema
+   * @type {CreateGraphDtoSchema}
+   * @memberof UpdateGraphResponseDtoRevisionClientConfig
    */
-  'nodes': Array<CreateGraphDtoSchemaNodesInner>;
+  'schema': CreateGraphDtoSchema;
   /**
    *
-   * @type {Array<CreateGraphDtoSchemaEdgesInner>}
-   * @memberof UpdateGraphResponseDtoRevisionClientSchema
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionClientConfig
    */
-  'edges'?: Array<CreateGraphDtoSchemaEdgesInner>;
+  'name': string;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionClientConfig
+   */
+  'description': string | null;
+  /**
+   *
+   * @type {boolean}
+   * @memberof UpdateGraphResponseDtoRevisionClientConfig
+   */
+  'temporary': boolean;
 }
 /**
- * @type UpdateGraphResponseDtoRevisionConfigurationDiffInner
+ * @type UpdateGraphResponseDtoRevisionConfigDiffInner
  * @export
  */
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInner =
-  | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
-  | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
-  | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
-  | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
-  | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
-  | UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5;
+export type UpdateGraphResponseDtoRevisionConfigDiffInner =
+  | UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf
+  | UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1
+  | UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2
+  | UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3
+  | UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4
+  | UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5;
 
 /**
  *
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
+ * @interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf {
+export interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf {
   /**
    *
    * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf
    */
-  'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum;
+  'op': UpdateGraphResponseDtoRevisionConfigDiffInnerOneOfOpEnum;
   /**
    *
    * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf
    */
   'path': string;
   /**
    *
    * @type {any}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf
    */
   'value': any;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum = {
+export const UpdateGraphResponseDtoRevisionConfigDiffInnerOneOfOpEnum = {
   Add: 'add',
 } as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum =
-  (typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOfOpEnum];
+export type UpdateGraphResponseDtoRevisionConfigDiffInnerOneOfOpEnum =
+  (typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOfOpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOfOpEnum];
 
 /**
  *
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
+ * @interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1 {
+export interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1 {
   /**
    *
    * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1
    */
-  'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum;
+  'op': UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1OpEnum;
   /**
    *
    * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1
    */
   'path': string;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum =
-  {
-    Remove: 'remove',
-  } as const;
+export const UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1OpEnum = {
+  Remove: 'remove',
+} as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum =
-  (typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf1OpEnum];
-
-/**
- *
- * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
- */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2 {
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
-   */
-  'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum;
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
-   */
-  'path': string;
-  /**
-   *
-   * @type {any}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2
-   */
-  'value': any;
-}
-
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum =
-  {
-    Replace: 'replace',
-  } as const;
-
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum =
-  (typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf2OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1OpEnum =
+  (typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf1OpEnum];
 
 /**
  *
  * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
+ * @interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2
  */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3 {
+export interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2 {
   /**
    *
    * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2
    */
-  'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum;
+  'op': UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2OpEnum;
   /**
    *
    * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
-   */
-  'from': string;
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3
-   */
-  'path': string;
-}
-
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum =
-  {
-    Move: 'move',
-  } as const;
-
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum =
-  (typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf3OpEnum];
-
-/**
- *
- * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
- */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4 {
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
-   */
-  'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum;
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
-   */
-  'from': string;
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4
-   */
-  'path': string;
-}
-
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum =
-  {
-    Copy: 'copy',
-  } as const;
-
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum =
-  (typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf4OpEnum];
-
-/**
- *
- * @export
- * @interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
- */
-export interface UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5 {
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
-   */
-  'op': UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum;
-  /**
-   *
-   * @type {string}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2
    */
   'path': string;
   /**
    *
    * @type {any}
-   * @memberof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2
    */
   'value': any;
 }
 
-export const UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum =
-  {
-    Test: 'test',
-  } as const;
+export const UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2OpEnum = {
+  Replace: 'replace',
+} as const;
 
-export type UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum =
-  (typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigurationDiffInnerOneOf5OpEnum];
+export type UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2OpEnum =
+  (typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf2OpEnum];
 
 /**
- * Merged schema result
+ *
  * @export
- * @interface UpdateGraphResponseDtoRevisionNewSchema
+ * @interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3
  */
-export interface UpdateGraphResponseDtoRevisionNewSchema {
+export interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3 {
   /**
    *
-   * @type {Array<CreateGraphDtoSchemaNodesInner>}
-   * @memberof UpdateGraphResponseDtoRevisionNewSchema
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3
    */
-  'nodes': Array<CreateGraphDtoSchemaNodesInner>;
+  'op': UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3OpEnum;
   /**
    *
-   * @type {Array<CreateGraphDtoSchemaEdgesInner>}
-   * @memberof UpdateGraphResponseDtoRevisionNewSchema
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3
    */
-  'edges'?: Array<CreateGraphDtoSchemaEdgesInner>;
+  'from': string;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3
+   */
+  'path': string;
+}
+
+export const UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3OpEnum = {
+  Move: 'move',
+} as const;
+
+export type UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3OpEnum =
+  (typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3OpEnum];
+
+/**
+ *
+ * @export
+ * @interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4
+ */
+export interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4 {
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4
+   */
+  'op': UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4OpEnum;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4
+   */
+  'from': string;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4
+   */
+  'path': string;
+}
+
+export const UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4OpEnum = {
+  Copy: 'copy',
+} as const;
+
+export type UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4OpEnum =
+  (typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4OpEnum];
+
+/**
+ *
+ * @export
+ * @interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5
+ */
+export interface UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5 {
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5
+   */
+  'op': UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5OpEnum;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5
+   */
+  'path': string;
+  /**
+   *
+   * @type {any}
+   * @memberof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5
+   */
+  'value': any;
+}
+
+export const UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5OpEnum = {
+  Test: 'test',
+} as const;
+
+export type UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5OpEnum =
+  (typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5OpEnum)[keyof typeof UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5OpEnum];
+
+/**
+ * Merged config result
+ * @export
+ * @interface UpdateGraphResponseDtoRevisionNewConfig
+ */
+export interface UpdateGraphResponseDtoRevisionNewConfig {
+  /**
+   *
+   * @type {CreateGraphDtoSchema}
+   * @memberof UpdateGraphResponseDtoRevisionNewConfig
+   */
+  'schema': CreateGraphDtoSchema;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionNewConfig
+   */
+  'name': string;
+  /**
+   *
+   * @type {string}
+   * @memberof UpdateGraphResponseDtoRevisionNewConfig
+   */
+  'description': string | null;
+  /**
+   *
+   * @type {boolean}
+   * @memberof UpdateGraphResponseDtoRevisionNewConfig
+   */
+  'temporary': boolean;
 }
 
 /**
