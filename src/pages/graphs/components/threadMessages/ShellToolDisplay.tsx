@@ -178,15 +178,16 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
       ? (exitCodeCandidate as number)
       : null;
   const exitCodeColor =
-    hasToolError || (exitCode !== null && exitCode !== 0) ? '#ff4d4f' : '#9d9d9d';
-  const tint =
-    hasToolError
-      ? '#2b1d1d'
-      : exitCode === null
-        ? '#2b2b2b'
-        : exitCode === 0
-          ? '#1d2b1f'
-          : '#2b1d1d';
+    hasToolError || (exitCode !== null && exitCode !== 0)
+      ? '#ff4d4f'
+      : '#9d9d9d';
+  const tint = hasToolError
+    ? '#2b1d1d'
+    : exitCode === null
+      ? '#2b2b2b'
+      : exitCode === 0
+        ? '#1d2b1f'
+        : '#2b1d1d';
 
   const toolNameText = useMemo(() => {
     const displayName = title && title.trim().length > 0 ? title.trim() : name;
@@ -401,10 +402,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
               title={toolHeaderTitle}>
               <span>{toolNameText}</span>
               {toolHeaderSuffix && (
-                <span style={{ color: '#ff4d4f' }}>
-                  {' '}
-                  - {toolHeaderSuffix}
-                </span>
+                <span style={{ color: '#ff4d4f' }}> - {toolHeaderSuffix}</span>
               )}
             </div>
           )}

@@ -1205,6 +1205,18 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       if (isBlankContent(message.message?.content)) return null;
 
+      // Check if this is an agent instruction message
+      const record = getMessageRecord(message.message);
+      const additional =
+        (record?.additionalKwargs as Record<string, unknown> | undefined) ??
+        (record?.additional_kwargs as Record<string, unknown> | undefined);
+      const normalizedAdditional = isPlainObject(additional)
+        ? (additional as Record<string, unknown>)
+        : undefined;
+      const isAgentInstruction = Boolean(
+        normalizedAdditional?.isAgentInstructionMessage,
+      );
+
       const isHuman = role === 'human';
       const avatarSeedNodeId = message.nodeId || nodeId;
       const avatarSrc =
@@ -1218,6 +1230,81 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           : role === 'system'
             ? '#722ed1'
             : '#d9d9d9';
+
+      // Special rendering for agent instruction messages
+      if (isAgentInstruction) {
+        // Get agent name from nodeDisplayNames or fallback to nodeId
+        const agentName =
+          (message.nodeId && nodeDisplayNames?.[message.nodeId]) ||
+          (message.nodeId ? `Node ${message.nodeId.slice(-6)}` : 'Agent');
+
+        // For agent instruction messages, show only date (no "from ..." part)
+        const dateOnlyText = message.createdAt
+          ? new Date(message.createdAt).toLocaleString()
+          : undefined;
+
+        return (
+          <ChatBubble
+            isHuman={isHuman}
+            avatarLabel={isHuman ? 'ME' : 'AI'}
+            avatarColor="#722ed1"
+            avatarSrc={avatarSrc}
+            bubbleStyle={{
+              backgroundColor: '#f9f0ff',
+              border: '2px solid #d3adf7',
+              borderRadius: '8px',
+              padding: '12px 16px',
+            }}
+            footer={
+              dateOnlyText ? (
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: '11px',
+                    marginTop: '4px',
+                    color: '#8c8c8c',
+                  }}>
+                  {dateOnlyText}
+                </Text>
+              ) : undefined
+            }>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '8px',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid #d3adf7',
+                }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#722ed1',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                  Providing Instructions for {agentName}
+                </span>
+              </div>
+              <MarkdownContent
+                content={content}
+                style={{
+                  fontSize: '14px',
+                  lineHeight: '1.4',
+                  color: '#000000',
+                }}
+              />
+            </div>
+            <TokenUsageSummary
+              tokenUsage={message.tokenUsage}
+              isHuman={isHuman}
+            />
+          </ChatBubble>
+        );
+      }
 
       return (
         <ChatBubble

@@ -91,6 +91,8 @@ export const CustomNode = React.memo(
         simpleagent: 'orange',
         trigger: 'red',
         resource: 'purple',
+        knowledge: 'lime',
+        mcp: 'magenta',
         default: 'gray',
       };
       return map[kind?.toLowerCase() || 'default'] || 'gray';
@@ -126,6 +128,7 @@ export const CustomNode = React.memo(
       [allEdges, allNodes, nodeId, templates],
     );
     const hasValidationErrors = validationErrors.length > 0;
+    const hasConfigErrors = validationErrors.some((e) => e.type === 'config');
 
     const inputRules = useMemo(
       () =>
@@ -360,7 +363,7 @@ export const CustomNode = React.memo(
         }}>
         <div
           style={{
-            background: '#F3F6FF',
+            background: hasConfigErrors ? '#fff1f0' : '#F3F6FF',
             padding: 12,
             borderBottom: '1px solid #dfdfdf',
             borderRadius: '8px 8px 0 0',
@@ -487,7 +490,10 @@ export const CustomNode = React.memo(
             {targets.map((t) => {
               const id = makeHandleId('target', t);
               const miss = Boolean(
-                t.required && !allEdges.some((e) => e.target === nodeId),
+                t.required &&
+                  !allEdges.some(
+                    (e) => e.target === nodeId && e.targetHandle === id,
+                  ),
               );
               const c = color('target', t.required, miss);
               const highlight = getHandleHighlight('target', t);
@@ -556,9 +562,12 @@ export const CustomNode = React.memo(
               };
               const id = makeHandleId('source', outRule);
               const miss = Boolean(
-                output.required && !allEdges.some((e) => e.target === nodeId),
+                output.required &&
+                  !allEdges.some(
+                    (e) => e.source === nodeId && e.sourceHandle === id,
+                  ),
               );
-              const c = color('source', output.required || false, false);
+              const c = color('source', output.required || false, miss);
               const highlight = getHandleHighlight('source', outRule);
               const visuals = resolveHandleVisuals(c, miss, highlight);
               return (
@@ -688,6 +697,10 @@ export const CustomNode = React.memo(
       prevProps.connectionPreview?.template?.id !==
         nextProps.connectionPreview?.template?.id;
 
+    // Check if config has changed (for validation purposes)
+    const configChanged =
+      JSON.stringify(prevData?.config) !== JSON.stringify(nextData?.config);
+
     return (
       prevProps.id === nextProps.id &&
       prevProps.selected === nextProps.selected &&
@@ -698,7 +711,8 @@ export const CustomNode = React.memo(
       prevProps.compiledNode?.status === nextProps.compiledNode?.status &&
       prevProps.compiledNode?.error === nextProps.compiledNode?.error &&
       prevProps.templates?.length === nextProps.templates?.length &&
-      !previewChanged
+      !previewChanged &&
+      !configChanged
     );
   },
 );

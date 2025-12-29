@@ -21,6 +21,7 @@ export interface GraphDraftState {
   edges: GraphEdge[];
   viewport: Viewport;
   selectedThreadId?: string;
+  baseVersion?: string; // The server version this draft is based on
 }
 
 export interface UseGraphDraftStateOptions {
@@ -130,23 +131,28 @@ function normalizeState(state: GraphDraftState): GraphDraftState {
       .sort((a, b) => a.id.localeCompare(b.id)),
     viewport: state.viewport,
     selectedThreadId: state.selectedThreadId,
+    baseVersion: state.baseVersion,
   };
 }
 
 /**
- * Normalizes state but EXCLUDES viewport for "unsaved changes" comparison.
- * Viewport changes (pan/zoom) should not be considered "unsaved changes".
+ * Normalizes state but EXCLUDES viewport and baseVersion for "unsaved changes" comparison.
+ * Viewport changes (pan/zoom) and version metadata should not be considered "unsaved changes".
  */
 function normalizeStateWithoutViewport(
   state: GraphDraftState,
-): Omit<GraphDraftState, 'viewport'> {
+): Omit<GraphDraftState, 'viewport' | 'baseVersion'> {
   const normalized = normalizeState(state);
-  const { viewport: _viewport, ...rest } = normalized;
+  const {
+    viewport: _viewport,
+    baseVersion: _baseVersion,
+    ...rest
+  } = normalized;
   return rest;
 }
 
 /**
- * Extracts structural changes (ignoring positions/viewport).
+ * Extracts structural changes (ignoring positions/viewport/baseVersion).
  */
 function extractStructure(state: GraphDraftState) {
   return {

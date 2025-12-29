@@ -9,6 +9,7 @@ import {
   FileTextOutlined,
   InfoCircleOutlined,
   PlayCircleOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
@@ -354,6 +355,7 @@ export const NodeEditSidebar = React.memo(
       templateKindLower,
     );
     const [instructionsVisible, setInstructionsVisible] = useState(false);
+    const [toolsVisible, setToolsVisible] = useState(false);
     const agentInstructionsText = useMemo(() => {
       const instructions = (
         compiledNode?.additionalNodeMetadata as unknown as {
@@ -375,6 +377,20 @@ export const NodeEditSidebar = React.memo(
         return String(instructions);
       }
     }, [compiledNode?.additionalNodeMetadata]);
+
+    const connectedTools = useMemo(() => {
+      return (
+        (
+          compiledNode?.additionalNodeMetadata as unknown as {
+            connectedTools?: {
+              name: string;
+              description: string;
+              schema: Record<string, unknown>;
+            }[];
+          }
+        )?.connectedTools || []
+      );
+    }, [compiledNode?.additionalNodeMetadata]);
     const instructionsAvailable = Boolean(agentInstructionsText);
     const instructionsButtonDisabled =
       !isGraphRunning || compiledNodesLoading || !instructionsAvailable;
@@ -385,6 +401,17 @@ export const NodeEditSidebar = React.memo(
         : instructionsAvailable
           ? 'View current agent instructions'
           : 'Instructions are not available for this node yet';
+
+    const toolsAvailable = connectedTools.length > 0;
+    const toolsButtonDisabled =
+      !isGraphRunning || compiledNodesLoading || !toolsAvailable;
+    const toolsTooltip = !isGraphRunning
+      ? 'Start the graph to view connected tools'
+      : compiledNodesLoading
+        ? 'Loading tools...'
+        : toolsAvailable
+          ? 'View connected agent tools'
+          : 'No tools are connected to this node';
 
     const expandedTextareaField = useMemo(
       () =>
@@ -1659,16 +1686,28 @@ export const NodeEditSidebar = React.memo(
                   {nodeName}
                 </Text>
                 {isAgentNode && (
-                  <Tooltip title={instructionsTooltip} placement="bottom">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<FileTextOutlined />}
-                      disabled={instructionsButtonDisabled}
-                      onClick={() => setInstructionsVisible(true)}
-                      aria-label="View agent instructions"
-                    />
-                  </Tooltip>
+                  <>
+                    <Tooltip title={instructionsTooltip} placement="bottom">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<FileTextOutlined />}
+                        disabled={instructionsButtonDisabled}
+                        onClick={() => setInstructionsVisible(true)}
+                        aria-label="View agent instructions"
+                      />
+                    </Tooltip>
+                    <Tooltip title={toolsTooltip} placement="bottom">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<ToolOutlined />}
+                        disabled={toolsButtonDisabled}
+                        onClick={() => setToolsVisible(true)}
+                        aria-label="View connected tools"
+                      />
+                    </Tooltip>
+                  </>
                 )}
                 <Popover
                   content={infoContent}
@@ -2233,6 +2272,68 @@ export const NodeEditSidebar = React.memo(
             </div>
           ) : (
             <Text type="secondary">No instructions available.</Text>
+          )}
+        </Modal>
+
+        <Modal
+          open={toolsVisible}
+          title={`Connected Tools (${connectedTools.length})`}
+          footer={null}
+          onCancel={() => setToolsVisible(false)}
+          destroyOnClose
+          width={720}
+          bodyStyle={{ maxHeight: 560, overflowY: 'auto' }}>
+          {connectedTools.length > 0 ? (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              {connectedTools.map((tool) => (
+                <div
+                  key={tool.name}
+                  style={{
+                    border: '1px solid #f0f0f0',
+                    borderRadius: 8,
+                    padding: 16,
+                    background: '#fafafa',
+                  }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <Text
+                      strong
+                      style={{
+                        fontSize: 15,
+                        display: 'block',
+                        marginBottom: 8,
+                      }}>
+                      {tool.name}
+                    </Text>
+                    <Text
+                      type="secondary"
+                      style={{
+                        fontSize: 13,
+                        display: 'block',
+                        wordBreak: 'break-word',
+                      }}>
+                      {tool.description}
+                    </Text>
+                  </div>
+                  <div
+                    style={{
+                      padding: 12,
+                      background: '#ffffff',
+                      borderRadius: 6,
+                      border: '1px solid #e8e8e8',
+                      maxHeight: 320,
+                      overflow: 'auto',
+                    }}>
+                    <JsonView
+                      value={tool.schema as object}
+                      style={lightTheme}
+                      collapsed={1}
+                    />
+                  </div>
+                </div>
+              ))}
+            </Space>
+          ) : (
+            <Text type="secondary">No connected tools available.</Text>
           )}
         </Modal>
 

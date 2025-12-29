@@ -265,6 +265,12 @@ export const GraphPage = () => {
     selectedThreadIdRef.current = selectedThreadId;
   }, [selectedThreadId]);
 
+  // Draft is our persisted source of truth, but ReactFlow is the immediate UI state.
+  // When we update the draft *from* ReactFlow (onNodesChange/onEdgesChange), we must
+  // not immediately "sync back" into ReactFlow, otherwise partial draft updates
+  // (e.g. edges update arriving before nodes update) can resurrect deleted nodes.
+  const nextDraftChangeOriginRef = useRef<'draft' | 'reactflow'>('draft');
+
   const pendingViewportSaveRef = useRef<Viewport | null>(null);
   const viewportSaveRafRef = useRef<number | null>(null);
 
@@ -280,6 +286,14 @@ export const GraphPage = () => {
   // Callback to sync draft state changes to React Flow
   const handleDraftStateChange = useCallback(
     (newState: GraphDiffState) => {
+      const origin = nextDraftChangeOriginRef.current;
+      nextDraftChangeOriginRef.current = 'draft';
+      if (origin === 'reactflow') {
+        // ReactFlow already has the latest UI state; avoid overwriting it with a
+        // partial draft update (which can be briefly out of sync).
+        return;
+      }
+
       isSyncingFromDraftRef.current = true;
 
       setNodes(newState.nodes);
@@ -452,6 +466,7 @@ export const GraphPage = () => {
         edges: refreshedEdges,
         viewport: refreshedViewport,
         selectedThreadId,
+        baseVersion: graphData.version,
       };
     },
     [templates, selectedThreadId],
@@ -922,7 +937,63 @@ export const GraphPage = () => {
           edges: reactFlowEdges,
           viewport: storedViewport ?? serverViewport ?? { x: 0, y: 0, zoom: 1 },
           selectedThreadId,
+          baseVersion: graphData.version,
         };
+
+        // Check if stored draft is compatible with current server version
+        const storedDraft = GraphStorageService.loadDraft(id);
+        if (
+          storedDraft &&
+          storedDraft.baseVersion &&
+          storedDraft.baseVersion !== graphData.version
+        ) {
+          // Draft is based on an old version - check if it has structural changes
+          // If it's only viewport changes, we can keep it
+          const hasStructuralChanges =
+            JSON.stringify(
+              storedDraft.nodes.map((n) => ({
+                id: n.id,
+                data: n.data,
+              })),
+            ) !==
+              JSON.stringify(
+                reactFlowNodes.map((n) => ({ id: n.id, data: n.data })),
+              ) ||
+            JSON.stringify(
+              storedDraft.edges.map((e) => ({
+                source: e.source,
+                target: e.target,
+              })),
+            ) !==
+              JSON.stringify(
+                reactFlowEdges.map((e) => ({
+                  source: e.source,
+                  target: e.target,
+                })),
+              );
+
+          if (hasStructuralChanges) {
+            // Draft has real changes based on old version - discard it and warn user
+            console.warn(
+              `Discarding draft: based on version ${storedDraft.baseVersion}, but server is at version ${graphData.version}`,
+            );
+            GraphStorageService.clearDraft(id);
+            message.warning(
+              'Your local changes were based on an outdated version and have been discarded. Please make your changes again.',
+              5,
+            );
+          } else {
+            // Only viewport/metadata changes - keep the draft but update baseVersion
+            console.log(
+              `Keeping draft (viewport-only changes): updating baseVersion from ${storedDraft.baseVersion} to ${graphData.version}`,
+            );
+            // Update the draft's baseVersion to match current server version
+            GraphStorageService.saveDraft(id, {
+              ...storedDraft,
+              baseVersion: graphData.version,
+            });
+          }
+        }
 
         // Update server baseline - the hook will automatically apply any stored local changes
         setServerGraphState(serverState);
@@ -1840,21 +1911,80 @@ export const GraphPage = () => {
         });
       },
 
-      'graph.revision.applied': (notification) => {
+      'graph.revision.applied': async (notification) => {
         const data = notification as GraphRevisionNotification;
         if (data.graphId !== id) return;
 
         const revision = data.data;
         upsertRevision(revision);
-        setGraph((prev) =>
-          prev ? { ...prev, version: revision.toVersion } : prev,
-        );
-        message.open({
-          key: `graph-revision-${revision.id}`,
-          type: 'success',
-          content: `Revision ${revision.toVersion} applied`,
-          duration: 3,
-        });
+
+        // Refetch the graph to get the updated data
+        try {
+          const res = await graphsApi.findGraphById(id);
+          const updatedGraph = res.data;
+
+          // Check if there are local unsaved changes
+          const hasLocalChanges = draftStateRef.current.hasUnsavedChanges;
+
+          if (hasLocalChanges) {
+            // User has local changes - warn them that the server was updated
+            message.warning({
+              key: `graph-revision-${revision.id}`,
+              content: `Revision ${revision.toVersion} applied.`,
+              duration: 8,
+            });
+            // Update the graph metadata but don't override local changes
+            setGraph(updatedGraph);
+
+            // Fetch updated node states
+            void fetchCompiledNodes({
+              graphStatusOverride: updatedGraph.status,
+              threadId: selectedThreadId,
+            });
+          } else {
+            // No local changes - safely update everything
+            const refreshedState = rebuildStateFromGraph(updatedGraph);
+
+            // Clear any potential draft state
+            draftStateRef.current.clearAllChanges();
+
+            // Update server baseline and apply the new state
+            setServerGraphState(refreshedState);
+            draftStateRef.current.updateServerBaseline(refreshedState);
+
+            // Force update the visual state immediately
+            handleDraftStateChange(refreshedState);
+
+            setGraph(updatedGraph);
+
+            message.success({
+              key: `graph-revision-${revision.id}`,
+              content: `Revision ${revision.toVersion} applied`,
+              duration: 3,
+            });
+
+            // Fetch updated node states
+            void fetchCompiledNodes({
+              graphStatusOverride: updatedGraph.status,
+              threadId: selectedThreadId,
+            });
+          }
+        } catch (error) {
+          console.error(
+            'Error refetching graph after revision applied:',
+            error,
+          );
+          // Fallback: just update the version
+          setGraph((prev) =>
+            prev ? { ...prev, version: revision.toVersion } : prev,
+          );
+          message.open({
+            key: `graph-revision-${revision.id}`,
+            type: 'success',
+            content: `Revision ${revision.toVersion} applied`,
+            duration: 3,
+          });
+        }
       },
 
       'graph.revision.failed': (notification) => {
@@ -1999,6 +2129,17 @@ export const GraphPage = () => {
 
     setSaving(true);
     try {
+      // Defensive cleanup: ReactFlow may keep "dangling" edges in state even if they
+      // are no longer renderable. The backend rejects edges pointing to missing nodes.
+      const nodeIdSet = new Set(nodes.map((n) => n.id));
+      const validEdges = edges.filter(
+        (e) => nodeIdSet.has(e.source) && nodeIdSet.has(e.target),
+      );
+      if (validEdges.length !== edges.length) {
+        setEdges(validEdges);
+        draftStateRef.current.updateEdges(validEdges);
+      }
+
       const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => {
         const template = templatesById[node.data.template as string];
         const nodeConfig = node.data.config as Record<string, unknown>;
@@ -2022,11 +2163,13 @@ export const GraphPage = () => {
         };
       });
 
-      const apiEdges: CreateGraphDtoSchemaEdgesInner[] = edges.map((edge) => ({
-        from: edge.source,
-        to: edge.target,
-        label: typeof edge.label === 'string' ? edge.label : undefined,
-      }));
+      const apiEdges: CreateGraphDtoSchemaEdgesInner[] = validEdges.map(
+        (edge) => ({
+          from: edge.source,
+          to: edge.target,
+          label: typeof edge.label === 'string' ? edge.label : undefined,
+        }),
+      );
 
       const nodeMetadata: NodeMetadata[] = nodes.map((node) => ({
         id: node.id,
@@ -2060,15 +2203,59 @@ export const GraphPage = () => {
         upsertRevision(revision);
       }
 
-      message.success('Graph saved successfully');
-
-      // Clear draft and update server baseline
-      const refreshedState = rebuildStateFromGraph(updatedGraph);
-      setServerGraphState(refreshedState);
-      draftState.updateServerBaseline(refreshedState);
-      draftState.clearAllChanges();
+      // Update the graph metadata (version, status, etc)
       setGraph(updatedGraph);
       setEditingName(updatedGraph.name);
+
+      // Check if revision is pending/applying (async apply)
+      const revisionNeedsTime =
+        revision &&
+        (revision.status === GraphRevisionDtoStatusEnum.Pending ||
+          revision.status === GraphRevisionDtoStatusEnum.Applying);
+
+      if (revisionNeedsTime) {
+        message.success(
+          'Graph saved successfully. Revision is being applied...',
+        );
+      } else {
+        message.success('Graph saved successfully');
+      }
+
+      if (revisionNeedsTime) {
+        // Revision will be applied asynchronously
+        // Keep current visual state (showing the changes we just saved)
+        // Clear the draft since we've saved
+        GraphStorageService.clearDraft(id);
+
+        // Update the server baseline with the current state we're displaying
+        // This represents what we JUST saved (even though server hasn't applied it yet)
+        // Use the NEW version from the response so future drafts are based on this save
+        const currentState: GraphDiffState = {
+          nodes,
+          edges,
+          viewport,
+          selectedThreadId,
+          baseVersion: updatedGraph.version,
+        };
+        setServerGraphState(currentState);
+        // Update baseline WITHOUT triggering a draft save
+        draftStateRef.current.updateServerBaseline(currentState);
+      } else {
+        // Revision applied immediately (or no revision needed)
+        // Update visual state with the new graph data
+        const refreshedState = rebuildStateFromGraph(updatedGraph);
+
+        // Clear all local changes
+        draftState.clearAllChanges();
+
+        // Update server baseline and apply the new state
+        setServerGraphState(refreshedState);
+        draftStateRef.current.updateServerBaseline(refreshedState);
+
+        // Force update the visual state immediately
+        handleDraftStateChange(refreshedState);
+      }
+
       userInteractedRef.current = false;
       // Signal NodeEditSidebar to reset its initialFormValues baseline
       setDraftNodeConfigVersion((prev) => prev + 1);
@@ -2188,6 +2375,47 @@ export const GraphPage = () => {
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // If nodes are being removed, also prune any incident edges immediately
+      // to guarantee "delete node => delete all its edges".
+      const removedNodeIds = changes
+        .filter(
+          (c): c is Extract<NodeChange, { type: 'remove' }> =>
+            c.type === 'remove',
+        )
+        .map((c) => ('id' in c ? (c.id as string) : ''))
+        .filter(Boolean);
+
+      if (removedNodeIds.length > 0) {
+        // Compute the next snapshots immediately from refs to avoid races where
+        // nodesRef/edgesRef haven't updated yet when we persist the draft.
+        const nextNodesSnapshot = nodesRef.current.filter(
+          (n) => !removedNodeIds.includes(n.id),
+        );
+        const nextEdgesSnapshot = edgesRef.current.filter(
+          (e) =>
+            !removedNodeIds.includes(e.source) &&
+            !removedNodeIds.includes(e.target),
+        );
+
+        // Ensure the UI drops incident edges even if ReactFlow doesn't emit edge removals.
+        setEdges(nextEdgesSnapshot);
+
+        // Persist node+edge deletion into the draft as a ReactFlow-origin change,
+        // and prevent syncing back into ReactFlow (it already reflects the deletion).
+        if (
+          !isHydratingRef.current &&
+          userInteractedRef.current &&
+          !isSyncingFromDraftRef.current
+        ) {
+          setTimeout(() => {
+            if (isSyncingFromDraftRef.current) return;
+            nextDraftChangeOriginRef.current = 'reactflow';
+            draftStateRef.current.updateEdges(nextEdgesSnapshot);
+            draftStateRef.current.updateNodes(nextNodesSnapshot);
+          }, 0);
+        }
+      }
+
       const isDragging = changes.some(
         (change) =>
           change.type === 'position' &&
@@ -2241,6 +2469,9 @@ export const GraphPage = () => {
       // Update draft state with the new nodes after changes are applied
       setTimeout(() => {
         if (!isSyncingFromDraftRef.current) {
+          // For remove events we already persisted the correct snapshots above.
+          if (removedNodeIds.length > 0) return;
+          nextDraftChangeOriginRef.current = 'reactflow';
           draftStateRef.current.updateNodes(nodesRef.current);
         }
       }, 100);
@@ -2262,6 +2493,7 @@ export const GraphPage = () => {
       // Update draft state with the new edges after changes are applied
       setTimeout(() => {
         if (!isSyncingFromDraftRef.current) {
+          nextDraftChangeOriginRef.current = 'reactflow';
           draftStateRef.current.updateEdges(edgesRef.current);
         }
       }, 100);
@@ -2332,9 +2564,6 @@ export const GraphPage = () => {
           threadId: selectedThreadId,
         });
       } else {
-        if (hasUnsavedChanges) {
-          await handleSave();
-        }
         const response = await graphsApi.runGraph(id);
         const updatedGraph = response.data;
         setGraph(updatedGraph);
@@ -2350,7 +2579,7 @@ export const GraphPage = () => {
           message.error(executionErrorMessage);
           setGraphError(executionErrorMessage);
         } else {
-          message.success('Graph saved and started successfully');
+          message.success('Graph started successfully');
         }
       }
     } catch (error) {

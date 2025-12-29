@@ -541,7 +541,14 @@ const GraphCanvasInner = ({
         panOnScrollMode={PanOnScrollMode.Free}
         zoomOnScroll={false}>
         <Controls />
-        <MiniMap />
+        <MiniMap
+          nodeColor={(node) => {
+            if (node.type === 'custom') {
+              return '#1890ff';
+            }
+            return '#eee';
+          }}
+        />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
       </ReactFlow>
     </div>
