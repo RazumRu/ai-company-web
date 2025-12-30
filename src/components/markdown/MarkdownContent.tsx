@@ -22,6 +22,58 @@ const renderMarkdownCode = ({
 }: MarkdownCodeProps) => {
   const match = /language-(\w+)/.exec(className || '');
   const codeContent = String(children ?? '').replace(/\n$/, '');
+  if (!inline && match && match[1] === 'diff') {
+    const lines = codeContent.split('\n');
+    return (
+      <pre
+        style={{
+          margin: 0,
+          padding: 12,
+          borderRadius: 6,
+          overflow: 'auto',
+          background: '#1e1e1e',
+          color: '#d4d4d4',
+          fontSize: 12,
+          lineHeight: 1.55,
+        }}>
+        <code>
+          {lines.map((line, index) => {
+            const isInsert = line.startsWith('+') && !line.startsWith('+++');
+            const isDelete = line.startsWith('-') && !line.startsWith('---');
+            const isHunk = line.startsWith('@@');
+            const isHeader = line.startsWith('+++') || line.startsWith('---');
+
+            const style: React.CSSProperties = {};
+            if (isHeader) {
+              style.color = '#9cdcfe';
+            } else if (isHunk) {
+              style.color = '#c586c0';
+            } else if (isInsert) {
+              style.background = 'rgba(46, 160, 67, 0.25)';
+              style.color = '#b6f2c2';
+            } else if (isDelete) {
+              style.background = 'rgba(248, 81, 73, 0.25)';
+              style.color = '#ffd2cc';
+            }
+
+            return (
+              <div
+                key={index}
+                style={{
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
+                  whiteSpace: 'pre',
+                  padding: '0 6px',
+                  ...style,
+                }}>
+                {line.length === 0 ? '\u00A0' : line}
+              </div>
+            );
+          })}
+        </code>
+      </pre>
+    );
+  }
   if (!inline && match) {
     return (
       <div
