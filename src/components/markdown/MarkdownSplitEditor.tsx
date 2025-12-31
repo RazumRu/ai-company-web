@@ -18,7 +18,6 @@ export interface MarkdownSplitEditorProps {
   placeholder?: string;
   initialMode?: MarkdownSplitEditorMode;
   editorFontFamily?: string;
-  headerRight?: React.ReactNode;
   onModeChange?: (nextMode: MarkdownSplitEditorMode) => void;
   shouldChangeMode?: (
     nextMode: MarkdownSplitEditorMode,
@@ -50,7 +49,6 @@ export const MarkdownSplitEditor: React.FC<MarkdownSplitEditorProps> = ({
   placeholder,
   initialMode = 'split',
   editorFontFamily = 'monospace',
-  headerRight,
   onModeChange,
   shouldChangeMode,
 }) => {

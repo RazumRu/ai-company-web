@@ -438,6 +438,32 @@ export const ChatsPage = () => {
     [getThreadTimestamp],
   );
 
+  const isAgentNodeIdInGraph = useCallback(
+    (graphId: string | undefined, nodeId: string | undefined): boolean => {
+      if (!graphId || !nodeId) return false;
+      const graph = graphCache[graphId]?.graph;
+      if (!graph) return false;
+      const schemaNode = (graph.schema?.nodes ?? []).find(
+        (n) => n.id === nodeId,
+      );
+      if (!schemaNode) return false;
+      const template = templatesById[schemaNode.template];
+      // Prefer template.kind, but fall back to the well-known template id.
+      const kind = (template?.kind || '').toLowerCase();
+      return kind === 'simpleagent' || schemaNode.template === 'simple-agent';
+    },
+    [graphCache, templatesById],
+  );
+
+  const buildAgentMessageScopeKeysForGraph = useCallback(
+    (graphId: string | undefined, nodeId: string | undefined) => {
+      return isAgentNodeIdInGraph(graphId, nodeId)
+        ? [undefined, nodeId]
+        : [undefined];
+    },
+    [isAgentNodeIdInGraph],
+  );
+
   const shouldApplyThreadUpdate = useCallback(
     (existing: ThreadDto, incoming: ThreadDto) => {
       const incomingTs = getThreadTimestamp(incoming);
@@ -1245,7 +1271,10 @@ export const ChatsPage = () => {
         return;
       }
 
-      const applyUpdateToKeys = [undefined, data.nodeId];
+      const applyUpdateToKeys = buildAgentMessageScopeKeysForGraph(
+        data.graphId,
+        data.nodeId,
+      );
 
       const reasoningContainer = narrowReasoningContainer(reasoningChunks, [
         eventThreadId,
@@ -1275,6 +1304,7 @@ export const ChatsPage = () => {
       }
     },
     [
+      buildAgentMessageScopeKeysForGraph,
       resolveInternalThreadId,
       externalThreadIds,
       updateMessages,
@@ -1294,21 +1324,19 @@ export const ChatsPage = () => {
       const nodeId = data.nodeId;
       const incomingMessage = data.data;
 
-      // Update shared messages for both 'all' (thread-level) and node-specific
-      updateMessages(threadId, (prev) => {
-        return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
-      });
-
-      // If nodeId exists, also update node-specific messages
-      if (nodeId) {
+      const applyMessageKeys = buildAgentMessageScopeKeysForGraph(
+        data.graphId,
+        nodeId,
+      );
+      applyMessageKeys.forEach((key) => {
         updateMessages(
           threadId,
           (prev) => {
             return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
           },
-          nodeId,
+          key,
         );
-      }
+      });
 
       // Clear pending that matches this incoming message (by content for human messages)
       const incomingContent =
@@ -1317,7 +1345,7 @@ export const ChatsPage = () => {
           : undefined;
       const incomingRole = incomingMessage.message?.role as string | undefined;
       if (incomingContent && incomingRole === 'human') {
-        const applyPendingToKeys = [undefined, nodeId];
+        const applyPendingToKeys = applyMessageKeys;
         applyPendingToKeys.forEach((key) => {
           updatePendingMessages(
             threadId,
@@ -1340,7 +1368,12 @@ export const ChatsPage = () => {
         }));
       }
     },
-    [updateMessages, updatePendingMessages, setExternalThreadIds],
+    [
+      buildAgentMessageScopeKeysForGraph,
+      updateMessages,
+      updatePendingMessages,
+      setExternalThreadIds,
+    ],
   );
 
   useWebSocketEvent(
@@ -1684,7 +1717,6 @@ export const ChatsPage = () => {
       return [];
     }
 
-    const seen = new Set<string>();
     const agents: {
       nodeId: string;
       label: string;
@@ -1692,14 +1724,15 @@ export const ChatsPage = () => {
       avatarSrc?: string;
     }[] = [];
 
-    selectedThreadAllMessages.forEach((msg) => {
-      const nodeId = msg.nodeId;
-      if (!nodeId) return;
-      const role = msg.message?.role as string | undefined;
-      const isAgentMessage = role === 'ai' || role === 'reasoning';
-      if (!isAgentMessage) return;
-      if (seen.has(nodeId)) return;
-      seen.add(nodeId);
+    const graphId = selectedThread.graphId;
+    const graph = graphCache[graphId]?.graph;
+    const schemaNodes = graph?.schema?.nodes ?? [];
+
+    schemaNodes.forEach((node) => {
+      const nodeId = node.id;
+      if (!isAgentNodeIdInGraph(graphId, nodeId)) {
+        return;
+      }
 
       const configName = getNodeConfigString(nodeId, 'name');
       const configDescription = getNodeConfigString(nodeId, 'description');
@@ -1715,9 +1748,10 @@ export const ChatsPage = () => {
     return agents;
   }, [
     formatNodeLabel,
+    graphCache,
     getNodeConfigString,
+    isAgentNodeIdInGraph,
     selectedThread,
-    selectedThreadAllMessages,
     selectedThreadId,
     selectedThreadIsDraft,
   ]);

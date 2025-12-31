@@ -349,6 +349,28 @@ export const GraphPage = () => {
     [templates],
   );
 
+  const isAgentNodeIdInCurrentGraph = useCallback(
+    (candidateNodeId?: string) => {
+      if (!candidateNodeId) return false;
+      const schemaNode = graph?.schema?.nodes?.find(
+        (n) => n.id === candidateNodeId,
+      );
+      if (!schemaNode) return false;
+      const template = templatesById[schemaNode.template];
+      return (template?.kind || '').toLowerCase() === 'simpleagent';
+    },
+    [graph?.schema?.nodes, templatesById],
+  );
+
+  const buildAgentMessageScopeKeys = useCallback(
+    (candidateNodeId?: string): (string | undefined)[] => {
+      return isAgentNodeIdInCurrentGraph(candidateNodeId)
+        ? [undefined, candidateNodeId]
+        : [undefined];
+    },
+    [isAgentNodeIdInCurrentGraph],
+  );
+
   const [triggerModalVisible, setTriggerModalVisible] = useState(false);
   const [triggerNodeId, setTriggerNodeId] = useState<string | null>(null);
   const [triggerNodeName, setTriggerNodeName] = useState<string | null>(null);
@@ -1519,19 +1541,15 @@ export const GraphPage = () => {
         const nodeId = data.nodeId;
         const incomingMessage = data.data;
 
-        updateMessages(threadId, (prev) => {
-          return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
-        });
+        const applyMessageKeys = buildAgentMessageScopeKeys(nodeId);
 
-        if (nodeId) {
+        applyMessageKeys.forEach((key) => {
           updateMessages(
             threadId,
-            (prev) => {
-              return mergeMessagesReplacingStreaming(prev, [incomingMessage]);
-            },
-            nodeId,
+            (prev) => mergeMessagesReplacingStreaming(prev, [incomingMessage]),
+            key,
           );
-        }
+        });
 
         // Clear pending that matches this incoming message (by content for human messages)
         const incomingContent =
@@ -1542,7 +1560,7 @@ export const GraphPage = () => {
           | string
           | undefined;
         if (incomingContent && incomingRole === 'human') {
-          const applyPendingToKeys = [undefined, nodeId];
+          const applyPendingToKeys = applyMessageKeys;
           applyPendingToKeys.forEach((key) => {
             updatePendingMessages(
               threadId,
@@ -1819,13 +1837,13 @@ export const GraphPage = () => {
             },
           );
 
-          const applyPendingToKeys = [undefined, data.nodeId];
+          const applyPendingToKeys = buildAgentMessageScopeKeys(data.nodeId);
           applyPendingToKeys.forEach((key) => {
             updatePendingMessages(internalThreadId, () => pendingDtos, key);
           });
         } else if (internalThreadId) {
           // If no pending messages, clear any existing pending entries for this node/thread
-          const applyPendingToKeys = [undefined, data.nodeId];
+          const applyPendingToKeys = buildAgentMessageScopeKeys(data.nodeId);
           applyPendingToKeys.forEach((key) => {
             updatePendingMessages(targetThreadId, () => [], key);
           });
@@ -1834,7 +1852,7 @@ export const GraphPage = () => {
         const reasoningChunks =
           data.data?.additionalNodeMetadata?.reasoningChunks;
 
-        const applyUpdateToKeys = [undefined, data.nodeId];
+        const applyUpdateToKeys = buildAgentMessageScopeKeys(data.nodeId);
 
         if (!reasoningChunks) {
           applyUpdateToKeys.forEach((key) => {

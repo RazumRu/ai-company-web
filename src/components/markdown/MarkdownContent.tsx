@@ -28,15 +28,16 @@ const renderMarkdownCode = ({
       <pre
         style={{
           margin: 0,
-          padding: 12,
+          padding: 0,
           borderRadius: 6,
           overflow: 'auto',
-          background: '#1e1e1e',
-          color: '#d4d4d4',
+          background: '#fafafa',
+          border: '1px solid #f0f0f0',
+          color: '#111',
           fontSize: 12,
           lineHeight: 1.55,
         }}>
-        <code>
+        <code style={{ display: 'block' }}>
           {lines.map((line, index) => {
             const isInsert = line.startsWith('+') && !line.startsWith('+++');
             const isDelete = line.startsWith('-') && !line.startsWith('---');
@@ -45,15 +46,17 @@ const renderMarkdownCode = ({
 
             const style: React.CSSProperties = {};
             if (isHeader) {
-              style.color = '#9cdcfe';
+              style.color = '#0958d9';
+              style.background = '#e6f4ff';
             } else if (isHunk) {
-              style.color = '#c586c0';
+              style.color = '#531dab';
+              style.background = '#f9f0ff';
             } else if (isInsert) {
-              style.background = 'rgba(46, 160, 67, 0.25)';
-              style.color = '#b6f2c2';
+              style.background = 'rgba(46, 160, 67, 0.12)';
+              style.color = '#135200';
             } else if (isDelete) {
-              style.background = 'rgba(248, 81, 73, 0.25)';
-              style.color = '#ffd2cc';
+              style.background = 'rgba(248, 81, 73, 0.12)';
+              style.color = '#a8071a';
             }
 
             return (
@@ -62,8 +65,9 @@ const renderMarkdownCode = ({
                 style={{
                   fontFamily:
                     'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
-                  whiteSpace: 'pre',
-                  padding: '0 6px',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  padding: '2px 10px',
                   ...style,
                 }}>
                 {line.length === 0 ? '\u00A0' : line}
