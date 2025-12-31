@@ -4515,6 +4515,7 @@ export const ThreadsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} [graphId] Filter by graph ID
+     * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
      * @param {number} [limit] Maximum number of threads to return
      * @param {number} [offset] Number of threads to skip
      * @param {*} [options] Override http request option.
@@ -4522,6 +4523,7 @@ export const ThreadsApiAxiosParamCreator = function (
      */
     getThreads: async (
       graphId?: string,
+      statuses?: Array<GetThreadsStatusesEnum>,
       limit?: number,
       offset?: number,
       options: RawAxiosRequestConfig = {},
@@ -4548,6 +4550,10 @@ export const ThreadsApiAxiosParamCreator = function (
 
       if (graphId !== undefined) {
         localVarQueryParameter['graphId'] = graphId;
+      }
+
+      if (statuses) {
+        localVarQueryParameter['statuses'] = statuses;
       }
 
       if (limit !== undefined) {
@@ -4989,6 +4995,7 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} [graphId] Filter by graph ID
+     * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
      * @param {number} [limit] Maximum number of threads to return
      * @param {number} [offset] Number of threads to skip
      * @param {*} [options] Override http request option.
@@ -4996,6 +5003,7 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
      */
     async getThreads(
       graphId?: string,
+      statuses?: Array<GetThreadsStatusesEnum>,
       limit?: number,
       offset?: number,
       options?: RawAxiosRequestConfig,
@@ -5007,6 +5015,7 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     > {
       const localVarAxiosArgs = await localVarAxiosParamCreator.getThreads(
         graphId,
+        statuses,
         limit,
         offset,
         options,
@@ -5256,6 +5265,7 @@ export const ThreadsApiFactory = function (
     /**
      *
      * @param {string} [graphId] Filter by graph ID
+     * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
      * @param {number} [limit] Maximum number of threads to return
      * @param {number} [offset] Number of threads to skip
      * @param {*} [options] Override http request option.
@@ -5263,12 +5273,13 @@ export const ThreadsApiFactory = function (
      */
     getThreads(
       graphId?: string,
+      statuses?: Array<GetThreadsStatusesEnum>,
       limit?: number,
       offset?: number,
       options?: RawAxiosRequestConfig,
     ): AxiosPromise<Array<ThreadDto>> {
       return localVarFp
-        .getThreads(graphId, limit, offset, options)
+        .getThreads(graphId, statuses, limit, offset, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -5440,6 +5451,7 @@ export class ThreadsApi extends BaseAPI {
   /**
    *
    * @param {string} [graphId] Filter by graph ID
+   * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
    * @param {number} [limit] Maximum number of threads to return
    * @param {number} [offset] Number of threads to skip
    * @param {*} [options] Override http request option.
@@ -5448,12 +5460,13 @@ export class ThreadsApi extends BaseAPI {
    */
   public getThreads(
     graphId?: string,
+    statuses?: Array<GetThreadsStatusesEnum>,
     limit?: number,
     offset?: number,
     options?: RawAxiosRequestConfig,
   ) {
     return ThreadsApiFp(this.configuration)
-      .getThreads(graphId, limit, offset, options)
+      .getThreads(graphId, statuses, limit, offset, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -5536,3 +5549,15 @@ export class ThreadsApi extends BaseAPI {
       .then((request) => request(this.axios, this.basePath));
   }
 }
+
+/**
+ * @export
+ */
+export const GetThreadsStatusesEnum = {
+  Running: 'running',
+  Done: 'done',
+  NeedMoreInfo: 'need_more_info',
+  Stopped: 'stopped',
+} as const;
+export type GetThreadsStatusesEnum =
+  (typeof GetThreadsStatusesEnum)[keyof typeof GetThreadsStatusesEnum];

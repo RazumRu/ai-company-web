@@ -1044,7 +1044,7 @@ export const GraphPage = () => {
 
     try {
       setThreadsLoading(true);
-      const response = await threadsApi.getThreads(id, 100, 0);
+      const response = await threadsApi.getThreads(id, undefined, 100, 0);
       setThreads(sortThreadsByTimestampDesc(response.data || []));
     } catch (error) {
       console.error('Error loading threads:', error);

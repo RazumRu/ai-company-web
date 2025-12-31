@@ -265,19 +265,26 @@ const configuration = new Configuration();
 const apiInstance = new ThreadsApi(configuration);
 
 let graphId: string; //Filter by graph ID (optional) (default to undefined)
+let statuses: Array<'running' | 'done' | 'need_more_info' | 'stopped'>; //Filter by thread statuses (optional) (default to undefined)
 let limit: number; //Maximum number of threads to return (optional) (default to 50)
 let offset: number; //Number of threads to skip (optional) (default to 0)
 
-const { status, data } = await apiInstance.getThreads(graphId, limit, offset);
+const { status, data } = await apiInstance.getThreads(
+  graphId,
+  statuses,
+  limit,
+  offset,
+);
 ```
 
 ### Parameters
 
-| Name        | Type         | Description                         | Notes                            |
-| ----------- | ------------ | ----------------------------------- | -------------------------------- |
-| **graphId** | [**string**] | Filter by graph ID                  | (optional) defaults to undefined |
-| **limit**   | [**number**] | Maximum number of threads to return | (optional) defaults to 50        |
-| **offset**  | [**number**] | Number of threads to skip           | (optional) defaults to 0         |
+| Name         | Type                                                                                                        | Description                         | Notes                            |
+| ------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------- |
+| **graphId**  | [**string**]                                                                                                | Filter by graph ID                  | (optional) defaults to undefined |
+| **statuses** | **Array<&#39;running&#39; &#124; &#39;done&#39; &#124; &#39;need_more_info&#39; &#124; &#39;stopped&#39;>** | Filter by thread statuses           | (optional) defaults to undefined |
+| **limit**    | [**number**]                                                                                                | Maximum number of threads to return | (optional) defaults to 50        |
+| **offset**   | [**number**]                                                                                                | Number of threads to skip           | (optional) defaults to 0         |
 
 ### Return type
 
