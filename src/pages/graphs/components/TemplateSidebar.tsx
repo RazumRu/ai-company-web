@@ -32,6 +32,7 @@ export const TemplateSidebar = ({
   const [expandedKinds, setExpandedKinds] = useState<Set<string>>(
     () => new Set(),
   );
+  const isSearchActive = searchText.trim().length > 0;
 
   const onDragStart = (event: React.DragEvent, template: TemplateDto) => {
     event.dataTransfer.setData(
@@ -121,6 +122,9 @@ export const TemplateSidebar = ({
   };
 
   const toggleKindExpanded = (kind: string) => {
+    if (isSearchActive) {
+      return;
+    }
     setExpandedKinds((prev) => {
       const next = new Set(prev);
       if (next.has(kind)) {
@@ -229,7 +233,7 @@ export const TemplateSidebar = ({
                 marginTop: '10px',
               }}>
               {groupedTemplates.map(([kind, kindTemplates]) => {
-                const isExpanded = expandedKinds.has(kind);
+                const isExpanded = isSearchActive || expandedKinds.has(kind);
                 const kindColor = getKindColor(kind);
                 const kindLabel = formatKindLabel(kind);
 

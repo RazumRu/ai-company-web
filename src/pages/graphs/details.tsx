@@ -65,6 +65,7 @@ import {
   type GraphDiffState,
   GraphStorageService,
 } from '../../services/GraphStorageService';
+import { GraphValidationService } from '../../services/GraphValidationService';
 import type {
   AgentMessageNotification,
   GraphNodeUpdateNotification,
@@ -104,7 +105,6 @@ import type {
   GraphNode,
   GraphNodeData,
   NodeMetadata,
-  SchemaProperty,
 } from './types';
 import type { MessageScopeKey, PendingMessage } from './types/messages';
 
@@ -877,9 +877,17 @@ export const GraphPage = () => {
         if (!mounted) return;
 
         const graphData = res.data;
-        setGraph(graphData);
+        const pendingRevision = GraphStorageService.loadPendingRevision(id);
         const storedDraftName = GraphStorageService.loadDraft(id)?.graphName;
-        setEditingName(storedDraftName ?? graphData.name);
+        const effectiveGraphName =
+          pendingRevision?.graphName ?? storedDraftName ?? graphData.name;
+
+        setGraph(
+          pendingRevision && pendingRevision.toVersion !== graphData.version
+            ? { ...graphData, version: pendingRevision.toVersion }
+            : graphData,
+        );
+        setEditingName(effectiveGraphName);
 
         const metadata = (graphData.metadata as GraphMetadata) || {};
         const nodeMetadata = metadata.nodes || [];
@@ -965,6 +973,37 @@ export const GraphPage = () => {
           graphName: graphData.name,
           baseVersion: graphData.version,
         };
+
+        // If we have a locally saved "pending revision" snapshot and the backend
+        // is still on an older version, prefer the pending snapshot as the
+        // baseline/UI state so reload shows the latest user-visible graph.
+        if (
+          pendingRevision &&
+          pendingRevision.toVersion &&
+          pendingRevision.toVersion !== graphData.version
+        ) {
+          const pendingState: GraphDiffState = {
+            nodes: pendingRevision.nodes,
+            edges: pendingRevision.edges,
+            viewport: pendingRevision.viewport,
+            selectedThreadId,
+            graphName: effectiveGraphName,
+            baseVersion: pendingRevision.toVersion,
+          };
+
+          setServerGraphState(pendingState);
+          draftState.updateServerBaseline(pendingState);
+          return;
+        }
+
+        // If the backend has caught up to our pending snapshot, it is safe to clear it.
+        if (
+          pendingRevision &&
+          pendingRevision.toVersion &&
+          pendingRevision.toVersion === graphData.version
+        ) {
+          GraphStorageService.clearPendingRevision(id);
+        }
 
         // Check if stored draft is compatible with current server version
         const storedDraft = GraphStorageService.loadDraft(id);
@@ -1244,6 +1283,38 @@ export const GraphPage = () => {
       ),
     [revisions],
   );
+
+  const handleResetAllLocalChanges = useCallback(() => {
+    if (saving || isRevisionApplying) return;
+
+    Modal.confirm({
+      title: 'Reset all local changes?',
+      content:
+        'This will discard all unsaved changes and restore the last saved version from the server.',
+      okText: 'Reset changes',
+      okButtonProps: { danger: true },
+      cancelText: 'Cancel',
+      onOk: () => {
+        draftStateRef.current.resetToServer();
+        message.success('Local changes reset');
+      },
+    });
+  }, [saving, isRevisionApplying]);
+
+  const unsavedChangesPopoverContent = useMemo(() => {
+    return (
+      <Space direction="vertical" size={8}>
+        <Typography.Text>You have unsaved changes.</Typography.Text>
+        <Button
+          danger
+          size="small"
+          onClick={handleResetAllLocalChanges}
+          disabled={saving || isRevisionApplying}>
+          Reset all local changes
+        </Button>
+      </Space>
+    );
+  }, [handleResetAllLocalChanges, saving, isRevisionApplying]);
 
   const displayedRevisionMeta: {
     label: string;
@@ -1939,6 +2010,7 @@ export const GraphPage = () => {
 
         const revision = data.data;
         upsertRevision(revision);
+        GraphStorageService.clearPendingRevision(id);
 
         // Refetch the graph to get the updated data
         try {
@@ -2162,28 +2234,33 @@ export const GraphPage = () => {
         draftStateRef.current.updateEdges(validEdges);
       }
 
-      const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => {
-        const template = templatesById[node.data.template as string];
-        const nodeConfig = node.data.config as Record<string, unknown>;
+      const connectionValidation = GraphValidationService.validateGraph(
+        nodes,
+        validEdges,
+        templates,
+      );
+      if (!connectionValidation.isValid) {
+        const first = connectionValidation.errors[0];
+        message.error(first?.message ?? 'Invalid connections');
+        return;
+      }
 
-        // Merge const values from template schema into config
-        const mergedConfig = { ...nodeConfig };
-        if (template?.schema?.properties) {
-          Object.entries(template.schema.properties).forEach(([key, prop]) => {
-            const schemaProp = prop as SchemaProperty;
-            if (schemaProp.const !== undefined) {
-              // Always include const values, even if they're not in the current config
-              mergedConfig[key] = schemaProp.const;
-            }
-          });
-        }
+      const configValidation =
+        await GraphValidationService.validateAndNormalizeNodeConfigs(
+          nodes,
+          templates,
+        );
+      if (!configValidation.isValid) {
+        const first = configValidation.errors[0];
+        message.error(first?.message ?? 'Invalid node configuration');
+        return;
+      }
 
-        return {
-          id: node.id,
-          template: node.data.template as string,
-          config: mergedConfig,
-        };
-      });
+      const apiNodes: CreateGraphDtoSchemaNodesInner[] = nodes.map((node) => ({
+        id: node.id,
+        template: node.data.template as string,
+        config: configValidation.normalizedConfigsByNodeId[node.id] ?? {},
+      }));
 
       const apiEdges: CreateGraphDtoSchemaEdgesInner[] = validEdges.map(
         (edge) => ({
@@ -2246,8 +2323,25 @@ export const GraphPage = () => {
       if (revisionNeedsTime) {
         // Revision will be applied asynchronously
         // Keep current visual state (showing the changes we just saved)
-        // Clear the draft since we've saved
+        // Clear the unsaved draft since we've saved, but persist a snapshot
+        // separately so reload still shows the latest changes while the backend
+        // revision is pending/applying.
         GraphStorageService.clearDraft(id);
+        const pendingToVersion =
+          revision?.toVersion ?? updatedGraph.version ?? graph.version;
+        if (pendingToVersion) {
+          GraphStorageService.savePendingRevision(id, {
+            nodes,
+            edges,
+            viewport,
+            selectedThreadId,
+            graphName: updatedGraph.name,
+            baseVersion: pendingToVersion,
+            toVersion: pendingToVersion,
+            revisionId: revision?.id,
+            savedAt: Date.now(),
+          });
+        }
 
         // Update the server baseline with the current state we're displaying
         // This represents what we JUST saved (even though server hasn't applied it yet)
@@ -3369,7 +3463,7 @@ export const GraphPage = () => {
                 }
                 placement="bottom">
                 <Popover
-                  content="You have unsaved changes"
+                  content={unsavedChangesPopoverContent}
                   title="Unsaved Changes"
                   open={hasStructuralChanges ? undefined : false}
                   trigger="hover">

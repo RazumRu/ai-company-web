@@ -3,33 +3,30 @@ import {
   CloseOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
-  ExpandOutlined,
   FileTextOutlined,
   InfoCircleOutlined,
   PlayCircleOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
+import $RefParser from '@apidevtools/json-schema-ref-parser';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
 import {
   Alert,
   Avatar,
   Button,
-  Form,
   Input,
-  InputNumber,
   Layout,
   message,
   Modal,
   Popover,
-  Select,
   Space,
-  Switch,
   Tag,
   Tooltip,
   Typography,
 } from 'antd';
 import { createTwoFilesPatch } from 'diff';
+import { isEqual } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -52,15 +49,17 @@ import {
 import { MarkdownSplitEditor } from '../../../components/markdown/MarkdownSplitEditor';
 import { getAgentAvatarDataUri } from '../../../utils/agentAvatars';
 import { extractApiErrorMessage } from '../../../utils/errors';
-import type {
-  FormField,
-  GraphNode,
-  GraphNodeData,
-  SchemaProperty,
-} from '../types';
+import type { GraphNode, SchemaProperty } from '../types';
 import type { PendingMessage } from '../types/messages';
-import { KeyValuePairsInput } from './KeyValuePairsInput';
+import {
+  getDefaultEmptyValue,
+  getNodeData,
+  getSchemaTypeName,
+  isTrulyEmptyValue,
+  processValueByType,
+} from '../utils/schemaUtils';
 import { NodeMessagesPanel } from './NodeMessagesPanel';
+import { TemplateConfigForm } from './TemplateConfigForm';
 
 const { Sider } = Layout;
 const { Title, Text } = Typography;
@@ -100,7 +99,7 @@ interface NodeEditSidebarProps {
   graphId?: string;
   /**
    * Snapshot version of the node config from draftGraph.
-   * Used to reset initialFormValues when the parent updates draftGraph externally.
+   * Used to reset the local config form baseline when the parent saves/updates draftGraph externally.
    */
   draftNodeConfigVersion?: number;
   /**
@@ -154,18 +153,23 @@ export const NodeEditSidebar = React.memo(
     draftNodeConfigVersion,
     hasNodeUnsavedChangesFromServer,
   }: NodeEditSidebarProps) => {
-    const [form] = Form.useForm();
     const isHydratingRef = useRef(false);
     const nodeRef = useRef<GraphNode | null>(null);
     const [nodeName, setNodeName] = useState('');
     const [isEditingName, setIsEditingName] = useState(false);
     const [editingName, setEditingName] = useState('');
-    const [formFields, setFormFields] = useState<FormField[]>([]);
+    const [templateSchema, setTemplateSchema] = useState<Record<
+      string,
+      unknown
+    > | null>(null);
+    const [configFormData, setConfigFormData] = useState<
+      Record<string, unknown>
+    >({});
     const [expandedTextarea, setExpandedTextarea] = useState<{
       fieldKey: string;
       value: string;
     } | null>(null);
-    const [initialFormValues, setInitialFormValues] = useState<
+    const [initialConfigFormData, setInitialConfigFormData] = useState<
       Record<string, unknown>
     >({});
     const [hasLocalUnsavedChanges, setHasLocalUnsavedChanges] = useState(false);
@@ -175,53 +179,29 @@ export const NodeEditSidebar = React.memo(
     const [aiSuggestionState, setAiSuggestionState] =
       useState<AiSuggestionState | null>(null);
 
-    const deepSortKeys = useCallback((obj: unknown): unknown => {
-      if (obj === null || obj === undefined) return obj;
-      if (typeof obj !== 'object') return obj;
-      if (Array.isArray(obj)) return obj.map(deepSortKeys);
+    const computeHasLocalUnsavedChanges = useCallback(
+      (nextData?: Record<string, unknown>) => {
+        const currentValues = nextData ?? configFormData;
+        const keys = new Set([
+          ...Object.keys(initialConfigFormData),
+          ...Object.keys(currentValues),
+        ]);
 
-      const sorted: Record<string, unknown> = {};
-      Object.keys(obj as Record<string, unknown>)
-        .sort()
-        .forEach((key) => {
-          sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
+        const formChanged = Array.from(keys).some((key) => {
+          return !isEqual(currentValues[key], initialConfigFormData[key]);
         });
-      return sorted;
-    }, []);
 
-    const deepEqual = useCallback(
-      (a: unknown, b: unknown) => {
-        // Sort keys before comparing to handle key ordering differences
-        const sortedA = deepSortKeys(a);
-        const sortedB = deepSortKeys(b);
-        return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+        const expandedChanged = expandedTextarea
+          ? !isEqual(
+              expandedTextarea.value,
+              initialConfigFormData[expandedTextarea.fieldKey],
+            )
+          : false;
+
+        return formChanged || expandedChanged;
       },
-      [deepSortKeys],
+      [configFormData, expandedTextarea, initialConfigFormData],
     );
-
-    const computeHasLocalUnsavedChanges = useCallback(() => {
-      const currentValues = form.getFieldsValue(true) as Record<
-        string,
-        unknown
-      >;
-      const keys = new Set([
-        ...Object.keys(initialFormValues),
-        ...Object.keys(currentValues),
-      ]);
-
-      const formChanged = Array.from(keys).some((key) => {
-        return !deepEqual(currentValues[key], initialFormValues[key]);
-      });
-
-      const expandedChanged = expandedTextarea
-        ? !deepEqual(
-            expandedTextarea.value,
-            initialFormValues[expandedTextarea.fieldKey],
-          )
-        : false;
-
-      return formChanged || expandedChanged;
-    }, [deepEqual, expandedTextarea, form, initialFormValues]);
 
     // Local unsaved warning: ONLY based on actual local form changes.
     // (Do NOT compare draft config to compiled/runtime config; that can differ even
@@ -242,8 +222,7 @@ export const NodeEditSidebar = React.memo(
     const prevNodeIdRef = useRef<string | undefined>(undefined);
 
     const selectedNodeId = node?.id;
-    const selectedNodeTemplateId = (node?.data as unknown as GraphNodeData)
-      ?.template;
+    const selectedNodeTemplateId = getNodeData(node)?.template;
 
     useEffect(() => {
       // Keep a stable snapshot for form hydration to avoid re-hydrating
@@ -256,26 +235,18 @@ export const NodeEditSidebar = React.memo(
     useEffect(() => {
       if (!hasGlobalUnsavedChanges && !isHydratingRef.current) {
         // Graph was saved - reset local form baseline
-        const currentValues = form.getFieldsValue(true) as Record<
-          string,
-          unknown
-        >;
-        setInitialFormValues(currentValues);
+        setInitialConfigFormData(configFormData);
         setHasLocalUnsavedChanges(false);
       }
-    }, [form, hasGlobalUnsavedChanges]);
+    }, [configFormData, hasGlobalUnsavedChanges]);
 
-    // Update initialFormValues when the draftNodeConfigVersion changes (after parent save)
+    // Update baseline when the draftNodeConfigVersion changes (after parent save)
     useEffect(() => {
       if (draftNodeConfigVersion !== undefined && !isHydratingRef.current) {
-        const currentValues = form.getFieldsValue(true) as Record<
-          string,
-          unknown
-        >;
-        setInitialFormValues(currentValues);
+        setInitialConfigFormData(configFormData);
         setHasLocalUnsavedChanges(false);
       }
-    }, [draftNodeConfigVersion, form]);
+    }, [configFormData, draftNodeConfigVersion]);
 
     useEffect(() => {
       if (expandedTextarea) {
@@ -306,15 +277,29 @@ export const NodeEditSidebar = React.memo(
       </Button>
     );
 
-    const hasLiteLlmSelectField = useMemo(
-      () =>
-        formFields.some(
-          (field) => field['x-ui:litellm-models-list-select'] === true,
-        ),
-      [formFields],
+    const schemaProperties = useMemo(() => {
+      const propsUnknown = (templateSchema as { properties?: unknown } | null)
+        ?.properties;
+      if (!propsUnknown || typeof propsUnknown !== 'object') {
+        return {} as Record<string, SchemaProperty>;
+      }
+      return propsUnknown as Record<string, SchemaProperty>;
+    }, [templateSchema]);
+
+    const schemaPropertyKeys = useMemo(
+      () => Object.keys(schemaProperties),
+      [schemaProperties],
     );
 
-    const nodeData = node?.data as unknown as GraphNodeData;
+    const hasLiteLlmSelectField = useMemo(
+      () =>
+        Object.values(schemaProperties).some(
+          (field) => field['x-ui:litellm-models-list-select'] === true,
+        ),
+      [schemaProperties],
+    );
+
+    const nodeData = getNodeData(node);
     const templateKindLower = (nodeData?.templateKind || '').toLowerCase();
     const isAgentNode = templateKindLower === 'simpleagent';
     const isKnowledgeNode = templateKindLower === 'knowledge';
@@ -386,13 +371,18 @@ export const NodeEditSidebar = React.memo(
           ? 'View connected agent tools'
           : 'No tools are connected to this node';
 
-    const expandedTextareaField = useMemo(
-      () =>
-        expandedTextarea
-          ? formFields.find((field) => field.key === expandedTextarea.fieldKey)
-          : undefined,
-      [expandedTextarea, formFields],
-    );
+    const expandedTextareaField = useMemo(() => {
+      if (!expandedTextarea) return undefined;
+      const prop = schemaProperties[expandedTextarea.fieldKey];
+      if (!prop) return undefined;
+      const label =
+        (typeof prop['x-ui:label'] === 'string'
+          ? prop['x-ui:label']
+          : undefined) ??
+        prop.title ??
+        expandedTextarea.fieldKey;
+      return { prop, label };
+    }, [expandedTextarea, schemaProperties]);
 
     const formatInstructionsValue = useCallback((value: unknown) => {
       if (value === undefined || value === null) {
@@ -458,7 +448,7 @@ export const NodeEditSidebar = React.memo(
         const valueToUse: unknown =
           initialValue !== undefined
             ? initialValue
-            : ((form.getFieldValue(fieldKey) as unknown) ?? '');
+            : (configFormData[fieldKey] ?? '');
         const formattedValue = formatInstructionsValue(valueToUse);
         setAiSuggestionState({
           fieldKey,
@@ -476,7 +466,12 @@ export const NodeEditSidebar = React.memo(
           loading: false,
         });
       },
-      [aiSuggestionMode, form, formatInstructionsValue, isGraphRunning],
+      [
+        aiSuggestionMode,
+        configFormData,
+        formatInstructionsValue,
+        isGraphRunning,
+      ],
     );
 
     const closeAiSuggestionModal = useCallback(() => {
@@ -633,7 +628,7 @@ export const NodeEditSidebar = React.memo(
     useEffect(() => {
       const nodeForTabs = node;
       if (!nodeForTabs) return;
-      const currentNodeData = nodeForTabs.data as unknown as GraphNodeData;
+      const currentNodeData = getNodeData(nodeForTabs);
       const currentNodeIsAgent =
         currentNodeData?.templateKind === 'simpleAgent';
       const availableTabs = ['options'];
@@ -651,250 +646,195 @@ export const NodeEditSidebar = React.memo(
     useEffect(() => {
       const nodeForInit = nodeRef.current;
       if (!nodeForInit) {
-        form.resetFields();
-        setFormFields([]);
-        setInitialFormValues({});
+        setTemplateSchema(null);
+        setConfigFormData({});
+        setInitialConfigFormData({});
         setHasLocalUnsavedChanges(false);
         prevNodeIdRef.current = undefined;
         return;
       }
 
-      const currentNodeData = nodeForInit.data as unknown as GraphNodeData;
+      const currentNodeData = getNodeData(nodeForInit);
+      if (!currentNodeData) {
+        setTemplateSchema(null);
+        setConfigFormData({});
+        setInitialConfigFormData({});
+        setHasLocalUnsavedChanges(false);
+        prevNodeIdRef.current = undefined;
+        return;
+      }
+
       const template = templates.find((t) => t.id === currentNodeData.template);
 
       isHydratingRef.current = true;
 
-      if (template?.schema?.properties) {
-        const fields: FormField[] = [];
-        Object.entries(template.schema.properties).forEach(([key, prop]) => {
-          const typedProp = prop as SchemaProperty;
-          const isConst = typedProp.const !== undefined;
-          const isObject =
-            typedProp.type === 'object' && typedProp.additionalProperties;
+      let didCancel = false;
 
-          fields.push({
-            ...typedProp,
-            key,
-            name: typedProp.title || key,
-            description: typedProp.description,
-            type: isObject ? 'object' : typedProp.type || 'string',
-            required:
-              (template.schema.required as unknown[] | undefined)?.includes(
-                key,
-              ) || false,
-            default: typedProp.default,
-            const: typedProp.const,
-            enum: typedProp.enum,
-            isConst,
-            isObject,
+      const hydrateForm = async () => {
+        const rawSchema = template?.schema as unknown;
+        if (!rawSchema) {
+          setTemplateSchema(null);
+          setConfigFormData({});
+          setInitialConfigFormData({});
+          setHasLocalUnsavedChanges(false);
+          requestAnimationFrame(() => {
+            isHydratingRef.current = false;
           });
-        });
+          return;
+        }
 
-        setFormFields(fields);
+        let schema: unknown = rawSchema;
+        try {
+          schema = await $RefParser.dereference(rawSchema, {
+            mutateInputSchema: false,
+          });
+        } catch (error) {
+          console.error('Failed to dereference template schema:', error);
+          schema = rawSchema;
+        }
 
-        const initialValues: Record<string, unknown> = {};
-        fields.forEach((field) => {
-          if (field.isConst) {
-            initialValues[field.key] = field.const;
-          } else {
-            initialValues[field.key] =
-              (currentNodeData.config as Record<string, unknown>)?.[
-                field.key
-              ] ??
-              field.default ??
-              '';
-          }
-        });
+        if (didCancel) return;
 
-        form.resetFields();
-        form.setFieldsValue(initialValues);
+        const schemaPropertiesUnknown = (schema as { properties?: unknown })
+          ?.properties;
+        if (
+          !schemaPropertiesUnknown ||
+          typeof schemaPropertiesUnknown !== 'object'
+        ) {
+          setTemplateSchema(null);
+          setConfigFormData({});
+          setInitialConfigFormData({});
+          setHasLocalUnsavedChanges(false);
+          requestAnimationFrame(() => {
+            isHydratingRef.current = false;
+          });
+          return;
+        }
 
-        const currentValuesNow = form.getFieldsValue(true) as Record<
+        const schemaProperties = schemaPropertiesUnknown as Record<
           string,
-          unknown
+          SchemaProperty
         >;
-        setInitialFormValues(currentValuesNow);
+        const initialValues: Record<string, unknown> = {};
+        for (const [key, prop] of Object.entries(schemaProperties)) {
+          if (prop.const !== undefined) {
+            initialValues[key] = prop.const;
+            continue;
+          }
+
+          const resolvedType = getSchemaTypeName(prop);
+          const fallbackEmptyValue = getDefaultEmptyValue(resolvedType);
+
+          initialValues[key] =
+            (currentNodeData.config as Record<string, unknown>)?.[key] ??
+            prop.default ??
+            fallbackEmptyValue;
+        }
+
+        setTemplateSchema(schema as Record<string, unknown>);
+        setConfigFormData(initialValues);
+        setInitialConfigFormData(initialValues);
         setHasLocalUnsavedChanges(false);
 
         requestAnimationFrame(() => {
           isHydratingRef.current = false;
         });
-      } else {
-        setFormFields([]);
-        form.resetFields();
-        setInitialFormValues({});
-        setHasLocalUnsavedChanges(false);
-        requestAnimationFrame(() => {
-          isHydratingRef.current = false;
-        });
-      }
+      };
+
+      void hydrateForm();
 
       const label = (currentNodeData.label as string) || '';
       setNodeName(label);
       setEditingName(label);
       prevNodeIdRef.current = nodeForInit.id;
-    }, [form, selectedNodeId, selectedNodeTemplateId, templates]);
+
+      return () => {
+        didCancel = true;
+      };
+    }, [selectedNodeId, selectedNodeTemplateId, templates]);
 
     /**
      * Build the processed config from current form values.
      * This is used for both immediate draft updates and final saves.
      */
-    const buildProcessedConfig = useCallback((): Record<string, unknown> => {
-      const currentConfig: Record<string, unknown> =
-        (node?.data as unknown as GraphNodeData | undefined)?.config ?? {};
+    const buildProcessedConfig = useCallback(
+      (overrideFormData?: Record<string, unknown>): Record<string, unknown> => {
+        const currentConfig: Record<string, unknown> =
+          getNodeData(node)?.config ?? {};
+        const effectiveFormData = overrideFormData ?? configFormData;
 
-      // Start with keys that are NOT in formFields (to preserve them)
-      const formFieldKeys = new Set(formFields.map((f) => f.key));
-      const configValues: Record<string, unknown> = {};
-      Object.keys(currentConfig).forEach((key) => {
-        if (!formFieldKeys.has(key)) {
-          configValues[key] = currentConfig[key];
-        }
-      });
-
-      // Process all form fields and include them in the config (even if they have default values)
-      // This ensures the server always has the full config
-      formFields.forEach((field) => {
-        const key = field.key;
-
-        if (field.isConst) {
-          configValues[key] = field.const as unknown;
-          return;
-        }
-
-        const rawValue: unknown = form.getFieldValue(key);
-        const effectiveValue: unknown =
-          rawValue === undefined
-            ? (currentConfig as Record<string, unknown>)[key]
-            : rawValue;
-
-        const isEmptyString =
-          typeof effectiveValue === 'string' && effectiveValue.trim() === '';
-        const isEmptyArray =
-          Array.isArray(effectiveValue) && effectiveValue.length === 0;
-        const isEmptyObject =
-          field.type === 'object' &&
-          effectiveValue !== null &&
-          typeof effectiveValue === 'object' &&
-          !Array.isArray(effectiveValue) &&
-          Object.keys(effectiveValue as Record<string, unknown>).length === 0;
-
-        const isTrulyEmpty: boolean =
-          effectiveValue === null ||
-          effectiveValue === undefined ||
-          isEmptyString ||
-          isEmptyArray ||
-          isEmptyObject;
-
-        // Skip truly empty values (but not booleans)
-        if (isTrulyEmpty && field.type !== 'boolean') {
-          return;
-        }
-
-        let processedValue: unknown = effectiveValue;
-
-        switch (field.type) {
-          case 'number':
-          case 'integer': {
-            if (typeof effectiveValue === 'string') {
-              const num = Number(effectiveValue);
-              if (Number.isNaN(num)) {
-                return;
-              }
-              processedValue = field.type === 'integer' ? Math.trunc(num) : num;
-            } else if (typeof effectiveValue === 'number') {
-              processedValue =
-                field.type === 'integer'
-                  ? Math.trunc(effectiveValue)
-                  : effectiveValue;
-            } else {
-              return;
-            }
-            break;
+        // Preserve keys that are NOT in the current template schema (backward/forward compat).
+        const schemaKeys = new Set(schemaPropertyKeys);
+        const configValues: Record<string, unknown> = {};
+        Object.keys(currentConfig).forEach((key) => {
+          if (!schemaKeys.has(key)) {
+            configValues[key] = currentConfig[key];
           }
-          case 'array': {
-            if (typeof effectiveValue === 'string') {
-              processedValue = effectiveValue
-                .split('\n')
-                .map((line) => line.trim())
-                .filter((line) => line !== '');
-            } else if (Array.isArray(effectiveValue)) {
-              processedValue = effectiveValue;
-            } else if (effectiveValue == null) {
-              return;
-            }
-            break;
+        });
+
+        for (const key of schemaPropertyKeys) {
+          const prop = schemaProperties[key];
+          if (!prop) continue;
+
+          // Handle const values - they override everything
+          if (prop.const !== undefined) {
+            configValues[key] = prop.const as unknown;
+            continue;
           }
-          case 'object': {
-            if (typeof effectiveValue === 'string') {
-              try {
-                const parsed: unknown = JSON.parse(effectiveValue as string);
-                processedValue = parsed;
-              } catch {
-                return;
-              }
-            } else if (
-              effectiveValue &&
-              typeof effectiveValue === 'object' &&
-              !Array.isArray(effectiveValue)
-            ) {
-              processedValue = effectiveValue;
-            } else if (effectiveValue == null) {
-              return;
-            }
-            break;
+
+          const rawValue: unknown = effectiveFormData[key];
+          const effectiveValue: unknown =
+            rawValue === undefined ? currentConfig[key] : rawValue;
+
+          const typeName = getSchemaTypeName(prop);
+
+          // Skip truly empty values (but not booleans)
+          if (isTrulyEmptyValue(effectiveValue, typeName)) {
+            continue;
           }
-          case 'boolean': {
-            processedValue = Boolean(effectiveValue);
-            break;
-          }
-          case 'string':
-          default: {
-            if (typeof effectiveValue === 'string') {
-              const trimmed = effectiveValue.trim();
-              if (trimmed === '') {
-                return;
-              }
-              processedValue = trimmed;
-            } else {
-              processedValue = effectiveValue;
-            }
+
+          const processedValue = processValueByType(effectiveValue, typeName);
+
+          // Only add the value if processing succeeded
+          if (processedValue !== undefined) {
+            configValues[key] = processedValue;
           }
         }
 
-        configValues[key] = processedValue;
-      });
-
-      return configValues;
-    }, [node?.data, formFields, form]);
+        return configValues;
+      },
+      [configFormData, node, schemaProperties, schemaPropertyKeys],
+    );
 
     /**
      * Push draft changes to the parent (GraphPage).
      * This is called immediately on every meaningful form change.
      * The parent will update draftGraph and persist the diff.
      */
-    const pushDraftChange = useCallback(() => {
-      if (!node) return;
-      if (isHydratingRef.current) return; // Don't push during hydration
+    const pushDraftChange = useCallback(
+      (overrideFormData?: Record<string, unknown>) => {
+        if (!node) return;
+        if (isHydratingRef.current) return; // Don't push during hydration
 
-      const configValues = buildProcessedConfig();
-      const currentConfig: Record<string, unknown> =
-        (node.data as unknown as GraphNodeData | undefined)?.config ?? {};
-      const currentLabel = (node.data as unknown as GraphNodeData | undefined)
-        ?.label;
+        const configValues = buildProcessedConfig(overrideFormData);
+        const nodeData = getNodeData(node);
+        const currentConfig: Record<string, unknown> = nodeData?.config ?? {};
+        const currentLabel = nodeData?.label;
 
-      const labelUnchanged = nodeName === currentLabel;
-      const configUnchanged = deepEqual(configValues, currentConfig);
+        const labelUnchanged = nodeName === currentLabel;
+        const configUnchanged = isEqual(configValues, currentConfig);
 
-      if (labelUnchanged && configUnchanged) {
-        return;
-      }
+        if (labelUnchanged && configUnchanged) {
+          return;
+        }
 
-      onNodeDraftChange(node.id, {
-        name: nodeName,
-        config: configValues,
-      });
-    }, [node, nodeName, buildProcessedConfig, deepEqual, onNodeDraftChange]);
+        onNodeDraftChange(node.id, {
+          name: nodeName,
+          config: configValues,
+        });
+      },
+      [node, nodeName, buildProcessedConfig, onNodeDraftChange],
+    );
 
     // Cleanup effect: push any pending draft changes when unmounting
     // Note: This is a safety net, but ideally changes should be pushed immediately
@@ -908,41 +848,41 @@ export const NodeEditSidebar = React.memo(
 
     const handleExpandedTextareaSave = useCallback(() => {
       if (expandedTextarea) {
-        form.setFieldValue(expandedTextarea.fieldKey, expandedTextarea.value);
+        const nextFormData: Record<string, unknown> = {
+          ...configFormData,
+          [expandedTextarea.fieldKey]: expandedTextarea.value,
+        };
+        setConfigFormData(nextFormData);
         // Compute hasChanges and push draft
-        const hasChanges = computeHasLocalUnsavedChanges();
+        const hasChanges = computeHasLocalUnsavedChanges(nextFormData);
         setHasLocalUnsavedChanges(hasChanges);
         if (hasChanges) {
-          pushDraftChange();
+          pushDraftChange(nextFormData);
         }
       }
       setExpandedTextarea(null);
     }, [
       expandedTextarea,
-      form,
+      configFormData,
       computeHasLocalUnsavedChanges,
       pushDraftChange,
     ]);
 
-    const handleFormChange = useCallback(
-      (
-        _changedValues: Record<string, unknown>,
-        _allValues: Record<string, unknown>,
-      ) => {
-        void _changedValues;
-        void _allValues;
-
-        // Ignore changes during form hydration (initial mount / node switch)
+    const handleConfigFormChange = useCallback(
+      (nextFormData: Record<string, unknown>) => {
+        // Ignore changes during hydration (initial mount / node switch)
         if (isHydratingRef.current) {
           return;
         }
 
+        setConfigFormData(nextFormData);
+
         // Always push changes to draft state
         // The draft state layer will determine if there are unsaved changes vs server baseline
-        pushDraftChange();
+        pushDraftChange(nextFormData);
 
         // Compute whether the form has actually changed from the initial values
-        const hasChanges = computeHasLocalUnsavedChanges();
+        const hasChanges = computeHasLocalUnsavedChanges(nextFormData);
 
         // Update local unsaved state - this can go from true to false
         // if the user reverts their changes back to the initial values
@@ -1130,7 +1070,11 @@ export const NodeEditSidebar = React.memo(
         aiSuggestionState.suggestedInstructions ??
         '';
 
-      form.setFieldValue(aiSuggestionState.fieldKey, suggestedInstructions);
+      const nextFormData: Record<string, unknown> = {
+        ...configFormData,
+        [aiSuggestionState.fieldKey]: suggestedInstructions,
+      };
+      setConfigFormData(nextFormData);
 
       if (
         expandedTextarea?.fieldKey &&
@@ -1144,263 +1088,16 @@ export const NodeEditSidebar = React.memo(
       setAiSuggestionState(null);
 
       // Push the AI suggestion as a draft change
-      setHasLocalUnsavedChanges(true);
-      pushDraftChange();
-    }, [aiSuggestionState, expandedTextarea?.fieldKey, form, pushDraftChange]);
-
-    const renderFormField = (field: FormField) => {
-      const {
-        key,
-        name,
-        description,
-        type,
-        required,
-        isConst,
-        const: constValue,
-        enum: enumValues,
-      } = field;
-
-      const rules = required
-        ? [{ required: true, message: `${name} is required` }]
-        : undefined;
-
-      const descriptionNode = description ? (
-        <Text
-          type="secondary"
-          style={{
-            fontSize: 12,
-            fontWeight: 'normal',
-          }}>
-          {description}
-        </Text>
-      ) : undefined;
-
-      const supportsAiSuggestions =
-        (field as SchemaProperty)['x-ui:ai-suggestions'] === true;
-
-      const aiSuggestionLabel =
-        aiSuggestionMode === 'knowledge'
-          ? 'Generate with AI'
-          : 'Improve with AI';
-
-      const aiSuggestionLink = supportsAiSuggestions ? (
-        <AiSuggestionLink
-          onClick={() =>
-            openAiSuggestionModal(key, name, undefined, aiSuggestionMode)
-          }
-          disabled={!isGraphRunning || !graphId || !node?.id}
-          label={aiSuggestionLabel}
-        />
-      ) : null;
-
-      const extraContent =
-        descriptionNode || aiSuggestionLink ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {descriptionNode}
-            {aiSuggestionLink}
-          </div>
-        ) : undefined;
-
-      const commonProps = {
-        name: key,
-        label: name,
-        required,
-        rules,
-        extra: extraContent,
-        style: {
-          marginBottom: '10px',
-        },
-      } as const;
-
-      if (isConst) {
-        return (
-          <Form.Item key={key} {...commonProps} initialValue={constValue}>
-            <Input disabled size="middle" value={String(constValue)} />
-          </Form.Item>
-        );
-      }
-
-      const shouldUseLiteLlmModelsSelect =
-        (field as SchemaProperty)['x-ui:litellm-models-list-select'] === true;
-
-      if (shouldUseLiteLlmModelsSelect) {
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <Select
-              placeholder={`Select ${name.toLowerCase()}`}
-              size="middle"
-              allowClear={!required}
-              showSearch
-              loading={litellmModelsLoading}
-              notFoundContent={
-                litellmModelsLoading
-                  ? 'Loading models...'
-                  : 'No models available'
-              }
-              filterOption={(input, option) =>
-                (option?.label ?? '')
-                  .toString()
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={liteLlmModels.map((model) => ({
-                label: model.ownedBy
-                  ? `${model.id} (${model.ownedBy})`
-                  : model.id,
-                value: model.id,
-              }))}
-            />
-          </Form.Item>
-        );
-      }
-
-      if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
-        return (
-          <Form.Item key={key} {...commonProps}>
-            <Select
-              placeholder={`Select ${name.toLowerCase()}`}
-              size="middle"
-              allowClear={!required}
-              showSearch
-              filterOption={(input, option) =>
-                (option?.label ?? '')
-                  .toString()
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={enumValues.map((value) => ({
-                label: String(value),
-                value: value,
-              }))}
-            />
-          </Form.Item>
-        );
-      }
-
-      const shouldUseTextarea =
-        (field as SchemaProperty)['x-ui:textarea'] === true;
-
-      switch (type) {
-        case 'string':
-          if (shouldUseTextarea) {
-            return (
-              <Form.Item
-                key={key}
-                label={name}
-                required={required}
-                rules={rules}
-                extra={descriptionNode}
-                style={{ marginBottom: '10px' }}>
-                <div style={{ position: 'relative' }}>
-                  <Form.Item name={key} noStyle>
-                    <Input.TextArea
-                      placeholder={`Enter ${name.toLowerCase()}`}
-                      rows={4}
-                      size="middle"
-                      style={{ paddingRight: '32px' }}
-                    />
-                  </Form.Item>
-                  <Button
-                    type="text"
-                    icon={<ExpandOutlined />}
-                    size="small"
-                    style={{
-                      position: 'absolute',
-                      right: '4px',
-                      top: '4px',
-                      zIndex: 1,
-                    }}
-                    onClick={() => {
-                      const fieldValue: unknown = form.getFieldValue(key);
-                      const safeValue =
-                        fieldValue === undefined || fieldValue === null
-                          ? ''
-                          : String(fieldValue);
-                      setExpandedTextarea({
-                        fieldKey: key,
-                        value: safeValue,
-                      });
-                    }}
-                  />
-                </div>
-                {supportsAiSuggestions && (
-                  <AiSuggestionLink
-                    onClick={() =>
-                      openAiSuggestionModal(
-                        key,
-                        name,
-                        undefined,
-                        aiSuggestionMode,
-                      )
-                    }
-                    disabled={!isGraphRunning}
-                    label={
-                      aiSuggestionMode === 'knowledge'
-                        ? 'Generate with AI'
-                        : 'Improve with AI'
-                    }
-                  />
-                )}
-              </Form.Item>
-            );
-          }
-
-          return (
-            <Form.Item key={key} {...commonProps}>
-              <Input
-                placeholder={`Enter ${name.toLowerCase()}`}
-                size="middle"
-              />
-            </Form.Item>
-          );
-
-        case 'number':
-          return (
-            <Form.Item key={key} {...commonProps}>
-              <InputNumber
-                style={{ width: '100%' }}
-                placeholder={`Enter ${name.toLowerCase()}`}
-                size="middle"
-              />
-            </Form.Item>
-          );
-
-        case 'boolean':
-          return (
-            <Form.Item key={key} {...commonProps} valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          );
-
-        case 'array':
-          return (
-            <Form.Item key={key} {...commonProps}>
-              <Input.TextArea
-                placeholder={`Enter ${name.toLowerCase()} (one per line)`}
-                rows={3}
-                size="middle"
-              />
-            </Form.Item>
-          );
-
-        case 'object':
-          return (
-            <Form.Item key={key} {...commonProps}>
-              <KeyValuePairsInput />
-            </Form.Item>
-          );
-
-        default:
-          return (
-            <Form.Item key={key} {...commonProps}>
-              <Input
-                placeholder={`Enter ${name.toLowerCase()}`}
-                size="middle"
-              />
-            </Form.Item>
-          );
-      }
-    };
+      const hasChanges = computeHasLocalUnsavedChanges(nextFormData);
+      setHasLocalUnsavedChanges(hasChanges);
+      pushDraftChange(nextFormData);
+    }, [
+      aiSuggestionState,
+      computeHasLocalUnsavedChanges,
+      configFormData,
+      expandedTextarea?.fieldKey,
+      pushDraftChange,
+    ]);
 
     const isTriggerNode = nodeData?.templateKind === 'trigger';
     const canTrigger = isTriggerNode && isGraphRunning;
@@ -1439,16 +1136,29 @@ export const NodeEditSidebar = React.memo(
               overflow: 'auto',
               padding: '0 4px 8px 4px',
             }}>
-            {formFields.length > 0 ? (
-              <Form
-                form={form}
-                layout="vertical"
-                size="small"
-                style={{ marginTop: 0 }}
-                labelCol={{ style: { paddingBottom: 4 } }}
-                onValuesChange={handleFormChange}>
-                {formFields.map(renderFormField)}
-              </Form>
+            {templateSchema && schemaPropertyKeys.length > 0 ? (
+              <TemplateConfigForm
+                schema={templateSchema}
+                formData={configFormData}
+                onChange={handleConfigFormChange}
+                liteLlmModels={liteLlmModels}
+                litellmModelsLoading={litellmModelsLoading}
+                onOpenExpandedTextarea={(fieldKey, value) =>
+                  setExpandedTextarea({ fieldKey, value })
+                }
+                onOpenAiSuggestion={(fieldKey, fieldLabel, value) =>
+                  openAiSuggestionModal(
+                    fieldKey,
+                    fieldLabel,
+                    value,
+                    aiSuggestionMode,
+                  )
+                }
+                aiSuggestionMode={aiSuggestionMode}
+                aiSuggestionEnabled={Boolean(
+                  isGraphRunning && graphId && node?.id,
+                )}
+              />
             ) : (
               <Text type="secondary">
                 No configuration options available for this template.
@@ -1519,8 +1229,7 @@ export const NodeEditSidebar = React.memo(
       : [{ key: 'options', label: 'Options' }];
 
     if (!visible) {
-      // Keep the form instance connected to a Form element to avoid antd warnings
-      return <Form form={form} style={{ display: 'none' }} />;
+      return null;
     }
 
     const isKnowledgeSuggestion = aiSuggestionState?.mode === 'knowledge';
@@ -2313,12 +2022,12 @@ export const NodeEditSidebar = React.memo(
                 placeholder="Enter markdown…"
                 initialMode="split"
               />
-              {expandedTextareaField?.['x-ui:ai-suggestions'] === true && (
+              {expandedTextareaField?.prop['x-ui:ai-suggestions'] === true && (
                 <AiSuggestionLink
                   onClick={() =>
                     openAiSuggestionModal(
                       expandedTextarea.fieldKey,
-                      expandedTextareaField?.name || expandedTextarea.fieldKey,
+                      expandedTextareaField?.label || expandedTextarea.fieldKey,
                       expandedTextarea.value,
                       aiSuggestionMode,
                     )
@@ -2338,8 +2047,8 @@ export const NodeEditSidebar = React.memo(
     );
   },
   (prevProps, nextProps) => {
-    const prevNodeData = prevProps.node?.data as unknown as GraphNodeData;
-    const nextNodeData = nextProps.node?.data as unknown as GraphNodeData;
+    const prevNodeData = getNodeData(prevProps.node);
+    const nextNodeData = getNodeData(nextProps.node);
 
     const prevConfig = prevNodeData?.config;
     const nextConfig = nextNodeData?.config;

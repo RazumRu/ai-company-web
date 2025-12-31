@@ -1,4 +1,9 @@
 import type { Edge, Node } from '@xyflow/react';
+import type {
+  JSONSchema7,
+  JSONSchema7Definition,
+  JSONSchema7TypeName,
+} from 'json-schema';
 
 export interface GraphNodeData {
   label: string;
@@ -32,40 +37,23 @@ export interface GraphMetadata {
   y?: number;
 }
 
-export interface SchemaProperty {
-  type: string;
-  title?: string;
-  description?: string;
-  default?: unknown;
-  const?: unknown;
-  enum?: unknown[];
-  additionalProperties?: boolean;
+type UiSchemaExtensions = {
   'x-ui:show-on-node'?: boolean;
   'x-ui:label'?: string;
   'x-ui:textarea'?: boolean;
   'x-ui:ai-suggestions'?: boolean;
   'x-ui:litellm-models-list-select'?: boolean;
-}
+};
 
-export interface TemplateSchema {
+type NonBooleanSchema = Exclude<JSONSchema7Definition, boolean>;
+
+export type SchemaTypeName = JSONSchema7TypeName;
+export type SchemaProperty = NonBooleanSchema & UiSchemaExtensions;
+
+export type TemplateSchema = JSONSchema7 & {
   properties: Record<string, SchemaProperty>;
-  required?: string[];
-}
-
-export interface FormField {
-  key: string;
-  name: string;
-  description?: string;
-  type: string;
-  required?: boolean;
-  default?: unknown;
-  const?: unknown;
-  enum?: unknown[];
-  isConst?: boolean;
-  isObject?: boolean;
-  'x-ui:ai-suggestions'?: boolean;
-  'x-ui:litellm-models-list-select'?: boolean;
-}
+  definitions?: Record<string, NonBooleanSchema>;
+};
 
 export interface KeyValuePair {
   key: string;
