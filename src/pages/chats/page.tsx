@@ -20,6 +20,7 @@ import {
   Spin,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -513,6 +514,11 @@ export const ChatsPage = () => {
     loadingMore: boolean;
     hasMore: boolean;
     offset: number;
+    /**
+     * When the initial (offset=0) fetch fails, we must not auto-retry in a loop.
+     * This flag is cleared on an explicit user retry (force load).
+     */
+    initialLoadFailed: boolean;
   };
 
   const defaultMessageMeta = useMemo<MessageMeta>(
@@ -521,6 +527,7 @@ export const ChatsPage = () => {
       loadingMore: false,
       hasMore: true,
       offset: 0,
+      initialLoadFailed: false,
     }),
     [],
   );
@@ -565,7 +572,7 @@ export const ChatsPage = () => {
       }
 
       const meta = getMessageMeta(threadId);
-      if (!force && (meta.loading || meta.offset > 0)) {
+      if (!force && (meta.loading || meta.offset > 0 || meta.initialLoadFailed)) {
         return;
       }
 
@@ -575,6 +582,7 @@ export const ChatsPage = () => {
         loadingMore: false,
         hasMore: true,
         offset: force ? 0 : prev.offset,
+        initialLoadFailed: false,
       }));
 
       try {
@@ -615,6 +623,7 @@ export const ChatsPage = () => {
           loading: false,
           loadingMore: false,
           hasMore: false,
+          initialLoadFailed: true,
         }));
       }
     },
@@ -821,6 +830,11 @@ export const ChatsPage = () => {
           offset: existingMessages.length,
         }));
       }
+      return;
+    }
+
+    // If the initial load failed, don't auto-retry. Let the user explicitly retry.
+    if (meta.initialLoadFailed) {
       return;
     }
 
@@ -1185,6 +1199,7 @@ export const ChatsPage = () => {
               loadingMore: false,
               hasMore: true,
               offset: draftAllMessages.length,
+              initialLoadFailed: false,
             },
           }));
         }
@@ -1950,6 +1965,7 @@ export const ChatsPage = () => {
               loadingMore: false,
               hasMore: true,
               offset: draftAllMessages.length,
+            initialLoadFailed: false,
             },
           }));
         }
@@ -2492,6 +2508,20 @@ export const ChatsPage = () => {
                             <Tag color={threadStatusMeta.color}>
                               {threadStatusMeta.label}
                             </Tag>
+                          )}
+                          {!selectedThreadIsDraft && (
+                            <Tooltip title="Reload messages">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<ReloadOutlined />}
+                                onClick={() =>
+                                  void loadMessagesForThread(selectedThread.id, true)
+                                }
+                                loading={getMessageMeta(selectedThread.id).loading}
+                                aria-label="Reload messages"
+                              />
+                            </Tooltip>
                           )}
                           <Button
                             type="link"

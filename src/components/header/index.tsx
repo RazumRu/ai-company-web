@@ -1,11 +1,6 @@
 import { LeftOutlined } from '@ant-design/icons';
 import type { RefineThemedLayoutV2HeaderProps } from '@refinedev/antd';
-import {
-  useBack,
-  useBreadcrumb,
-  useGetIdentity,
-  useLogout,
-} from '@refinedev/core';
+import { useBreadcrumb, useGetIdentity, useLogout } from '@refinedev/core';
 import type { MenuProps } from 'antd';
 import {
   Avatar,
@@ -16,6 +11,7 @@ import {
   Typography,
 } from 'antd';
 import React, { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 
 const { Text } = Typography;
 const { useToken } = theme;
@@ -42,6 +38,8 @@ export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
   const { breadcrumbs } = useBreadcrumb();
   const { mutate: logout } = useLogout();
   const [profileHover, setProfileHover] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const pageTitle = useMemo(
     () =>
@@ -79,7 +77,20 @@ export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
     headerStyles.zIndex = 1;
   }
 
-  const back = useBack();
+  const hardcodedBackTarget = useMemo((): string | undefined => {
+    const { pathname, search } = location;
+
+    if (pathname === '/graphs') return '/';
+    if (pathname.startsWith('/graphs/')) return '/graphs';
+
+    if (pathname === '/chats') {
+      const params = new URLSearchParams(search);
+      const graphId = params.get('graphId') ?? undefined;
+      return graphId ? `/graphs/${graphId}` : '/graphs';
+    }
+
+    return undefined;
+  }, [location.pathname, location.search]);
 
   return (
     <AntdLayout.Header style={headerStyles}>
@@ -101,7 +112,14 @@ export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
               style={{
                 color: token.colorTextSecondary,
               }}
-              onClick={() => back()}
+              onClick={() => {
+                if (hardcodedBackTarget) {
+                  navigate(hardcodedBackTarget, { replace: true });
+                  return;
+                }
+
+                navigate('/', { replace: true });
+              }}
             />
           )}
 
