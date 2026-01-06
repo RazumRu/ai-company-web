@@ -68,6 +68,7 @@ import { getThreadStatusDisplay } from '../../utils/threadStatus';
 import ThreadChatPanel from './components/ThreadChatPanel';
 
 const THREADS_PAGE_SIZE = 30;
+const THREAD_MESSAGES_PAGE_SIZE = 100;
 
 const { Title, Text } = Typography;
 
@@ -649,7 +650,7 @@ export const ChatsPage = () => {
         const response = await threadsApi.getThreadMessages(
           threadId,
           undefined,
-          50,
+          THREAD_MESSAGES_PAGE_SIZE,
           0,
         );
         const fetched = response.data?.reverse() || [];
@@ -658,7 +659,7 @@ export const ChatsPage = () => {
           ...prev,
           loading: false,
           loadingMore: false,
-          hasMore: fetched.length === 50,
+          hasMore: fetched.length === THREAD_MESSAGES_PAGE_SIZE,
           offset: fetched.length,
         }));
 
@@ -719,7 +720,7 @@ export const ChatsPage = () => {
         const response = await threadsApi.getThreadMessages(
           threadId,
           undefined,
-          50,
+          THREAD_MESSAGES_PAGE_SIZE,
           meta.offset,
         );
         const fetched = response.data?.reverse() || [];
@@ -731,7 +732,7 @@ export const ChatsPage = () => {
           updateMessageMeta(threadId, (prev) => ({
             ...prev,
             loadingMore: false,
-            hasMore: fetched.length === 50,
+            hasMore: fetched.length === THREAD_MESSAGES_PAGE_SIZE,
             offset: prev.offset + fetched.length,
           }));
         } else {

@@ -129,7 +129,8 @@ export const getReasoningIdentifier = (
   const kwargs = msg.message?.additionalKwargs as
     | Record<string, unknown>
     | undefined;
-  const fallback = kwargs?.reasoningId;
+  const fallback =
+    (kwargs?.__reasoningId as unknown) ?? (kwargs?.reasoningId as unknown);
   return typeof fallback === 'string' && fallback.length > 0
     ? fallback
     : undefined;
@@ -140,7 +141,10 @@ export const getMessageRunId = (msg: ThreadMessageDto): string | undefined => {
     | Record<string, unknown>
     | undefined;
   if (!kwargs) return undefined;
-  const runId = kwargs.run_id;
+  const runId =
+    (kwargs.__runId as unknown) ??
+    (kwargs.run_id as unknown) ??
+    (kwargs.runId as unknown);
   return typeof runId === 'string' ? runId : undefined;
 };
 
@@ -249,35 +253,39 @@ const buildReasoningThreadMessage = (
   const createdAt =
     existing?.createdAt ??
     entry.createdAt ??
-    (typeof existingAdditional.created_at === 'string'
-      ? (existingAdditional.created_at as string)
+    (typeof existingAdditional.__createdAt === 'string'
+      ? (existingAdditional.__createdAt as string)
+      : typeof existingAdditional.created_at === 'string'
+        ? (existingAdditional.created_at as string)
       : nowIso);
   const updatedAt = entry.updatedAt ?? existing?.updatedAt ?? nowIso;
 
   const additionalKwargs: Record<string, unknown> = {
     ...existingAdditional,
-    reasoningId: entry.reasoningId,
+    __reasoningId: entry.reasoningId,
     [STREAMING_REASONING_FLAG]: true,
   };
 
   const resolvedRunId =
     context.runId ??
     entry.runId ??
-    (typeof existingAdditional.run_id === 'string'
-      ? (existingAdditional.run_id as string)
+    (typeof existingAdditional.__runId === 'string'
+      ? (existingAdditional.__runId as string)
+      : typeof existingAdditional.run_id === 'string'
+        ? (existingAdditional.run_id as string)
       : undefined);
   if (resolvedRunId) {
-    additionalKwargs.run_id = resolvedRunId;
+    additionalKwargs.__runId = resolvedRunId;
   }
 
   if (entry.createdAt) {
-    additionalKwargs.created_at = entry.createdAt;
-  } else if (!additionalKwargs.created_at) {
-    additionalKwargs.created_at = createdAt;
+    additionalKwargs.__createdAt = entry.createdAt;
+  } else if (!additionalKwargs.__createdAt) {
+    additionalKwargs.__createdAt = createdAt;
   }
 
-  if (!additionalKwargs.reasoningId) {
-    additionalKwargs.reasoningId = entry.reasoningId;
+  if (!additionalKwargs.__reasoningId) {
+    additionalKwargs.__reasoningId = entry.reasoningId;
   }
 
   return {

@@ -94,8 +94,8 @@ interface NodeEditSidebarProps {
   hasMoreMessages?: boolean;
   loadingMoreMessages?: boolean;
   pendingMessages?: PendingMessage[];
+  nodeDisplayNames?: Record<string, string>;
   onLoadMoreMessages?: () => void;
-  onRefreshMessages?: () => void;
   graphId?: string;
   /**
    * Snapshot version of the node config from draftGraph.
@@ -147,8 +147,8 @@ export const NodeEditSidebar = React.memo(
     hasMoreMessages = true,
     loadingMoreMessages = false,
     pendingMessages = [],
+    nodeDisplayNames,
     onLoadMoreMessages,
-    onRefreshMessages,
     graphId,
     draftNodeConfigVersion,
     hasNodeUnsavedChangesFromServer,
@@ -1191,6 +1191,7 @@ export const NodeEditSidebar = React.memo(
           messagesLoading={messagesLoading}
           selectedThreadId={selectedThreadId}
           nodeId={node?.id}
+          nodeDisplayNames={nodeDisplayNames}
           nodeTemplateKind={nodeData?.templateKind}
           onLoadMoreMessages={onLoadMoreMessages}
           hasMoreMessages={hasMoreMessages}
@@ -1200,7 +1201,6 @@ export const NodeEditSidebar = React.memo(
           currentThreadLastRunId={selectedThreadLastRunId}
           pendingMessages={pendingMessages}
           newMessageMode={newMessageMode}
-          onRefreshMessages={onRefreshMessages}
         />
       );
     }, [
@@ -1214,8 +1214,8 @@ export const NodeEditSidebar = React.memo(
       newMessageMode,
       node?.id,
       nodeData?.templateKind,
+      nodeDisplayNames,
       onLoadMoreMessages,
-      onRefreshMessages,
       pendingMessages,
       selectedThreadId,
       selectedThreadLastRunId,
@@ -2082,7 +2082,6 @@ export const NodeEditSidebar = React.memo(
       prevProps.hasMoreMessages === nextProps.hasMoreMessages &&
       prevProps.loadingMoreMessages === nextProps.loadingMoreMessages &&
       prevProps.onLoadMoreMessages === nextProps.onLoadMoreMessages &&
-      prevProps.onRefreshMessages === nextProps.onRefreshMessages &&
       prevProps.draftNodeConfigVersion === nextProps.draftNodeConfigVersion
     );
   },

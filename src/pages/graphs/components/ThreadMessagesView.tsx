@@ -278,7 +278,8 @@ const getMessageRunId = (payload?: MessagePayload): string | undefined => {
 
   const fromAdditional =
     normalizedAdditional &&
-    ((normalizedAdditional.run_id as unknown) ??
+    ((normalizedAdditional.__runId as unknown) ??
+      (normalizedAdditional.run_id as unknown) ??
       (normalizedAdditional.runId as unknown));
 
   if (typeof fromAdditional === 'string' && fromAdditional.length > 0) {
@@ -1216,7 +1217,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         ? (additional as Record<string, unknown>)
         : undefined;
       const isAgentInstruction = Boolean(
-        normalizedAdditional?.isAgentInstructionMessage,
+        normalizedAdditional?.__isAgentInstructionMessage ??
+          normalizedAdditional?.isAgentInstructionMessage,
       );
 
       const isHuman = role === 'human';

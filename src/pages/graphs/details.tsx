@@ -113,7 +113,7 @@ const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
 
 const REVISION_FETCH_LIMIT = 50;
-const MESSAGE_PAGE_SIZE = 50;
+const MESSAGE_PAGE_SIZE = 100;
 
 const isDraftThreadId = (threadId?: string | null): boolean => {
   return Boolean(threadId && threadId.startsWith('draft-'));
@@ -1970,15 +1970,19 @@ export const GraphPage = () => {
               const createdAt =
                 typeof messageRecord.createdAt === 'string'
                   ? messageRecord.createdAt
-                  : typeof sanitizedAdditionalKwargs.created_at === 'string'
-                    ? sanitizedAdditionalKwargs.created_at
+                  : typeof sanitizedAdditionalKwargs.__createdAt === 'string'
+                    ? sanitizedAdditionalKwargs.__createdAt
+                    : typeof sanitizedAdditionalKwargs.created_at === 'string'
+                      ? sanitizedAdditionalKwargs.created_at
                     : new Date().toISOString();
               const runId =
                 data.runId ??
                 metadataRunId ??
-                (typeof sanitizedAdditionalKwargs.run_id === 'string'
-                  ? sanitizedAdditionalKwargs.run_id
-                  : undefined);
+                (typeof sanitizedAdditionalKwargs.__runId === 'string'
+                  ? sanitizedAdditionalKwargs.__runId
+                  : typeof sanitizedAdditionalKwargs.run_id === 'string'
+                    ? sanitizedAdditionalKwargs.run_id
+                    : undefined);
               const content =
                 typeof messageRecord.content === 'string'
                   ? messageRecord.content
@@ -1993,8 +1997,8 @@ export const GraphPage = () => {
                 role,
                 additionalKwargs: {
                   ...sanitizedAdditionalKwargs,
-                  run_id: runId,
-                  created_at: createdAt,
+                  __runId: runId,
+                  __createdAt: createdAt,
                 },
                 createdAt,
               };
@@ -3795,6 +3799,7 @@ export const GraphPage = () => {
             selectedNode ? compiledNodesMap[selectedNode.id] : undefined
           }
           compiledNodesLoading={compiledNodesLoading}
+          nodeDisplayNames={nodeDisplayNames}
           messages={
             selectedThreadId && selectedNode?.id
               ? messages[selectedThreadId]?.[selectedNode.id] || []
@@ -3831,18 +3836,6 @@ export const GraphPage = () => {
                 ? undefined
                 : () =>
                     loadMoreMessagesForScope(selectedThreadId, selectedNode?.id)
-              : undefined
-          }
-          onRefreshMessages={
-            selectedThreadId
-              ? isDraftThreadId(selectedThreadId)
-                ? undefined
-                : () =>
-                    loadMessagesForScope(
-                      selectedThreadId,
-                      selectedNode?.id,
-                      true,
-                    )
               : undefined
           }
           draftNodeConfigVersion={draftNodeConfigVersion}
