@@ -16,12 +16,14 @@ interface ReasoningMessageProps {
   message: ThreadMessageDto;
   isExpanded: boolean;
   onToggle: (id: string) => void;
+  align?: 'left' | 'center';
 }
 
 export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
   message,
   isExpanded,
   onToggle,
+  align = 'center',
 }) => {
   const content = limitConsecutiveNewlines(
     formatMessageContent(message.message?.content),
@@ -115,6 +117,7 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
   return (
     <div
       className={containerClassName}
+      style={{ textAlign: align }}
       role="button"
       tabIndex={0}
       onClick={handleToggle}

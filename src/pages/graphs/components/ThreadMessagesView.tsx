@@ -1037,6 +1037,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       resultContent?: unknown,
       toolOptions?: Record<string, JsonValue>,
       titleText?: string,
+      align: 'left' | 'center' = 'center',
     ) => {
       const isClickable = status === 'executed' && resultContent !== undefined;
       const isCalling = status === 'calling';
@@ -1066,6 +1067,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             animation: isCalling
               ? 'messages-tab-thinking-pulse 1.6s ease-in-out infinite'
               : undefined,
+            textAlign: align,
             ...(hasError ? { color: '#ff4d4f' } : null),
           }}
           aria-label={
@@ -1080,7 +1082,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
+              justifyContent: align === 'left' ? 'flex-start' : 'center',
             }}>
             <Text
               type="secondary"
@@ -1470,6 +1472,126 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         );
       };
 
+      const isWorkGroupItem = (item: PreparedMessage): boolean => {
+        if (item.type === 'reasoning') return true;
+        if (item.type === 'tool') {
+          return (item.name || '').toLowerCase() !== 'finish';
+        }
+        return false;
+      };
+
+      const getAvatarInitials = (label?: string): string => {
+        if (!label) return 'AI';
+        const trimmed = label.trim();
+        if (!trimmed) return 'AI';
+        const words = trimmed.split(/\s+/).filter(Boolean);
+        if (words.length === 1) {
+          return words[0].slice(0, 2).toUpperCase();
+        }
+        return words
+          .slice(0, 2)
+          .map((w) => w[0])
+          .join('')
+          .toUpperCase();
+      };
+
+      const renderWorkingBlock = (items: PreparedMessage[]) => {
+        const avatarSeedNodeId =
+          items.find((it) => it.nodeId)?.nodeId ?? nodeId ?? undefined;
+        const avatarLabel = getAvatarInitials(
+          formatNodeLabel(avatarSeedNodeId) ?? undefined,
+        );
+        const avatarSrc = avatarSeedNodeId
+          ? getAgentAvatarDataUri(avatarSeedNodeId)
+          : undefined;
+
+        return (
+          <ChatBubble
+            isHuman={false}
+            avatarLabel={avatarLabel}
+            avatarColor="#8c8c8c"
+            avatarSrc={avatarSrc}
+            containerStyle={{ marginBottom: '8px' }}
+            bubbleStyle={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '10px 12px',
+            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Text
+                type="secondary"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#8c8c8c',
+                  textAlign: 'left',
+                }}>
+                Working...
+              </Text>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {items.map((it, idx) => {
+                  if (it.type === 'reasoning') {
+                    const reasoningId =
+                      getReasoningIdentifier(it.message) ?? it.message.id;
+                    return (
+                      <div key={`work-reasoning-${it.id}-${idx}`}>
+                        <ReasoningMessage
+                          message={it.message}
+                          isExpanded={expandedReasoningIds.has(reasoningId)}
+                          onToggle={toggleReasoningMessage}
+                          align="left"
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (it.type === 'tool') {
+                    if (it.toolKind === 'shell') {
+                      return (
+                        <div key={`work-shell-${it.id}-${idx}`}>
+                          {renderShellStatusLine(
+                            it.name,
+                            it.status,
+                            it.result,
+                            it.shellCommand,
+                            it.toolOptions,
+                            {
+                              nodeId: it.nodeId,
+                              createdAt: it.createdAt,
+                              roleLabel: it.roleLabel ?? it.name,
+                            },
+                            it.title,
+                            it.tokenUsageIn,
+                            it.tokenUsageOut,
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={`work-tool-${it.id}-${idx}`}>
+                        {renderToolStatusLine(
+                          it.name,
+                          it.status,
+                          it.result,
+                          it.toolOptions,
+                          it.title,
+                          'left',
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })}
+              </div>
+            </div>
+          </ChatBubble>
+        );
+      };
+
       while (i < preparedMessages.length) {
         const item = preparedMessages[i];
 
@@ -1483,6 +1605,21 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'reasoning') {
+          if (isWorkGroupItem(item)) {
+            const group: PreparedMessage[] = [item];
+            let j = i + 1;
+            while (
+              j < preparedMessages.length &&
+              isWorkGroupItem(preparedMessages[j])
+            ) {
+              group.push(preparedMessages[j]);
+              j++;
+            }
+            pushRow(`working-${item.id}`, renderWorkingBlock(group));
+            i = j;
+            continue;
+          }
+
           const reasoningId =
             getReasoningIdentifier(item.message) ?? item.message.id;
           pushRow(
@@ -1504,6 +1641,20 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'tool') {
+          if (isWorkGroupItem(item)) {
+            const group: PreparedMessage[] = [item];
+            let j = i + 1;
+            while (
+              j < preparedMessages.length &&
+              isWorkGroupItem(preparedMessages[j])
+            ) {
+              group.push(preparedMessages[j]);
+              j++;
+            }
+            pushRow(`working-${item.id}`, renderWorkingBlock(group));
+            i = j;
+            continue;
+          }
           if (item.name && item.name.toLowerCase() === 'finish') {
             pushRow(
               item.id || `finish-${i}`,

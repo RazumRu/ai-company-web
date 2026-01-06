@@ -10,6 +10,30 @@ import type {
 
 const DEFAULT_SCOPE_KEY: MessageScopeKey = 'all';
 
+/**
+ * Normalize message content for comparison.
+ * Handles string, array, and nested object formats.
+ */
+const normalizeContent = (raw: unknown): string | null => {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    return trimmed || null;
+  }
+  if (Array.isArray(raw) && raw.length === 1 && typeof raw[0] === 'string') {
+    const trimmed = raw[0].trim();
+    return trimmed || null;
+  }
+  if (raw && typeof raw === 'object') {
+    const record = raw as Record<string, unknown>;
+    const nested = record.content;
+    if (typeof nested === 'string') {
+      const trimmed = nested.trim();
+      return trimmed || null;
+    }
+  }
+  return null;
+};
+
 export const useThreadMessageStore = () => {
   const [messages, setMessages] = useState<MessagesState>({});
   const [pendingMessages, setPendingMessages] = useState<PendingMessagesState>(
@@ -31,43 +55,87 @@ export const useThreadMessageStore = () => {
         const currentMessages = threadMessages[key] || [];
         const updatedMessages = updater(currentMessages);
 
-        // Deduplicate optimistic messages when real messages arrive
-        const realIds = new Set<string>();
-        const realContents = new Map<string, string>(); // content -> id
+        /**
+         * Replace optimistic messages with real ones when they arrive.
+         *
+         * For each real human message, find and remove any optimistic message
+         * with matching content. Use the optimistic message's createdAt to
+         * maintain consistent positioning in the timeline.
+         */
+        const optimisticByContent = new Map<string, ThreadMessageDto>();
+        const realMessagesToAdd: ThreadMessageDto[] = [];
+
+        // First pass: collect all optimistic human messages by content
         updatedMessages.forEach((msg) => {
           const isOptimistic =
             typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
-          if (!isOptimistic) {
-            realIds.add(msg.id);
-            const content =
-              typeof msg.message?.content === 'string'
-                ? msg.message.content
-                : undefined;
-            if (content && msg.message?.role === 'human') {
-              realContents.set(content, msg.id);
+          if (isOptimistic && msg.message?.role === 'human') {
+            const content = normalizeContent(msg.message?.content);
+            if (content) {
+              optimisticByContent.set(content, msg);
             }
           }
         });
 
-        const dedupedMessages = updatedMessages.filter((msg) => {
+        // Second pass: build final message list
+        const finalMessages = updatedMessages.filter((msg) => {
           const isOptimistic =
             typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
-          if (!isOptimistic) return true;
-          const content =
-            typeof msg.message?.content === 'string'
-              ? msg.message.content
-              : undefined;
-          if (content && realContents.has(content)) {
-            return false;
+
+          // Keep all optimistic messages initially
+          if (isOptimistic) {
+            return true;
+          }
+
+          // For real human messages, check if we need to replace an optimistic one
+          if (msg.message?.role === 'human') {
+            const content = normalizeContent(msg.message?.content);
+            if (content && optimisticByContent.has(content)) {
+              const optimisticMsg = optimisticByContent.get(content)!;
+              // Use optimistic timestamp to preserve position
+              realMessagesToAdd.push({
+                ...msg,
+                createdAt: optimisticMsg.createdAt,
+              });
+              // Mark this optimistic message for removal
+              optimisticByContent.delete(content);
+              return false; // Don't add the real message yet
+            }
+          }
+
+          return true;
+        });
+
+        // Remove optimistic messages that have been replaced
+        const result = finalMessages.filter((msg) => {
+          const isOptimistic =
+            typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+          if (!isOptimistic) {
+            return true;
+          }
+          if (msg.message?.role === 'human') {
+            const content = normalizeContent(msg.message?.content);
+            // Keep only if not replaced (still in map)
+            return content ? optimisticByContent.has(content) : true;
           }
           return true;
+        });
+
+        // Add the real messages that replaced optimistic ones
+        const merged = [...result, ...realMessagesToAdd];
+
+        // Sort by createdAt to maintain chronological order
+        merged.sort((a, b) => {
+          const timeA = new Date(a.createdAt).getTime();
+          const timeB = new Date(b.createdAt).getTime();
+          return timeA - timeB;
         });
 
         return {
           ...prev,
           [threadId]: {
             ...threadMessages,
-            [key]: dedupedMessages,
+            [key]: merged,
           },
         };
       });
@@ -86,7 +154,8 @@ export const useThreadMessageStore = () => {
         const key = (nodeId ?? DEFAULT_SCOPE_KEY) as MessageScopeKey;
         const current = threadPendings[key] || [];
         const next = updater(current);
-        // Deduplicate by role+content to avoid duplicate pendings from send + socket
+
+        // Deduplicate by role+content
         const seen = new Set<string>();
         const deduped = next.filter((p) => {
           const contentKey = `${p.role}-${p.content}`;
@@ -94,6 +163,7 @@ export const useThreadMessageStore = () => {
           seen.add(contentKey);
           return true;
         });
+
         return {
           ...prev,
           [threadId]: {

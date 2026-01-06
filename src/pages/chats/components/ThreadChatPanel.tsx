@@ -44,11 +44,6 @@ interface ThreadChatPanelProps {
     updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
     nodeId?: string,
   ) => void;
-  onUpdateSharedPendingMessages?: (
-    threadId: string,
-    updater: (prev: PendingMessage[]) => PendingMessage[],
-    nodeId?: string,
-  ) => void;
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
 }
 
@@ -71,7 +66,6 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   externalThreadId,
   onLoadMoreMessages,
   onUpdateSharedMessages,
-  onUpdateSharedPendingMessages,
   newMessageMode = 'wait_for_completion',
 }) => {
   const effectiveNewMessageMode =
@@ -88,57 +82,29 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   const [selectedThreadExternalId, setSelectedThreadExternalId] = useState<
     string | undefined
   >(externalThreadId ?? thread.externalThreadId ?? undefined);
-  // Keep draft external ID only in ref to avoid unused state warning
   const pendingDraftExternalIdRef = useRef<string | undefined>(undefined);
-  const isSendingMessageRef = useRef(false);
-  const optimisticMessageIdsRef = useRef<Set<string>>(new Set());
-  const pendingOptimisticMessagesRef = useRef<Map<string, ThreadMessageDto>>(
-    new Map(),
-  );
+  const previousThreadIdRef = useRef<string>(thread.id);
 
   useEffect(() => {
     setSelectedThreadExternalId(
       externalThreadId ?? thread.externalThreadId ?? undefined,
     );
+  }, [externalThreadId, thread.externalThreadId]);
+
+  useEffect(() => {
+    const previousThreadId = previousThreadIdRef.current;
+    previousThreadIdRef.current = thread.id;
+    if (previousThreadId === thread.id) {
+      return;
+    }
+
     setMessageInput('');
     setThreadStatusOverride(undefined);
-    // Clear pending draft external ID when thread changes (e.g., draft is cleared)
+
     if (!isDraft) {
       pendingDraftExternalIdRef.current = undefined;
     }
-    // Restore pending optimistic messages when thread changes (e.g., draft -> real thread)
-    if (
-      pendingOptimisticMessagesRef.current.size > 0 &&
-      onUpdateSharedMessages
-    ) {
-      onUpdateSharedMessages(thread.id, (prev) => {
-        const existingIds = new Set(prev.map((msg) => msg.id));
-        const optimisticToAdd = Array.from(
-          pendingOptimisticMessagesRef.current.values(),
-        )
-          .filter((msg) => !existingIds.has(msg.id))
-          .map((msg) => ({
-            ...msg,
-            threadId: thread.id, // Update threadId to match new thread
-          }));
-        if (optimisticToAdd.length > 0) {
-          return sortMessagesChronologically([...prev, ...optimisticToAdd]);
-        }
-        return prev;
-      });
-    }
-    if (isDraft && !isSendingMessageRef.current) {
-      optimisticMessageIdsRef.current.clear();
-      pendingOptimisticMessagesRef.current.clear();
-    }
-  }, [
-    externalThreadId,
-    thread.externalThreadId,
-    thread.id,
-    thread.status,
-    isDraft,
-    onUpdateSharedMessages,
-  ]);
+  }, [thread.id, isDraft]);
 
   useEffect(() => {
     if (!triggerNodes.length) {
@@ -196,65 +162,33 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
 
     const messageText = messageInput.trim();
     const now = new Date().toISOString();
+    const optimisticMessageId = `optimistic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // If thread is running, add message as pending instead of optimistic
-    if (isThreadRunning) {
-      if (onUpdateSharedPendingMessages) {
-        const pending: PendingMessage = {
-          content: messageText,
-          role: 'human',
-          additionalKwargs: {
-            run_id: undefined,
-            created_at: now,
-          },
-          createdAt: now,
-        };
-        onUpdateSharedPendingMessages(thread.id, (prev) => [...prev, pending]);
-        if (selectedTriggerId) {
-          onUpdateSharedPendingMessages(
-            thread.id,
-            (prev) => [...prev, pending],
-            selectedTriggerId,
-          );
-        }
-      }
-      setMessageInput('');
-    } else {
-      // Create optimistic user message (for non-running threads)
-      const optimisticMessageId = `optimistic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      optimisticMessageIdsRef.current.add(optimisticMessageId);
+    const optimisticMessage: ThreadMessageDto = {
+      id: optimisticMessageId,
+      threadId: thread.id,
+      nodeId: selectedTriggerId,
+      externalThreadId:
+        thread.externalThreadId ?? selectedThreadExternalId ?? '',
+      createdAt: now,
+      updatedAt: now,
+      message: {
+        role: 'human',
+        content: messageText,
+      } as ThreadMessageDto['message'],
+    };
 
-      const optimisticMessage: ThreadMessageDto = {
-        id: optimisticMessageId,
-        threadId: thread.id,
-        nodeId: selectedTriggerId,
-        externalThreadId:
-          thread.externalThreadId ?? selectedThreadExternalId ?? '',
-        createdAt: now,
-        updatedAt: now,
-        message: {
-          role: 'human',
-          content: messageText,
-        } as ThreadMessageDto['message'],
-      };
+    // Add optimistic message to both scopes
+    onUpdateSharedMessages(thread.id, (prev) =>
+      sortMessagesChronologically([...prev, optimisticMessage]),
+    );
+    onUpdateSharedMessages(
+      thread.id,
+      (prev) => sortMessagesChronologically([...prev, optimisticMessage]),
+      selectedTriggerId,
+    );
 
-      // Store optimistic message in ref for persistence across thread switches
-      pendingOptimisticMessagesRef.current.set(
-        optimisticMessageId,
-        optimisticMessage,
-      );
-
-      onUpdateSharedMessages(thread.id, (prev) =>
-        sortMessagesChronologically([...prev, optimisticMessage]),
-      );
-      onUpdateSharedMessages(
-        thread.id,
-        (prev) => sortMessagesChronologically([...prev, optimisticMessage]),
-        selectedTriggerId,
-      );
-      setMessageInput('');
-      isSendingMessageRef.current = true;
-    }
+    setMessageInput('');
 
     try {
       setSendingMessage(true);
@@ -279,19 +213,15 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
         returnedExternalThreadId !== thread.externalThreadId;
 
       if (isDraft && returnedExternalThreadId && onDraftMessageSent) {
-        // For draft threads, store the external thread ID to match with thread.create event
         pendingDraftExternalIdRef.current = returnedExternalThreadId;
-        // Also set it in the parent's pending ref so thread.create event can match it
         if (onRequestThreadSwitch) {
           onRequestThreadSwitch(returnedExternalThreadId);
         }
-        // Fallback: if thread.create event doesn't fire, try to fetch by external ID after a delay
         setTimeout(async () => {
           if (
             pendingDraftExternalIdRef.current === returnedExternalThreadId &&
             onDraftMessageSent
           ) {
-            // Still pending, try to fetch the thread
             try {
               const response = await threadsApi.getThreadByExternalId(
                 returnedExternalThreadId,
@@ -316,53 +246,24 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
     } catch (error) {
       console.error('Error sending message', error);
 
-      if (isThreadRunning) {
-        // Remove pending message from shared store on error
-        if (onUpdateSharedPendingMessages) {
-          const applyKeys = [undefined, selectedTriggerId];
-          applyKeys.forEach((key) => {
-            onUpdateSharedPendingMessages(
-              thread.id,
-              (prev) => prev.filter((msg) => msg.content !== messageText),
-              key,
-            );
-          });
-        }
-      } else {
-        // Remove optimistic message on error
-        const optimisticMessageId = Array.from(
-          optimisticMessageIdsRef.current,
-        ).find((id) => {
-          const msg = pendingOptimisticMessagesRef.current.get(id);
-          return msg?.message?.content === messageText;
-        });
-        if (optimisticMessageId) {
-          optimisticMessageIdsRef.current.delete(optimisticMessageId);
-          pendingOptimisticMessagesRef.current.delete(optimisticMessageId);
-          // Remove from shared store
-          if (onUpdateSharedMessages) {
-            onUpdateSharedMessages(thread.id, (prev) =>
-              prev.filter((msg) => msg.id !== optimisticMessageId),
-            );
-            onUpdateSharedMessages(
-              thread.id,
-              (prev) => prev.filter((msg) => msg.id !== optimisticMessageId),
-              selectedTriggerId,
-            );
-          }
-        }
-      }
+      // Remove optimistic message on error
+      onUpdateSharedMessages(thread.id, (prev) =>
+        prev.filter((msg) => msg.id !== optimisticMessageId),
+      );
+      onUpdateSharedMessages(
+        thread.id,
+        (prev) => prev.filter((msg) => msg.id !== optimisticMessageId),
+        selectedTriggerId,
+      );
+
       const errorMessage = extractApiErrorMessage(
         error,
         'Failed to send message',
       );
       antdMessage.error(errorMessage);
-      // Restore message input
       setMessageInput(messageText);
     } finally {
       setSendingMessage(false);
-      // Don't clear isSendingMessageRef immediately - keep it true until message arrives
-      // This prevents clearing optimistic messages during thread switch
     }
   }, [
     selectedTriggerId,
@@ -370,52 +271,14 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
     graphId,
     thread.id,
     thread.externalThreadId,
-    isThreadRunning,
     selectedThreadExternalId,
     onRequestThreadSwitch,
     isDraft,
     onDraftMessageSent,
     onUpdateSharedMessages,
-    onUpdateSharedPendingMessages,
   ]);
 
-  // Directly use shared messages as the source of truth
-  // Deduplication of optimistic messages is handled in updateSharedMessages
-  useEffect(() => {
-    if (isDraft) return;
-
-    const realHumanContents = new Set<string>();
-    messages.forEach((msg) => {
-      const isOptimistic =
-        typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
-      if (!isOptimistic && msg.message?.role === 'human') {
-        const content =
-          typeof msg.message.content === 'string' ? msg.message.content : '';
-        if (content) {
-          realHumanContents.add(content);
-        }
-        // A real human message arrived, clear sending flag
-        isSendingMessageRef.current = false;
-      }
-    });
-
-    if (realHumanContents.size > 0 && onUpdateSharedPendingMessages) {
-      const applyKeys = [undefined, selectedTriggerId];
-      applyKeys.forEach((key) => {
-        onUpdateSharedPendingMessages(
-          thread.id,
-          (prev) => prev.filter((msg) => !realHumanContents.has(msg.content)),
-          key,
-        );
-      });
-    }
-  }, [
-    messages,
-    isDraft,
-    selectedTriggerId,
-    onUpdateSharedPendingMessages,
-    thread.id,
-  ]);
+  // Deduplication of optimistic messages is handled automatically in the store
 
   useEffect(() => {
     if (externalThreadId && !selectedThreadExternalId) {
