@@ -1,4 +1,4 @@
-import { Avatar } from 'antd';
+import { Avatar, Tooltip } from 'antd';
 import React from 'react';
 
 interface ChatBubbleProps {
@@ -6,6 +6,7 @@ interface ChatBubbleProps {
   avatarLabel: string;
   avatarColor: string;
   avatarSrc?: string;
+  avatarTooltip?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
   bubbleStyle?: React.CSSProperties;
@@ -17,6 +18,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   avatarLabel,
   avatarColor,
   avatarSrc,
+  avatarTooltip,
   children,
   footer,
   bubbleStyle,
@@ -61,18 +63,22 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   return (
     <div style={mergedContainer}>
       {!isHuman && (
-        <Avatar src={avatarSrc} style={{ flexShrink: 0 }} size={27}>
-          {avatarLabel}
-        </Avatar>
+        <Tooltip title={avatarTooltip} placement="right">
+          <Avatar src={avatarSrc} style={{ flexShrink: 0 }} size={27}>
+            {avatarLabel}
+          </Avatar>
+        </Tooltip>
       )}
       {ContentWrapper}
       {isHuman && (
-        <Avatar
-          src={avatarSrc}
-          style={{ backgroundColor: avatarColor, flexShrink: 0 }}
-          size={27}>
-          {avatarLabel}
-        </Avatar>
+        <Tooltip title={avatarTooltip} placement="left">
+          <Avatar
+            src={avatarSrc}
+            style={{ backgroundColor: avatarColor, flexShrink: 0 }}
+            size={27}>
+            {avatarLabel}
+          </Avatar>
+        </Tooltip>
       )}
     </div>
   );

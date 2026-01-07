@@ -1974,7 +1974,7 @@ export const GraphPage = () => {
                     ? sanitizedAdditionalKwargs.__createdAt
                     : typeof sanitizedAdditionalKwargs.created_at === 'string'
                       ? sanitizedAdditionalKwargs.created_at
-                    : new Date().toISOString();
+                      : new Date().toISOString();
               const runId =
                 data.runId ??
                 metadataRunId ??

@@ -257,7 +257,7 @@ const buildReasoningThreadMessage = (
       ? (existingAdditional.__createdAt as string)
       : typeof existingAdditional.created_at === 'string'
         ? (existingAdditional.created_at as string)
-      : nowIso);
+        : nowIso);
   const updatedAt = entry.updatedAt ?? existing?.updatedAt ?? nowIso;
 
   const additionalKwargs: Record<string, unknown> = {
@@ -273,7 +273,7 @@ const buildReasoningThreadMessage = (
       ? (existingAdditional.__runId as string)
       : typeof existingAdditional.run_id === 'string'
         ? (existingAdditional.run_id as string)
-      : undefined);
+        : undefined);
   if (resolvedRunId) {
     additionalKwargs.__runId = resolvedRunId;
   }

@@ -52,6 +52,7 @@ import { extractApiErrorMessage } from '../../../utils/errors';
 import type { GraphNode, SchemaProperty } from '../types';
 import type { PendingMessage } from '../types/messages';
 import {
+  flattenAllOfInSchema,
   getDefaultEmptyValue,
   getNodeData,
   getSchemaTypeName,
@@ -688,6 +689,10 @@ export const NodeEditSidebar = React.memo(
           schema = await $RefParser.dereference(rawSchema, {
             mutateInputSchema: false,
           });
+          // Flatten allOf structures to help RJSF understand enum fields
+          if (schema && typeof schema === 'object') {
+            schema = flattenAllOfInSchema(schema as Record<string, unknown>);
+          }
         } catch (error) {
           console.error('Failed to dereference template schema:', error);
           schema = rawSchema;

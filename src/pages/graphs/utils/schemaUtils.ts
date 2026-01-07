@@ -176,3 +176,44 @@ export const getDefaultEmptyValue = (typeName: string): unknown => {
       return '';
   }
 };
+
+/**
+ * Flattens allOf structures in a JSON Schema.
+ * This helps RJSF better understand schemas where properties like enum are nested in allOf.
+ * After $RefParser.dereference, we still need to flatten allOf arrays into a single schema.
+ */
+export const flattenAllOfInSchema = (
+  schema: Record<string, unknown>,
+): Record<string, unknown> => {
+  const properties = schema.properties as
+    | Record<string, Record<string, unknown>>
+    | undefined;
+  if (!properties) {
+    return schema;
+  }
+
+  const flattenedProperties: Record<string, Record<string, unknown>> = {};
+
+  for (const [key, prop] of Object.entries(properties)) {
+    const allOf = prop.allOf as Record<string, unknown>[] | undefined;
+
+    if (allOf && Array.isArray(allOf) && allOf.length > 0) {
+      // Merge all schemas in allOf array into the parent property
+      const merged: Record<string, unknown> = { ...prop };
+      delete merged.allOf; // Remove allOf after merging
+
+      for (const subSchema of allOf) {
+        Object.assign(merged, subSchema);
+      }
+
+      flattenedProperties[key] = merged;
+    } else {
+      flattenedProperties[key] = prop;
+    }
+  }
+
+  return {
+    ...schema,
+    properties: flattenedProperties,
+  };
+};
