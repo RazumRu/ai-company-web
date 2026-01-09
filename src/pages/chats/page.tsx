@@ -869,9 +869,7 @@ export const ChatsPage = () => {
     return base;
   }, [threadStatusTab, threads, selectedThreadId, selectedThreadShadow]);
 
-  const shouldShowDraftThread = Boolean(
-    draftThread && threadStatusTab !== 'resolved',
-  );
+  const shouldShowDraftThread = Boolean(draftThread);
 
   const handleThreadStatusTabChange = useCallback(
     (key: string) => {
@@ -883,7 +881,7 @@ export const ChatsPage = () => {
       setSelectedThreadId((prev) => {
         if (!draftThread) return undefined;
         if (prev !== draftThread.id) return undefined;
-        return nextTab !== 'resolved' ? prev : undefined;
+        return prev;
       });
     },
     [draftThread],
@@ -2034,10 +2032,16 @@ export const ChatsPage = () => {
   );
 
   const handleCreateDraftThread = useCallback(() => {
-    setThreadStatusTab('open');
+    const scrollThreadsToTop = () => {
+      const el = threadsContainerRef.current;
+      if (!el) return;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     if (draftThread) {
       // If draft already exists, just focus it
       setSelectedThreadId(draftThread.id);
+      requestAnimationFrame(scrollThreadsToTop);
       return;
     }
 
@@ -2063,6 +2067,7 @@ export const ChatsPage = () => {
 
     setDraftThread(newDraft);
     setSelectedThreadId(newDraft.id);
+    requestAnimationFrame(scrollThreadsToTop);
   }, [draftThread, graphFilterId, threads]);
 
   const handleDraftMessageSent = useCallback(
@@ -2743,6 +2748,7 @@ export const ChatsPage = () => {
                         : undefined
                     }
                     onUpdateSharedMessages={updateMessages}
+                    onUpdatePendingMessages={updatePendingMessages}
                   />
                 </div>
               </>

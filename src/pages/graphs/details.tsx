@@ -3918,6 +3918,7 @@ export const GraphPage = () => {
               loadMoreMessagesForScope(chatThread.id, undefined)
             }
             onUpdateSharedMessages={updateMessages}
+            onUpdatePendingMessages={updatePendingMessages}
           />
         ) : null}
       </Modal>

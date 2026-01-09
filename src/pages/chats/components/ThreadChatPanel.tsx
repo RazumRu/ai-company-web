@@ -44,6 +44,11 @@ interface ThreadChatPanelProps {
     updater: (prev: ThreadMessageDto[]) => ThreadMessageDto[],
     nodeId?: string,
   ) => void;
+  onUpdatePendingMessages?: (
+    threadId: string,
+    updater: (prev: PendingMessage[]) => PendingMessage[],
+    nodeId?: string,
+  ) => void;
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
 }
 
@@ -66,6 +71,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   externalThreadId,
   onLoadMoreMessages,
   onUpdateSharedMessages,
+  onUpdatePendingMessages,
   newMessageMode = 'wait_for_completion',
 }) => {
   const effectiveNewMessageMode =
@@ -121,6 +127,10 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
 
   // No node.update listener here; pending comes from shared store in GraphPage
 
+  const effectiveThreadStatus = threadStatusOverride ?? thread.status;
+  const isThreadRunning = effectiveThreadStatus === ThreadDtoStatusEnum.Running;
+  const prevIsThreadRunningRef = useRef<boolean>(isThreadRunning);
+
   // Use pending messages provided from the shared store
   const pendingMessages = useMemo(() => {
     if (isDraft) return undefined;
@@ -129,8 +139,117 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       : undefined;
   }, [pendingMessagesProp, isDraft]);
 
-  const effectiveThreadStatus = threadStatusOverride ?? thread.status;
-  const isThreadRunning = effectiveThreadStatus === ThreadDtoStatusEnum.Running;
+  // Send pending messages when thread completes (for wait_for_completion mode)
+  // or after tool execution (for inject_after_tool_call mode)
+  const sendPendingMessage = useCallback(
+    async (message: PendingMessage) => {
+      if (!selectedTriggerId || isDraft) return;
+
+      const messageText = message.content;
+      const now = new Date().toISOString();
+      const optimisticMessageId = `optimistic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      const optimisticMessage: ThreadMessageDto = {
+        id: optimisticMessageId,
+        threadId: thread.id,
+        nodeId: selectedTriggerId,
+        externalThreadId:
+          thread.externalThreadId ?? selectedThreadExternalId ?? '',
+        createdAt: now,
+        updatedAt: now,
+        message: {
+          role: 'human',
+          content: messageText,
+        } as ThreadMessageDto['message'],
+      };
+
+      // Add optimistic message to both scopes
+      onUpdateSharedMessages(thread.id, (prev) =>
+        sortMessagesChronologically([...prev, optimisticMessage]),
+      );
+      onUpdateSharedMessages(
+        thread.id,
+        (prev) => sortMessagesChronologically([...prev, optimisticMessage]),
+        selectedTriggerId,
+      );
+
+      try {
+        const threadSubId = extractThreadSubId(
+          thread.externalThreadId ?? selectedThreadExternalId,
+        );
+        const executeTriggerDto = {
+          messages: [messageText],
+          async: true,
+          ...(threadSubId ? { threadSubId } : {}),
+        };
+        await graphsApi.executeTrigger(
+          graphId,
+          selectedTriggerId,
+          executeTriggerDto,
+        );
+      } catch (error) {
+        console.error('Error sending pending message', error);
+
+        // Remove optimistic message on error
+        onUpdateSharedMessages(thread.id, (prev) =>
+          prev.filter((msg) => msg.id !== optimisticMessageId),
+        );
+        onUpdateSharedMessages(
+          thread.id,
+          (prev) => prev.filter((msg) => msg.id !== optimisticMessageId),
+          selectedTriggerId,
+        );
+
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to send pending message',
+        );
+        antdMessage.error(errorMessage);
+      }
+    },
+    [
+      selectedTriggerId,
+      isDraft,
+      thread.id,
+      thread.externalThreadId,
+      selectedThreadExternalId,
+      onUpdateSharedMessages,
+      graphId,
+    ],
+  );
+
+  // Effect to send pending messages when thread transitions from Running to not-Running
+  useEffect(() => {
+    const wasRunning = prevIsThreadRunningRef.current;
+    prevIsThreadRunningRef.current = isThreadRunning;
+
+    // Only send pending messages when transitioning from running to not-running
+    // and only in wait_for_completion mode
+    if (
+      wasRunning &&
+      !isThreadRunning &&
+      effectiveNewMessageMode === 'wait_for_completion' &&
+      pendingMessages &&
+      pendingMessages.length > 0 &&
+      onUpdatePendingMessages
+    ) {
+      // Send all pending messages
+      pendingMessages.forEach((msg) => {
+        sendPendingMessage(msg);
+      });
+
+      // Clear pending messages after sending
+      onUpdatePendingMessages(thread.id, () => []);
+      antdMessage.success('Pending messages sent');
+    }
+  }, [
+    isThreadRunning,
+    pendingMessages,
+    sendPendingMessage,
+    onUpdatePendingMessages,
+    thread.id,
+    effectiveNewMessageMode,
+  ]);
 
   const handleStopThread = useCallback(async () => {
     if (isDraft) return;
@@ -161,6 +280,24 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
     }
 
     const messageText = messageInput.trim();
+
+    // If thread is running, add to pending messages instead of sending immediately
+    if (isThreadRunning && !isDraft && onUpdatePendingMessages) {
+      const pendingMessage: PendingMessage = {
+        role: 'human',
+        content: messageText,
+      };
+
+      onUpdatePendingMessages(thread.id, (prev) => [...prev, pendingMessage]);
+      setMessageInput('');
+      antdMessage.info(
+        effectiveNewMessageMode === 'inject_after_tool_call'
+          ? 'Message will be sent after next tool execution'
+          : 'Message will be sent after agent completes current task',
+      );
+      return;
+    }
+
     const now = new Date().toISOString();
     const optimisticMessageId = `optimistic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -276,6 +413,9 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
     isDraft,
     onDraftMessageSent,
     onUpdateSharedMessages,
+    isThreadRunning,
+    onUpdatePendingMessages,
+    effectiveNewMessageMode,
   ]);
 
   // Deduplication of optimistic messages is handled automatically in the store

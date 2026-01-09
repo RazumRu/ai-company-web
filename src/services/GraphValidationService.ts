@@ -68,6 +68,10 @@ const ajv = new Ajv({
   allowUnionTypes: true,
   strict: false,
   useDefaults: true,
+  // Backend schemas (especially tool specs) often disallow unknown keys.
+  // Strip any additional properties during validation so we don't send fields
+  // that the backend rejects (e.g. "must NOT have additional properties").
+  removeAdditional: 'all',
 });
 
 const validatorCache = new Map<

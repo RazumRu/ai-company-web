@@ -1,6 +1,7 @@
 import { Input, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 
+import { DiffHtmlView } from './DiffHtmlView';
 import { MarkdownContent } from './MarkdownContent';
 
 export type MarkdownSplitEditorMode = 'split' | 'edit' | 'preview';
@@ -62,6 +63,14 @@ export const MarkdownSplitEditor: React.FC<MarkdownSplitEditorProps> = ({
     [previewValue, value],
   );
 
+  const fencedDiff = useMemo(() => {
+    const raw = value ?? '';
+    const match = raw.match(
+      /^```(?:diff|patch|gitdiff|unidiff)\n([\s\S]*?)\n```\s*$/i,
+    );
+    return match?.[1] ?? null;
+  }, [value]);
+
   const handleChange = (nextValue: string) => {
     if (readOnly) return;
     onChange?.(nextValue);
@@ -121,11 +130,15 @@ export const MarkdownSplitEditor: React.FC<MarkdownSplitEditorProps> = ({
         overflow: 'auto',
         border: '1px solid #f0f0f0',
         borderRadius: 6,
-        padding: 12,
+        padding: fencedDiff ? 0 : 12,
         background: '#fff',
       }}>
       {value.trim().length > 0 ? (
-        <MarkdownContent content={value} />
+        fencedDiff ? (
+          <DiffHtmlView diff={fencedDiff} />
+        ) : (
+          <MarkdownContent content={value} />
+        )
       ) : (
         <Text type="secondary">Nothing to display.</Text>
       )}

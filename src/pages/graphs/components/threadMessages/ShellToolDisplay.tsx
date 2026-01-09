@@ -1,6 +1,7 @@
 import { CopyOutlined } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
+import { AnsiUp } from 'ansi_up';
 import { message, Popover } from 'antd';
 import isPlainObject from 'lodash/isPlainObject';
 import React, { useMemo, useState } from 'react';
@@ -26,7 +27,39 @@ export interface ShellToolDisplayProps {
    * Token usage for the shell response (tool result message).
    */
   tokenUsageOut?: ThreadMessageDtoTokenUsage | null;
+  /**
+   * Optional border color for inter-agent communication.
+   */
+  borderColor?: string;
 }
+
+const ansiUp = (() => {
+  const instance = new AnsiUp();
+  // Keep HTML escaping enabled (defense-in-depth).
+  // Newer versions use `escape_html`, older used `escape_for_html`.
+  (instance as unknown as Record<string, unknown>).escape_html = true;
+  (instance as unknown as Record<string, unknown>).escape_for_html = true;
+  return instance;
+})();
+
+const normalizeShellText = (text: string): string =>
+  text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+const containsAnsi = (text: string): boolean => {
+  // We intentionally avoid regex literals with control chars here because of
+  // eslint's `no-control-regex` rule.
+  return text.includes('\u001b[') || text.includes('\u009b[');
+};
+
+const stripAnsiSgr = (text: string): string => {
+  const esc = '\u001b';
+  const csi = '\u009b';
+  const sgr = new RegExp(`(?:${esc}|${csi})\\[[0-9;]*m`, 'g');
+  return text.replace(sgr, '');
+};
+
+const renderAnsiHtml = (text: string): string =>
+  ansiUp.ansi_to_html(normalizeShellText(text));
 
 const parseJsonSafe = (value: string): JsonValue | null => {
   try {
@@ -105,7 +138,13 @@ const renderToolPopoverContent = (
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}>
-              {String(value ?? '')}
+              {typeof value === 'string' && containsAnsi(value) ? (
+                <span
+                  dangerouslySetInnerHTML={{ __html: renderAnsiHtml(value) }}
+                />
+              ) : (
+                String(value ?? '')
+              )}
             </pre>
           )}
         </div>
@@ -133,6 +172,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   title,
   tokenUsageIn,
   tokenUsageOut,
+  borderColor,
 }) => {
   const [commandExpanded, setCommandExpanded] = useState(false);
   const [outputExpanded, setOutputExpanded] = useState(false);
@@ -163,15 +203,23 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
 
   const stdoutCandidate = resultObj?.stdout;
   const stdoutText =
-    typeof stdoutCandidate === 'string' ? stdoutCandidate : null;
+    typeof stdoutCandidate === 'string'
+      ? normalizeShellText(stdoutCandidate)
+      : null;
   const stderrCandidate = resultObj?.stderr;
   const stderrText =
-    typeof stderrCandidate === 'string' ? stderrCandidate : null;
+    typeof stderrCandidate === 'string'
+      ? normalizeShellText(stderrCandidate)
+      : null;
   const rawStringResult =
-    typeof resultContent === 'string' ? resultContent : null;
+    typeof resultContent === 'string'
+      ? normalizeShellText(resultContent)
+      : null;
   const outputCandidate = resultObj?.output;
   const outputFieldText =
-    typeof outputCandidate === 'string' ? outputCandidate : null;
+    typeof outputCandidate === 'string'
+      ? normalizeShellText(outputCandidate)
+      : null;
   const exitCodeCandidate = resultObj?.exitCode;
   const exitCode =
     typeof exitCodeCandidate === 'number'
@@ -206,7 +254,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
       const displayText =
         resultObj.output || resultObj.stdout || resultObj.stderr;
       if (typeof displayText === 'string') {
-        return displayText;
+        return normalizeShellText(displayText);
       }
     }
     return null;
@@ -234,14 +282,67 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   const outputTextForCopy = useMemo(
     () =>
       [
-        stdoutText ? `STDOUT:\n${stdoutText}` : null,
-        stderrText ? `STDERR:\n${stderrText}` : null,
-        !stdoutText && !stderrText && outputText ? outputText : null,
+        stdoutText ? `STDOUT:\n${stripAnsiSgr(stdoutText)}` : null,
+        stderrText ? `STDERR:\n${stripAnsiSgr(stderrText)}` : null,
+        !stdoutText && !stderrText && outputText
+          ? stripAnsiSgr(outputText)
+          : null,
       ]
         .filter(Boolean)
         .join('\n\n'),
     [outputText, stderrText, stdoutText],
   );
+
+  const renderPlainOutputText = (
+    text: string,
+    color: string,
+    truncatedInfo?: ReturnType<typeof truncateToLines>,
+  ) => (
+    <SyntaxHighlighter
+      language="bash"
+      style={vscDarkPlus}
+      customStyle={{
+        margin: 0,
+        padding: 0,
+        background: 'transparent',
+        fontSize: '12px',
+      }}
+      PreTag="div"
+      codeTagProps={{
+        style: { fontFamily: 'inherit', color },
+      }}>
+      {outputExpanded || !truncatedInfo?.isTruncated
+        ? text
+        : (truncatedInfo?.truncated ?? text)}
+    </SyntaxHighlighter>
+  );
+
+  const renderAnsiOutputText = (
+    text: string,
+    color: string,
+    truncatedInfo?: ReturnType<typeof truncateToLines>,
+  ) => {
+    const displayText =
+      outputExpanded || !truncatedInfo?.isTruncated
+        ? text
+        : (truncatedInfo?.truncated ?? text);
+
+    return (
+      <pre
+        style={{
+          margin: 0,
+          fontSize: '12px',
+          color,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          lineHeight: '1.5',
+        }}>
+        <span
+          dangerouslySetInnerHTML={{ __html: renderAnsiHtml(displayText) }}
+        />
+      </pre>
+    );
+  };
 
   const renderOutputBlock = (
     label: string,
@@ -267,23 +368,9 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
           {label}
         </span>
       </div>
-      <SyntaxHighlighter
-        language="bash"
-        style={vscDarkPlus}
-        customStyle={{
-          margin: 0,
-          padding: 0,
-          background: 'transparent',
-          fontSize: '12px',
-        }}
-        PreTag="div"
-        codeTagProps={{
-          style: { fontFamily: 'inherit', color },
-        }}>
-        {outputExpanded || !truncatedInfo?.isTruncated
-          ? text
-          : (truncatedInfo?.truncated ?? text)}
-      </SyntaxHighlighter>
+      {containsAnsi(text)
+        ? renderAnsiOutputText(text, color, truncatedInfo)
+        : renderPlainOutputText(text, color, truncatedInfo)}
     </div>
   );
 
@@ -325,24 +412,29 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     ? `${toolNameText} - ${toolHeaderSuffix}`
     : toolNameText;
 
+  const containerStyle: React.CSSProperties = {
+    background: '#1e1e1e',
+    borderRadius: 6,
+    border: `1px solid ${hasToolError ? '#5c2c2c' : '#333'}`,
+    color: '#e8e8e8',
+    fontFamily:
+      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
+    fontSize: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
+    backgroundImage: `linear-gradient(${tint}, ${tint})`,
+    backgroundBlendMode: 'soft-light',
+  };
+
+  if (borderColor) {
+    containerStyle.borderLeft = `3px solid ${borderColor}`;
+  }
+
   return (
     <div>
-      <div
-        style={{
-          background: '#1e1e1e',
-          borderRadius: 6,
-          border: `1px solid ${hasToolError ? '#5c2c2c' : '#333'}`,
-          color: '#e8e8e8',
-          fontFamily:
-            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace',
-          fontSize: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.02)',
-          backgroundImage: `linear-gradient(${tint}, ${tint})`,
-          backgroundBlendMode: 'soft-light',
-        }}>
+      <div style={containerStyle}>
         <div
           style={{
             display: 'flex',

@@ -20,9 +20,25 @@ const renderMarkdownCode = ({
   className,
   children,
 }: MarkdownCodeProps) => {
-  const match = /language-(\w+)/.exec(className || '');
+  const match = /language-([^\s]+)/.exec(className || '');
   const codeContent = String(children ?? '').replace(/\n$/, '');
-  if (!inline && match && match[1] === 'diff') {
+
+  const looksLikeDiff =
+    codeContent.startsWith('---') ||
+    codeContent.startsWith('+++') ||
+    codeContent.includes('\n--- ') ||
+    codeContent.includes('\n+++ ') ||
+    codeContent.includes('\n@@') ||
+    codeContent.startsWith('@@');
+
+  const language = match?.[1]?.toLowerCase();
+  const isDiffLanguage =
+    language === 'diff' ||
+    language === 'patch' ||
+    language === 'gitdiff' ||
+    language === 'unidiff';
+
+  if (!inline && (isDiffLanguage || looksLikeDiff)) {
     const lines = codeContent.split('\n');
     return (
       <pre
@@ -31,7 +47,7 @@ const renderMarkdownCode = ({
           padding: 0,
           borderRadius: 6,
           overflow: 'auto',
-          background: '#fafafa',
+          background: '#ffffff',
           border: '1px solid #f0f0f0',
           color: '#111',
           fontSize: 12,
@@ -46,17 +62,20 @@ const renderMarkdownCode = ({
 
             const style: React.CSSProperties = {};
             if (isHeader) {
-              style.color = '#0958d9';
-              style.background = '#e6f4ff';
+              // GitHub-ish header colors
+              style.color = '#0969da';
+              style.background = '#ddf4ff';
             } else if (isHunk) {
-              style.color = '#531dab';
-              style.background = '#f9f0ff';
+              style.color = '#8250df';
+              style.background = '#fbefff';
             } else if (isInsert) {
-              style.background = 'rgba(46, 160, 67, 0.12)';
-              style.color = '#135200';
+              style.background = '#e6ffed';
+              style.color = '#1a7f37';
+              style.borderLeft = '3px solid #1a7f37';
             } else if (isDelete) {
-              style.background = 'rgba(248, 81, 73, 0.12)';
-              style.color = '#a8071a';
+              style.background = '#ffebe9';
+              style.color = '#cf222e';
+              style.borderLeft = '3px solid #cf222e';
             }
 
             return (

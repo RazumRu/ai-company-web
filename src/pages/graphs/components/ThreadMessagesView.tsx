@@ -623,6 +623,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           nodeId?: string;
           createdAt?: string;
           inCommunicationExec?: boolean;
+          sourceAgentNodeId?: string;
         }
       | {
           type: 'reasoning';
@@ -631,6 +632,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           nodeId?: string;
           createdAt?: string;
           inCommunicationExec?: boolean;
+          sourceAgentNodeId?: string;
         }
       | {
           type: 'chat';
@@ -639,6 +641,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           nodeId?: string;
           createdAt?: string;
           inCommunicationExec?: boolean;
+          sourceAgentNodeId?: string;
         }
       | {
           type: 'tool';
@@ -657,7 +660,25 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           roleLabel?: string;
           title?: string;
           inCommunicationExec?: boolean;
+          sourceAgentNodeId?: string;
         };
+
+    // Generate a consistent color from a string (node ID)
+    const generateColorFromNodeId = useCallback((nodeId: string): string => {
+      // Simple hash function to generate a number from string
+      let hash = 0;
+      for (let i = 0; i < nodeId.length; i++) {
+        hash = nodeId.charCodeAt(i) + ((hash << 5) - hash);
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+
+      // Generate HSL color with fixed saturation and lightness for better visibility
+      const hue = Math.abs(hash % 360);
+      const saturation = 70; // Good saturation for distinct colors
+      const lightness = 50; // Medium lightness for good visibility
+
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }, []);
 
     const prepareReadyMessages = useCallback(
       (msgs: ThreadMessageDto[]): PreparedMessage[] => {
@@ -714,6 +735,26 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           return Boolean(normalizedAdditional?.__interAgentCommunication);
         };
 
+        // Helper to extract source agent node ID from message metadata
+        const getSourceAgentNodeId = (
+          msg: ThreadMessageDto,
+        ): string | undefined => {
+          const record = getMessageRecord(msg.message);
+          if (!record) return undefined;
+
+          const additional =
+            (record.additionalKwargs as Record<string, unknown> | undefined) ??
+            (record.additional_kwargs as Record<string, unknown> | undefined);
+
+          const normalizedAdditional = isPlainObject(additional)
+            ? (additional as Record<string, unknown>)
+            : undefined;
+
+          return typeof normalizedAdditional?.__sourceAgentNodeId === 'string'
+            ? normalizedAdditional.__sourceAgentNodeId
+            : undefined;
+        };
+
         // Build a set of all tool call IDs that exist in current messages
         const existingToolCallIds = new Set<string>();
         msgs.forEach((m) => {
@@ -765,6 +806,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           const m = msgs[i];
           const role = (m.message?.role as string) || '';
           const isInterAgent = isInterAgentCommunication(m);
+          const sourceAgentNodeId = getSourceAgentNodeId(m);
 
           if (role === 'reasoning') {
             if (!isBlankContent(m.message?.content)) {
@@ -775,6 +817,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 nodeId: m.nodeId,
                 createdAt: m.createdAt,
                 inCommunicationExec: isInterAgent,
+                sourceAgentNodeId,
               });
             }
             i++;
@@ -798,6 +841,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               nodeId: sys[0]?.nodeId,
               createdAt: sys[0]?.createdAt,
               inCommunicationExec: isInterAgent,
+              sourceAgentNodeId,
             });
             i = j;
             continue;
@@ -822,6 +866,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 nodeId: m.nodeId,
                 createdAt: m.createdAt,
                 inCommunicationExec: isInterAgent,
+                sourceAgentNodeId,
               });
             }
 
@@ -882,6 +927,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 ? isInterAgentCommunication(matched)
                 : false;
               const toolIsInterAgent = isInterAgent || matchedIsInterAgent;
+              const matchedSourceAgentNodeId = matched
+                ? getSourceAgentNodeId(matched)
+                : undefined;
+              const toolSourceAgentNodeId =
+                sourceAgentNodeId || matchedSourceAgentNodeId;
 
               prepared.push({
                 type: 'tool',
@@ -904,6 +954,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 roleLabel: effectiveTitle || name || 'tool',
                 title: effectiveTitle,
                 inCommunicationExec: toolIsInterAgent,
+                sourceAgentNodeId: toolSourceAgentNodeId,
               });
             }
 
@@ -960,6 +1011,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               roleLabel: title || name || 'tool',
               title,
               inCommunicationExec: isInterAgent,
+              sourceAgentNodeId,
             });
             i++;
             continue;
@@ -973,6 +1025,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               nodeId: m.nodeId,
               createdAt: m.createdAt,
               inCommunicationExec: isInterAgent,
+              sourceAgentNodeId,
             });
           }
           i++;
@@ -1031,6 +1084,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       resultContent?: unknown,
       tokenUsage?: ThreadMessageDtoTokenUsage | null,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
+      borderColor?: string,
     ) => {
       if (status !== 'executed') {
         return undefined;
@@ -1062,6 +1116,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         (metadata?.nodeId && nodeDisplayNames?.[metadata.nodeId]) ||
         (metadata?.nodeId ? `Node ${metadata.nodeId.slice(-6)}` : 'Agent');
 
+      const bubbleStyle: React.CSSProperties = {
+        backgroundColor: '#f3f3f3',
+        borderLeft: `3px solid ${messageColor}`,
+      };
+
+      if (borderColor) {
+        bubbleStyle.borderLeft = `3px solid ${borderColor}`;
+      }
+
       return (
         <ChatBubble
           isHuman={false}
@@ -1070,10 +1133,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           avatarSrc={avatarSrc}
           avatarTooltip={finishAgentName}
           containerStyle={{ marginBottom: '8px' }}
-          bubbleStyle={{
-            backgroundColor: '#f3f3f3',
-            borderLeft: `3px solid ${messageColor}`,
-          }}
+          bubbleStyle={bubbleStyle}
           footer={renderMetadataText(
             metadata?.createdAt,
             metadata?.roleLabel,
@@ -1197,6 +1257,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       titleText?: string,
       tokenUsageIn?: ThreadMessageDtoTokenUsage | null,
       tokenUsageOut?: ThreadMessageDtoTokenUsage | null,
+      borderColor?: string,
     ) => {
       return (
         <ShellToolDisplay
@@ -1209,6 +1270,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           metadata={metadata}
           tokenUsageIn={tokenUsageIn}
           tokenUsageOut={tokenUsageOut}
+          borderColor={borderColor}
         />
       );
     };
@@ -1254,7 +1316,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
-    const renderMessage = (message: ThreadMessageDto) => {
+    const renderMessage = (message: ThreadMessageDto, borderColor?: string) => {
       const role = (message.message?.role as string) || '';
       const content = formatMessageContent(message.message?.content);
       const metadataText =
@@ -1310,6 +1372,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       const avatarTooltip = isHuman ? 'You' : agentName;
 
+      // Apply border if borderColor is provided
+      const bubbleBorderStyle = borderColor
+        ? { borderLeft: `3px solid ${borderColor}` }
+        : undefined;
+
       // Special rendering for agent instruction messages
       if (isAgentInstruction) {
         // For agent instruction messages, show only date (no "from ..." part)
@@ -1329,6 +1396,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               border: '2px solid #d3adf7',
               borderRadius: '8px',
               padding: '12px 16px',
+              ...bubbleBorderStyle,
             }}
             footer={
               dateOnlyText ? (
@@ -1388,6 +1456,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           avatarColor={avatarColor}
           avatarSrc={avatarSrc}
           avatarTooltip={avatarTooltip}
+          bubbleStyle={bubbleBorderStyle}
           footer={
             metadataText ? (
               <Text
@@ -1544,20 +1613,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         key: React.Key,
         content: React.ReactNode,
         extraStyle?: React.CSSProperties,
-        inCommunicationExec?: boolean,
       ) => {
-        const commExecStyle: React.CSSProperties = inCommunicationExec
-          ? {
-              paddingLeft: '12px',
-              borderLeft: '3px solid #1890ff',
-              marginLeft: '8px',
-            }
-          : {};
-
         rows.push(
-          <div
-            key={key}
-            style={{ ...messageBlockStyle, ...commExecStyle, ...extraStyle }}>
+          <div key={key} style={{ ...messageBlockStyle, ...extraStyle }}>
             {content}
           </div>,
         );
@@ -1586,7 +1644,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           .toUpperCase();
       };
 
-      const renderWorkingBlock = (items: PreparedMessage[]) => {
+      const renderWorkingBlock = (
+        items: PreparedMessage[],
+        borderColor?: string,
+      ) => {
         const avatarSeedNodeId =
           items.find((it) => it.nodeId)?.nodeId ?? nodeId ?? undefined;
         const avatarLabel = getAvatarInitials(
@@ -1600,6 +1661,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           (avatarSeedNodeId && nodeDisplayNames?.[avatarSeedNodeId]) ||
           (avatarSeedNodeId ? `Node ${avatarSeedNodeId.slice(-6)}` : 'Agent');
 
+        const bubbleStyle: React.CSSProperties = {
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          padding: '10px 12px',
+        };
+
+        if (borderColor) {
+          bubbleStyle.borderLeft = `3px solid ${borderColor}`;
+        }
+
         return (
           <ChatBubble
             isHuman={false}
@@ -1608,12 +1680,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             avatarSrc={avatarSrc}
             avatarTooltip={workingAgentName}
             containerStyle={{ marginBottom: '8px' }}
-            bubbleStyle={{
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              padding: '10px 12px',
-            }}>
+            bubbleStyle={bubbleStyle}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Text
                 type="secondary"
@@ -1691,12 +1758,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       while (i < preparedMessages.length) {
         const item = preparedMessages[i];
 
+        // Generate border color if inter-agent communication
+        const borderColor =
+          item.inCommunicationExec && item.sourceAgentNodeId
+            ? generateColorFromNodeId(item.sourceAgentNodeId)
+            : undefined;
+
         if (item.type === 'system') {
           pushRow(
             item.id,
             renderSystemGroup(item.messages, item.messages.length),
-            undefined,
-            item.inCommunicationExec,
           );
           i++;
           continue;
@@ -1713,12 +1784,18 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessages[j]);
               j++;
             }
-            const hasCommExec = group.some((g) => g.inCommunicationExec);
+            const groupSourceNodeId = group.find(
+              (g) => g.sourceAgentNodeId,
+            )?.sourceAgentNodeId;
+            const hasCommExec =
+              group.length > 0 && group.every((g) => g.inCommunicationExec);
+            const groupBorderColor =
+              hasCommExec && groupSourceNodeId
+                ? generateColorFromNodeId(groupSourceNodeId)
+                : undefined;
             pushRow(
               `working-${item.id}`,
-              renderWorkingBlock(group),
-              undefined,
-              hasCommExec,
+              renderWorkingBlock(group, groupBorderColor),
             );
             i = j;
             continue;
@@ -1733,20 +1810,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               isExpanded={expandedReasoningIds.has(reasoningId)}
               onToggle={toggleReasoningMessage}
             />,
-            undefined,
-            item.inCommunicationExec,
           );
           i++;
           continue;
         }
 
         if (item.type === 'chat') {
-          pushRow(
-            item.id,
-            renderMessage(item.message),
-            undefined,
-            item.inCommunicationExec,
-          );
+          pushRow(item.id, renderMessage(item.message, borderColor));
           i++;
           continue;
         }
@@ -1762,12 +1832,18 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessages[j]);
               j++;
             }
-            const hasCommExec = group.some((g) => g.inCommunicationExec);
+            const groupSourceNodeId = group.find(
+              (g) => g.sourceAgentNodeId,
+            )?.sourceAgentNodeId;
+            const hasCommExec =
+              group.length > 0 && group.every((g) => g.inCommunicationExec);
+            const groupBorderColor =
+              hasCommExec && groupSourceNodeId
+                ? generateColorFromNodeId(groupSourceNodeId)
+                : undefined;
             pushRow(
               `working-${item.id}`,
-              renderWorkingBlock(group),
-              undefined,
-              hasCommExec,
+              renderWorkingBlock(group, groupBorderColor),
             );
             i = j;
             continue;
@@ -1775,13 +1851,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           if (item.name && item.name.toLowerCase() === 'finish') {
             pushRow(
               item.id || `finish-${i}`,
-              renderFinishTool(item.status, item.result, item.tokenUsage, {
-                nodeId: item.nodeId,
-                createdAt: item.createdAt,
-                roleLabel: 'ai',
-              }),
-              undefined,
-              item.inCommunicationExec,
+              renderFinishTool(
+                item.status,
+                item.result,
+                item.tokenUsage,
+                {
+                  nodeId: item.nodeId,
+                  createdAt: item.createdAt,
+                  roleLabel: 'ai',
+                },
+                borderColor,
+              ),
             );
             i++;
             continue;
@@ -1804,9 +1884,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 item.title,
                 item.tokenUsageIn,
                 item.tokenUsageOut,
+                borderColor,
               ),
-              undefined,
-              item.inCommunicationExec,
             );
             i++;
             continue;
@@ -1821,8 +1900,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               item.toolOptions,
               item.title,
             ),
-            undefined,
-            item.inCommunicationExec,
           );
           i++;
           continue;
