@@ -1073,6 +1073,12 @@ export interface ThreadMessageDto {
    * @memberof ThreadMessageDto
    */
   'tokenUsage'?: ThreadMessageDtoTokenUsage | null;
+  /**
+   *
+   * @type {ThreadMessageDtoRequestTokenUsage}
+   * @memberof ThreadMessageDto
+   */
+  'requestTokenUsage'?: ThreadMessageDtoRequestTokenUsage | null;
 }
 /**
  * @type ThreadMessageDtoMessage
@@ -1442,6 +1448,55 @@ export const ThreadMessageDtoMessageOneOf5RoleEnum = {
 export type ThreadMessageDtoMessageOneOf5RoleEnum =
   (typeof ThreadMessageDtoMessageOneOf5RoleEnum)[keyof typeof ThreadMessageDtoMessageOneOf5RoleEnum];
 
+/**
+ *
+ * @export
+ * @interface ThreadMessageDtoRequestTokenUsage
+ */
+export interface ThreadMessageDtoRequestTokenUsage {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'totalPrice'?: number;
+  /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadMessageDtoRequestTokenUsage
+   */
+  'currentContext'?: number;
+}
 /**
  *
  * @export
