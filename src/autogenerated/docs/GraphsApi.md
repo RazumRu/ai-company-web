@@ -306,12 +306,16 @@ import { GraphsApi, Configuration } from './api';
 const configuration = new Configuration();
 const apiInstance = new GraphsApi(configuration);
 
-const { status, data } = await apiInstance.getAllGraphs();
+let ids: Array<string>; //Filter graphs by IDs (comma-separated or repeated params) (optional) (default to undefined)
+
+const { status, data } = await apiInstance.getAllGraphs(ids);
 ```
 
 ### Parameters
 
-This endpoint does not have any parameters.
+| Name    | Type                    | Description                                               | Notes                            |
+| ------- | ----------------------- | --------------------------------------------------------- | -------------------------------- |
+| **ids** | **Array&lt;string&gt;** | Filter graphs by IDs (comma-separated or repeated params) | (optional) defaults to undefined |
 
 ### Return type
 

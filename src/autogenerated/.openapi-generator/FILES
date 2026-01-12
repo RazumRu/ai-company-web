@@ -32,8 +32,6 @@ docs/TemplatesApi.md
 docs/ThreadAnalysisRequestDto.md
 docs/ThreadAnalysisResponseDto.md
 docs/ThreadDto.md
-docs/ThreadDtoTokenUsage.md
-docs/ThreadDtoTokenUsageByNodeValue.md
 docs/ThreadMessageDto.md
 docs/ThreadMessageDtoMessage.md
 docs/ThreadMessageDtoMessageOneOf.md
@@ -46,6 +44,12 @@ docs/ThreadMessageDtoMessageOneOf4Content.md
 docs/ThreadMessageDtoMessageOneOf5.md
 docs/ThreadMessageDtoRequestTokenUsage.md
 docs/ThreadMessageDtoTokenUsage.md
+docs/ThreadUsageStatisticsDto.md
+docs/ThreadUsageStatisticsDtoByNodeValue.md
+docs/ThreadUsageStatisticsDtoByToolInner.md
+docs/ThreadUsageStatisticsDtoMessagesAggregate.md
+docs/ThreadUsageStatisticsDtoToolsAggregate.md
+docs/ThreadUsageStatisticsDtoTotal.md
 docs/ThreadsApi.md
 docs/UpdateGraphDto.md
 docs/UpdateGraphDtoDescription.md

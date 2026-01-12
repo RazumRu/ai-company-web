@@ -897,12 +897,6 @@ export interface ThreadDto {
    * @memberof ThreadDto
    */
   'status': ThreadDtoStatusEnum;
-  /**
-   *
-   * @type {ThreadDtoTokenUsage}
-   * @memberof ThreadDto
-   */
-  'tokenUsage'?: ThreadDtoTokenUsage | null;
 }
 
 export const ThreadDtoStatusEnum = {
@@ -915,110 +909,6 @@ export const ThreadDtoStatusEnum = {
 export type ThreadDtoStatusEnum =
   (typeof ThreadDtoStatusEnum)[keyof typeof ThreadDtoStatusEnum];
 
-/**
- *
- * @export
- * @interface ThreadDtoTokenUsage
- */
-export interface ThreadDtoTokenUsage {
-  /**
-   * Input tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'inputTokens': number;
-  /**
-   * Cached input tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'cachedInputTokens'?: number;
-  /**
-   * Output tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'outputTokens': number;
-  /**
-   * Reasoning tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'reasoningTokens'?: number;
-  /**
-   * Total tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'totalTokens': number;
-  /**
-   * Total price in USD
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'totalPrice'?: number;
-  /**
-   * Current context size in tokens (snapshot, not additive)
-   * @type {number}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'currentContext'?: number;
-  /**
-   * Token usage breakdown by node ID
-   * @type {{ [key: string]: ThreadDtoTokenUsageByNodeValue; }}
-   * @memberof ThreadDtoTokenUsage
-   */
-  'byNode'?: { [key: string]: ThreadDtoTokenUsageByNodeValue };
-}
-/**
- *
- * @export
- * @interface ThreadDtoTokenUsageByNodeValue
- */
-export interface ThreadDtoTokenUsageByNodeValue {
-  /**
-   * Input tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'inputTokens': number;
-  /**
-   * Cached input tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'cachedInputTokens'?: number;
-  /**
-   * Output tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'outputTokens': number;
-  /**
-   * Reasoning tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'reasoningTokens'?: number;
-  /**
-   * Total tokens
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'totalTokens': number;
-  /**
-   * Total price in USD
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'totalPrice'?: number;
-  /**
-   * Current context size in tokens (snapshot, not additive)
-   * @type {number}
-   * @memberof ThreadDtoTokenUsageByNodeValue
-   */
-  'currentContext'?: number;
-}
 /**
  *
  * @export
@@ -1515,6 +1405,288 @@ export interface ThreadMessageDtoTokenUsage {
    * @memberof ThreadMessageDtoTokenUsage
    */
   'totalPrice'?: number;
+}
+/**
+ *
+ * @export
+ * @interface ThreadUsageStatisticsDto
+ */
+export interface ThreadUsageStatisticsDto {
+  /**
+   *
+   * @type {ThreadUsageStatisticsDtoTotal}
+   * @memberof ThreadUsageStatisticsDto
+   */
+  'total': ThreadUsageStatisticsDtoTotal;
+  /**
+   * Total number of requests (messages with requestTokenUsage)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDto
+   */
+  'requests': number;
+  /**
+   * Usage statistics breakdown by node ID
+   * @type {{ [key: string]: ThreadUsageStatisticsDtoByNodeValue; }}
+   * @memberof ThreadUsageStatisticsDto
+   */
+  'byNode': { [key: string]: ThreadUsageStatisticsDtoByNodeValue };
+  /**
+   * Usage statistics breakdown by tool name
+   * @type {Array<ThreadUsageStatisticsDtoByToolInner>}
+   * @memberof ThreadUsageStatisticsDto
+   */
+  'byTool': Array<ThreadUsageStatisticsDtoByToolInner>;
+  /**
+   *
+   * @type {ThreadUsageStatisticsDtoToolsAggregate}
+   * @memberof ThreadUsageStatisticsDto
+   */
+  'toolsAggregate': ThreadUsageStatisticsDtoToolsAggregate;
+  /**
+   *
+   * @type {ThreadUsageStatisticsDtoMessagesAggregate}
+   * @memberof ThreadUsageStatisticsDto
+   */
+  'messagesAggregate': ThreadUsageStatisticsDtoMessagesAggregate;
+}
+/**
+ *
+ * @export
+ * @interface ThreadUsageStatisticsDtoByNodeValue
+ */
+export interface ThreadUsageStatisticsDtoByNodeValue {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'totalPrice'?: number;
+  /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByNodeValue
+   */
+  'currentContext'?: number;
+}
+/**
+ *
+ * @export
+ * @interface ThreadUsageStatisticsDtoByToolInner
+ */
+export interface ThreadUsageStatisticsDtoByToolInner {
+  /**
+   * Tool name
+   * @type {string}
+   * @memberof ThreadUsageStatisticsDtoByToolInner
+   */
+  'toolName': string;
+  /**
+   * Total tokens used by this tool
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByToolInner
+   */
+  'totalTokens': number;
+  /**
+   * Total price for this tool in USD
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByToolInner
+   */
+  'totalPrice'?: number;
+  /**
+   * Number of times this tool was called
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoByToolInner
+   */
+  'callCount': number;
+}
+/**
+ * Aggregated statistics for all non-tool message requests (human, ai, system, reasoning)
+ * @export
+ * @interface ThreadUsageStatisticsDtoMessagesAggregate
+ */
+export interface ThreadUsageStatisticsDtoMessagesAggregate {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'totalPrice'?: number;
+  /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'currentContext'?: number;
+  /**
+   * Number of requests (messages with requestTokenUsage)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
+   */
+  'requestCount': number;
+}
+/**
+ * Aggregated statistics for all tool message requests
+ * @export
+ * @interface ThreadUsageStatisticsDtoToolsAggregate
+ */
+export interface ThreadUsageStatisticsDtoToolsAggregate {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'totalPrice'?: number;
+  /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'currentContext'?: number;
+  /**
+   * Number of requests (messages with requestTokenUsage)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoToolsAggregate
+   */
+  'requestCount': number;
+}
+/**
+ * Total usage statistics for the entire thread
+ * @export
+ * @interface ThreadUsageStatisticsDtoTotal
+ */
+export interface ThreadUsageStatisticsDtoTotal {
+  /**
+   * Input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'inputTokens': number;
+  /**
+   * Cached input tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'cachedInputTokens'?: number;
+  /**
+   * Output tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'outputTokens': number;
+  /**
+   * Reasoning tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'reasoningTokens'?: number;
+  /**
+   * Total tokens
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'totalTokens': number;
+  /**
+   * Total price in USD
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'totalPrice'?: number;
+  /**
+   * Current context size in tokens (snapshot, not additive)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoTotal
+   */
+  'currentContext'?: number;
 }
 /**
  *
@@ -2821,10 +2993,12 @@ export const GraphsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {Array<string>} [ids] Filter graphs by IDs (comma-separated or repeated params)
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     getAllGraphs: async (
+      ids?: Array<string>,
       options: RawAxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       const localVarPath = `/api/v1/graphs`;
@@ -2846,6 +3020,10 @@ export const GraphsApiAxiosParamCreator = function (
       // authentication bearer required
       // http bearer authentication required
       await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      if (ids) {
+        localVarQueryParameter['ids'] = ids;
+      }
 
       setSearchParams(localVarUrlObj, localVarQueryParameter);
       let headersFromBaseOptions =
@@ -3368,10 +3546,12 @@ export const GraphsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {Array<string>} [ids] Filter graphs by IDs (comma-separated or repeated params)
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async getAllGraphs(
+      ids?: Array<string>,
       options?: RawAxiosRequestConfig,
     ): Promise<
       (
@@ -3379,8 +3559,10 @@ export const GraphsApiFp = function (configuration?: Configuration) {
         basePath?: string,
       ) => AxiosPromise<Array<GraphDto>>
     > {
-      const localVarAxiosArgs =
-        await localVarAxiosParamCreator.getAllGraphs(options);
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getAllGraphs(
+        ids,
+        options,
+      );
       const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
       const localVarOperationServerBasePath =
         operationServerMap['GraphsApi.getAllGraphs']?.[
@@ -3680,14 +3862,16 @@ export const GraphsApiFactory = function (
     },
     /**
      *
+     * @param {Array<string>} [ids] Filter graphs by IDs (comma-separated or repeated params)
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     getAllGraphs(
+      ids?: Array<string>,
       options?: RawAxiosRequestConfig,
     ): AxiosPromise<Array<GraphDto>> {
       return localVarFp
-        .getAllGraphs(options)
+        .getAllGraphs(ids, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -3889,13 +4073,14 @@ export class GraphsApi extends BaseAPI {
 
   /**
    *
+   * @param {Array<string>} [ids] Filter graphs by IDs (comma-separated or repeated params)
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof GraphsApi
    */
-  public getAllGraphs(options?: RawAxiosRequestConfig) {
+  public getAllGraphs(ids?: Array<string>, options?: RawAxiosRequestConfig) {
     return GraphsApiFp(this.configuration)
-      .getAllGraphs(options)
+      .getAllGraphs(ids, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -4569,6 +4754,56 @@ export const ThreadsApiAxiosParamCreator = function (
     },
     /**
      *
+     * @param {string} threadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getThreadUsageStatistics: async (
+      threadId: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'threadId' is not null or undefined
+      assertParamExists('getThreadUsageStatistics', 'threadId', threadId);
+      const localVarPath =
+        `/api/v1/threads/{threadId}/usage-statistics`.replace(
+          `{${'threadId'}}`,
+          encodeURIComponent(String(threadId)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
      * @param {string} [graphId] Filter by graph ID
      * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
      * @param {number} [limit] Maximum number of threads to return
@@ -5049,6 +5284,39 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
+     * @param {string} threadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getThreadUsageStatistics(
+      threadId: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<ThreadUsageStatisticsDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.getThreadUsageStatistics(
+          threadId,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.getThreadUsageStatistics']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
      * @param {string} [graphId] Filter by graph ID
      * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
      * @param {number} [limit] Maximum number of threads to return
@@ -5319,6 +5587,20 @@ export const ThreadsApiFactory = function (
     },
     /**
      *
+     * @param {string} threadId
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getThreadUsageStatistics(
+      threadId: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadUsageStatisticsDto> {
+      return localVarFp
+        .getThreadUsageStatistics(threadId, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
      * @param {string} [graphId] Filter by graph ID
      * @param {Array<GetThreadsStatusesEnum>} [statuses] Filter by thread statuses
      * @param {number} [limit] Maximum number of threads to return
@@ -5500,6 +5782,22 @@ export class ThreadsApi extends BaseAPI {
   ) {
     return ThreadsApiFp(this.configuration)
       .getThreadMessages(threadId, nodeId, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} threadId
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public getThreadUsageStatistics(
+    threadId: string,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .getThreadUsageStatistics(threadId, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
