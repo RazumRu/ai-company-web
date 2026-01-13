@@ -1007,8 +1007,11 @@ export const ChatsPage = () => {
         setThreadUsageStats((prev) => ({ ...prev, [threadId]: response.data }));
         setThreadUsageStatsLoading((prev) => ({ ...prev, [threadId]: false }));
       } catch (error) {
-        console.error(`Error loading thread usage statistics (attempt ${retryCount + 1}/${maxRetries + 1}):`, error);
-        
+        console.error(
+          `Error loading thread usage statistics (attempt ${retryCount + 1}/${maxRetries + 1}):`,
+          error,
+        );
+
         // Retry logic: retry up to maxRetries times with a delay
         if (retryCount < maxRetries) {
           retryCount++;
@@ -1017,8 +1020,13 @@ export const ChatsPage = () => {
           }, retryDelay);
         } else {
           // Max retries reached, give up
-          setThreadUsageStatsLoading((prev) => ({ ...prev, [threadId]: false }));
-          console.error('Max retries reached for loading thread usage statistics');
+          setThreadUsageStatsLoading((prev) => ({
+            ...prev,
+            [threadId]: false,
+          }));
+          console.error(
+            'Max retries reached for loading thread usage statistics',
+          );
         }
       }
     };
@@ -1781,21 +1789,34 @@ export const ChatsPage = () => {
     if (!selectedThreadId || selectedThreadIsDraft) return;
     setUsageStatsModalThreadId(selectedThreadId);
     setUsageStatsModalOpen(true);
-    
+
     // Always fetch fresh usage statistics when opening the modal (even if we have cached data)
     let retryCount = 0;
     const maxRetries = 3;
     const retryDelay = 2000; // 2 seconds between retries
-    
+
     const loadUsageStats = async () => {
       try {
-        setThreadUsageStatsLoading((prev) => ({ ...prev, [selectedThreadId]: true }));
-        const response = await threadsApi.getThreadUsageStatistics(selectedThreadId);
-        setThreadUsageStats((prev) => ({ ...prev, [selectedThreadId]: response.data }));
-        setThreadUsageStatsLoading((prev) => ({ ...prev, [selectedThreadId]: false }));
+        setThreadUsageStatsLoading((prev) => ({
+          ...prev,
+          [selectedThreadId]: true,
+        }));
+        const response =
+          await threadsApi.getThreadUsageStatistics(selectedThreadId);
+        setThreadUsageStats((prev) => ({
+          ...prev,
+          [selectedThreadId]: response.data,
+        }));
+        setThreadUsageStatsLoading((prev) => ({
+          ...prev,
+          [selectedThreadId]: false,
+        }));
       } catch (error) {
-        console.error(`Error loading thread usage statistics (attempt ${retryCount + 1}/${maxRetries + 1}):`, error);
-        
+        console.error(
+          `Error loading thread usage statistics (attempt ${retryCount + 1}/${maxRetries + 1}):`,
+          error,
+        );
+
         // Retry logic: retry up to maxRetries times with a delay
         if (retryCount < maxRetries) {
           retryCount++;
@@ -1804,13 +1825,20 @@ export const ChatsPage = () => {
           }, retryDelay);
         } else {
           // Max retries reached, give up and show error
-          setThreadUsageStatsLoading((prev) => ({ ...prev, [selectedThreadId]: false }));
-          console.error('Max retries reached for loading thread usage statistics');
-          antdMessage.error('Failed to load usage statistics after multiple attempts');
+          setThreadUsageStatsLoading((prev) => ({
+            ...prev,
+            [selectedThreadId]: false,
+          }));
+          console.error(
+            'Max retries reached for loading thread usage statistics',
+          );
+          antdMessage.error(
+            'Failed to load usage statistics after multiple attempts',
+          );
         }
       }
     };
-    
+
     void loadUsageStats();
   }, [selectedThreadId, selectedThreadIsDraft]);
 

@@ -60,7 +60,8 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
     return null;
   }
 
-  const { total, requests, byNode, byTool, toolsAggregate, messagesAggregate } = usage;
+  const { total, requests, byNode, byTool, toolsAggregate, messagesAggregate } =
+    usage;
 
   // Prepare byNode data
   const byNodeData = byNode
@@ -262,11 +263,18 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
                 title: 'Agent',
                 dataIndex: 'nodeName',
                 key: 'nodeName',
-                render: (name: string, record: typeof byNodeData[0]) => (
+                render: (name: string, record: (typeof byNodeData)[0]) => (
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Text strong>{name}</Text>
-                      <Tag style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0 }}>
+                      <Tag
+                        style={{
+                          fontSize: 10,
+                          lineHeight: '16px',
+                          padding: '0 6px',
+                          margin: 0,
+                        }}>
                         {record.nodeKind}
                       </Tag>
                     </div>
@@ -304,7 +312,9 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
                 dataIndex: 'cachedInputTokens',
                 key: 'cachedInputTokens',
                 render: (value: number | undefined) =>
-                  typeof value === 'number' && value > 0 ? formatNumber(value) : '-',
+                  typeof value === 'number' && value > 0
+                    ? formatNumber(value)
+                    : '-',
                 align: 'right' as const,
               },
               {
@@ -312,7 +322,9 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
                 dataIndex: 'reasoningTokens',
                 key: 'reasoningTokens',
                 render: (value: number | undefined) =>
-                  typeof value === 'number' && value > 0 ? formatNumber(value) : '-',
+                  typeof value === 'number' && value > 0
+                    ? formatNumber(value)
+                    : '-',
                 align: 'right' as const,
               },
               {

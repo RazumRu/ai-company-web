@@ -123,8 +123,14 @@ const formatRequestUsdShort = (amount?: number | null): string => {
 const TokenUsagePopoverIcon: React.FC<{
   tokenUsage?: ThreadMessageDtoTokenUsage | null;
   requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null;
-}> = ({ tokenUsage, requestTokenUsage }) => {
-  if (!tokenUsage && !requestTokenUsage) {
+  requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
+  requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
+}> = ({ tokenUsage, requestTokenUsage, requestTokenUsageIn, requestTokenUsageOut }) => {
+  // Use the new props if available, fallback to old prop for backwards compatibility
+  const effectiveRequestTokenUsageIn = requestTokenUsageIn || requestTokenUsage;
+  const effectiveRequestTokenUsageOut = requestTokenUsageOut;
+
+  if (!tokenUsage && !effectiveRequestTokenUsageIn && !effectiveRequestTokenUsageOut) {
     return null;
   }
 
@@ -134,11 +140,41 @@ const TokenUsagePopoverIcon: React.FC<{
       )})`
     : null;
 
-  const requestSummary = requestTokenUsage
-    ? `Request token usage: ${formatRequestTokenCount(
-        requestTokenUsage.totalTokens,
-      )} (${formatRequestUsdShort(requestTokenUsage.totalPrice)})`
-    : null;
+  const renderRequestTokenUsageSection = (
+    usage: ThreadMessageDtoRequestTokenUsage,
+    label: string,
+  ) => (
+    <>
+      <Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
+        {label}
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Total: {formatRequestTokenCount(usage.totalTokens)} (
+        {formatRequestUsdShort(usage.totalPrice)})
+      </Text>
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Input tokens: {formatTokenCount(usage.inputTokens)}
+      </Text>
+      {typeof usage.cachedInputTokens === 'number' && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Cached input tokens: {formatTokenCount(usage.cachedInputTokens)}
+        </Text>
+      )}
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        Output tokens: {formatTokenCount(usage.outputTokens)}
+      </Text>
+      {typeof usage.reasoningTokens === 'number' && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Reasoning tokens: {formatTokenCount(usage.reasoningTokens)}
+        </Text>
+      )}
+      {typeof usage.currentContext === 'number' && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Current context: {formatTokenCount(usage.currentContext)}
+        </Text>
+      )}
+    </>
+  );
 
   const popoverContent = (
     <Space direction="vertical" size={4} style={{ maxWidth: 340 }}>
@@ -148,37 +184,17 @@ const TokenUsagePopoverIcon: React.FC<{
         </Text>
       )}
 
-      {requestTokenUsage && requestSummary && (
-        <>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {requestSummary}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Input tokens: {formatTokenCount(requestTokenUsage.inputTokens)}
-          </Text>
-          {typeof requestTokenUsage.cachedInputTokens === 'number' && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Cached input tokens:{' '}
-              {formatTokenCount(requestTokenUsage.cachedInputTokens)}
-            </Text>
-          )}
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Output tokens: {formatTokenCount(requestTokenUsage.outputTokens)}
-          </Text>
-          {typeof requestTokenUsage.reasoningTokens === 'number' && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Reasoning tokens:{' '}
-              {formatTokenCount(requestTokenUsage.reasoningTokens)}
-            </Text>
-          )}
-          {typeof requestTokenUsage.currentContext === 'number' && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Current context:{' '}
-              {formatTokenCount(requestTokenUsage.currentContext)}
-            </Text>
-          )}
-        </>
-      )}
+      {effectiveRequestTokenUsageIn &&
+        renderRequestTokenUsageSection(
+          effectiveRequestTokenUsageIn,
+          'Request Token Usage (Input):',
+        )}
+
+      {effectiveRequestTokenUsageOut &&
+        renderRequestTokenUsageSection(
+          effectiveRequestTokenUsageOut,
+          'Request Token Usage (Output):',
+        )}
     </Space>
   );
 
@@ -653,6 +669,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       value: unknown,
       toolOptions?: Record<string, JsonValue>,
       toolLabel?: string,
+      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
     ): React.ReactNode => {
       let parsed: JsonValue | null = null;
       if (typeof value === 'string') {
@@ -660,6 +678,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       } else if (isPlainObject(value)) {
         parsed = value as JsonValue;
       }
+
+      const hasRequestTokenUsage = requestTokenUsageIn || requestTokenUsageOut;
 
       const containerStyle: React.CSSProperties = { maxWidth: 520 };
       const innerStyle: React.CSSProperties = {
@@ -690,13 +710,30 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       return (
         <div style={containerStyle}>
-          {toolLabel && toolLabel.trim().length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <Text strong style={{ fontSize: 13 }}>
-                Tool: {toolLabel}
-              </Text>
+          {(toolLabel && toolLabel.trim().length > 0) || hasRequestTokenUsage ? (
+            <div
+              style={{
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}>
+              {toolLabel && toolLabel.trim().length > 0 ? (
+                <Text strong style={{ fontSize: 13 }}>
+                  Tool: {toolLabel}
+                </Text>
+              ) : (
+                <span />
+              )}
+              {hasRequestTokenUsage && (
+                <TokenUsagePopoverIcon
+                  requestTokenUsageIn={requestTokenUsageIn}
+                  requestTokenUsageOut={requestTokenUsageOut}
+                />
+              )}
             </div>
-          )}
+          ) : null}
           {toolOptions && Object.keys(toolOptions).length > 0 && (
             <div style={sectionStyle}>
               <div style={sectionTitleStyle}>Tool Options:</div>
@@ -1304,6 +1341,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       toolOptions?: Record<string, JsonValue>,
       titleText?: string,
       align: 'left' | 'center' = 'center',
+      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
     ) => {
       const isClickable = status === 'executed' && resultContent !== undefined;
       const isCalling = status === 'calling';
@@ -1370,6 +1409,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           resultContent,
           toolOptions,
           name,
+          requestTokenUsageIn,
+          requestTokenUsageOut,
         );
         baseLine = (
           <Popover
@@ -1395,6 +1436,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       tokenUsageIn?: ThreadMessageDtoTokenUsage | null,
       tokenUsageOut?: ThreadMessageDtoTokenUsage | null,
       requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
       borderColor?: string,
     ) => {
       return (
@@ -1408,7 +1450,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           metadata={metadata}
           tokenUsageIn={tokenUsageIn}
           tokenUsageOut={tokenUsageOut}
-          {...({ requestTokenUsageIn } as unknown as Record<string, unknown>)}
+          requestTokenUsageIn={requestTokenUsageIn}
+          requestTokenUsageOut={requestTokenUsageOut}
           borderColor={borderColor}
         />
       );
@@ -1472,6 +1515,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           resultContent,
           undefined,
           title,
+          'center',
+          null,
+          message.requestTokenUsage,
         );
       }
 
@@ -1868,6 +1914,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                             it.tokenUsageIn,
                             it.tokenUsageOut,
                             it.requestTokenUsageIn,
+                            it.requestTokenUsageOut,
                           )}
                         </div>
                       );
@@ -1882,6 +1929,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                           it.toolOptions,
                           it.title,
                           'left',
+                          it.requestTokenUsageIn,
+                          it.requestTokenUsageOut,
                         )}
                       </div>
                     );
@@ -2026,6 +2075,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 item.tokenUsageIn,
                 item.tokenUsageOut,
                 item.requestTokenUsageIn,
+                item.requestTokenUsageOut,
                 borderColor,
               ),
             );
@@ -2041,6 +2091,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               item.result,
               item.toolOptions,
               item.title,
+              'center',
+              item.requestTokenUsageIn,
+              item.requestTokenUsageOut,
             ),
           );
           i++;

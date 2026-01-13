@@ -168,6 +168,30 @@ export const removeStreamingReasoningMessages = (
   });
 };
 
+/**
+ * Normalize message content for comparison.
+ * Handles string, array, and nested object formats.
+ */
+const normalizeMessageContent = (raw: unknown): string | null => {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    return trimmed || null;
+  }
+  if (Array.isArray(raw) && raw.length === 1 && typeof raw[0] === 'string') {
+    const trimmed = raw[0].trim();
+    return trimmed || null;
+  }
+  if (raw && typeof raw === 'object') {
+    const record = raw as Record<string, unknown>;
+    const nested = record.content;
+    if (typeof nested === 'string') {
+      const trimmed = nested.trim();
+      return trimmed || null;
+    }
+  }
+  return null;
+};
+
 export const mergeMessagesReplacingStreaming = (
   prev: ThreadMessageDto[],
   incoming: ThreadMessageDto[],
@@ -207,8 +231,57 @@ export const mergeMessagesReplacingStreaming = (
         })
       : prev;
 
+  // Build a map of optimistic human messages by content for deduplication
+  const optimisticHumanByContent = new Map<string, ThreadMessageDto>();
+  cleanedPrev.forEach((msg) => {
+    const isOptimistic =
+      typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+    if (isOptimistic && msg.message?.role === 'human') {
+      const content = normalizeMessageContent(msg.message?.content);
+      if (content && !optimisticHumanByContent.has(content)) {
+        optimisticHumanByContent.set(content, msg);
+      }
+    }
+  });
+
   const map = new Map<string, ThreadMessageDto>();
-  cleanedPrev.forEach((msg) => map.set(msg.id, msg));
+  
+  // Add previous messages, but skip optimistic messages that will be replaced
+  cleanedPrev.forEach((msg) => {
+    const isOptimistic =
+      typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+    
+    if (isOptimistic && msg.message?.role === 'human') {
+      const content = normalizeMessageContent(msg.message?.content);
+      if (content) {
+        // Check if any incoming real message has the same content
+        const hasMatchingIncoming = incoming.some((incomingMsg) => {
+          const isIncomingOptimistic =
+            typeof incomingMsg.id === 'string' &&
+            incomingMsg.id.startsWith('optimistic-');
+          if (isIncomingOptimistic) {
+            return false; // Don't match against other optimistic messages
+          }
+          if (incomingMsg.message?.role === 'human') {
+            const incomingContent = normalizeMessageContent(
+              incomingMsg.message?.content,
+            );
+            return incomingContent === content;
+          }
+          return false;
+        });
+        
+        if (hasMatchingIncoming) {
+          // Skip this optimistic message, it will be replaced by the real one
+          return;
+        }
+      }
+    }
+    
+    map.set(msg.id, msg);
+  });
+  
+  // Add incoming messages
   incoming.forEach((msg) => map.set(msg.id, msg));
 
   return sortMessagesChronologically(Array.from(map.values()));

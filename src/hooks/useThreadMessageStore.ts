@@ -64,6 +64,7 @@ export const useThreadMessageStore = () => {
          */
         const optimisticByContent = new Map<string, ThreadMessageDto>();
         const realMessagesToAdd: ThreadMessageDto[] = [];
+        const realMessageContents = new Set<string>();
 
         // First pass: collect all optimistic human messages by content
         updatedMessages.forEach((msg) => {
@@ -72,7 +73,10 @@ export const useThreadMessageStore = () => {
           if (isOptimistic && msg.message?.role === 'human') {
             const content = normalizeContent(msg.message?.content);
             if (content) {
-              optimisticByContent.set(content, msg);
+              // Only keep the first optimistic message with this content
+              if (!optimisticByContent.has(content)) {
+                optimisticByContent.set(content, msg);
+              }
             }
           }
         });
@@ -90,16 +94,29 @@ export const useThreadMessageStore = () => {
           // For real human messages, check if we need to replace an optimistic one
           if (msg.message?.role === 'human') {
             const content = normalizeContent(msg.message?.content);
-            if (content && optimisticByContent.has(content)) {
-              const optimisticMsg = optimisticByContent.get(content)!;
-              // Use optimistic timestamp to preserve position
-              realMessagesToAdd.push({
-                ...msg,
-                createdAt: optimisticMsg.createdAt,
-              });
-              // Mark this optimistic message for removal
-              optimisticByContent.delete(content);
-              return false; // Don't add the real message yet
+            if (content) {
+              // Check if we've already seen this real message content
+              if (realMessageContents.has(content)) {
+                // Skip duplicate real messages
+                return false;
+              }
+              
+              if (optimisticByContent.has(content)) {
+                const optimisticMsg = optimisticByContent.get(content)!;
+                // Use optimistic timestamp to preserve position
+                realMessagesToAdd.push({
+                  ...msg,
+                  createdAt: optimisticMsg.createdAt,
+                  updatedAt: msg.updatedAt || optimisticMsg.updatedAt,
+                });
+                // Mark this optimistic message for removal
+                optimisticByContent.delete(content);
+                realMessageContents.add(content);
+                return false; // Don't add the real message yet
+              }
+              
+              // Track this real message content
+              realMessageContents.add(content);
             }
           }
 
@@ -131,11 +148,40 @@ export const useThreadMessageStore = () => {
           return timeA - timeB;
         });
 
+        // Final safety check: deduplicate by ID to catch any edge cases
+        const seenIds = new Set<string>();
+        const deduplicated = merged.filter((msg) => {
+          if (seenIds.has(msg.id)) {
+            return false;
+          }
+          seenIds.add(msg.id);
+          return true;
+        });
+
+        // Additional safety check: deduplicate human messages by content
+        // This catches cases where the same message appears with different IDs
+        const seenHumanContent = new Set<string>();
+        const finalDeduplicated = deduplicated.filter((msg) => {
+          if (msg.message?.role === 'human') {
+            const content = normalizeContent(msg.message?.content);
+            if (content) {
+              if (seenHumanContent.has(content)) {
+                // Prefer real messages over optimistic ones
+                const isOptimistic =
+                  typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+                return !isOptimistic;
+              }
+              seenHumanContent.add(content);
+            }
+          }
+          return true;
+        });
+
         return {
           ...prev,
           [threadId]: {
             ...threadMessages,
-            [key]: merged,
+            [key]: finalDeduplicated,
           },
         };
       });
