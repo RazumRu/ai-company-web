@@ -39,6 +39,7 @@ export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
   const { mutate: logout } = useLogout();
   const [profileHover, setProfileHover] = useState(false);
   const location = useLocation();
+  const { pathname, search } = location;
   const navigate = useNavigate();
 
   const pageTitle = useMemo(
@@ -78,8 +79,6 @@ export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
   }
 
   const hardcodedBackTarget = useMemo((): string | undefined => {
-    const { pathname, search } = location;
-
     if (pathname === '/graphs') return '/';
     if (pathname.startsWith('/graphs/')) return '/graphs';
 
@@ -90,7 +89,7 @@ export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
     }
 
     return undefined;
-  }, [location.pathname, location.search]);
+  }, [pathname, search]);
 
   return (
     <AntdLayout.Header style={headerStyles}>

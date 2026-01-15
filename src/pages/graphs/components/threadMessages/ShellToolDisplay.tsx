@@ -518,17 +518,6 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     </div>
   );
 
-  const formatUsd = (amount?: number | null): string => {
-    if (typeof amount !== 'number' || !Number.isFinite(amount)) return '$—';
-    if (amount === 0 || (amount > 0 && amount < 0.01)) return '<$0.01';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
   const formatCompactNumber = (value?: number | null): string => {
     if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
     return new Intl.NumberFormat('en-US', {
@@ -536,20 +525,6 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
       compactDisplay: 'short',
       maximumFractionDigits: 0,
     }).format(value);
-  };
-
-  const formatRequestTokenCount = (value?: number | null): string => {
-    if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-    return value < 10000 ? formatTokenCount(value) : formatCompactNumber(value);
-  };
-
-  const formatTokenUsage = (
-    usage?: ThreadMessageDtoTokenUsage | null,
-  ): string => {
-    if (!usage) return '—';
-    const tokens = formatCompactNumber(usage.totalTokens);
-    const cost = formatUsd(usage.totalPrice);
-    return `${tokens} (${cost})`;
   };
 
   const formatRequestTokenUsage = (

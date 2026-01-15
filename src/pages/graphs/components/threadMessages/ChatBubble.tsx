@@ -57,7 +57,6 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     maxWidth: '100%',
     overflowX: 'auto',
     position: 'relative',
-    width: '100%',
   };
 
   const mergedBubbleStyle = {
