@@ -121,24 +121,17 @@ const formatRequestUsdShort = (amount?: number | null): string => {
 };
 
 const TokenUsagePopoverIcon: React.FC<{
-  tokenUsage?: ThreadMessageDtoTokenUsage | null;
   requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null;
   requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
   requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
-}> = ({ tokenUsage, requestTokenUsage, requestTokenUsageIn, requestTokenUsageOut }) => {
+}> = ({ requestTokenUsage, requestTokenUsageIn, requestTokenUsageOut }) => {
   // Use the new props if available, fallback to old prop for backwards compatibility
   const effectiveRequestTokenUsageIn = requestTokenUsageIn || requestTokenUsage;
   const effectiveRequestTokenUsageOut = requestTokenUsageOut;
 
-  if (!tokenUsage && !effectiveRequestTokenUsageIn && !effectiveRequestTokenUsageOut) {
+  if (!effectiveRequestTokenUsageIn && !effectiveRequestTokenUsageOut) {
     return null;
   }
-
-  const tokenSummary = tokenUsage
-    ? `Token usage: ${formatCompactNumber(tokenUsage.totalTokens)} (${formatUsd(
-        tokenUsage.totalPrice,
-      )})`
-    : null;
 
   const renderRequestTokenUsageSection = (
     usage: ThreadMessageDtoRequestTokenUsage,
@@ -178,12 +171,6 @@ const TokenUsagePopoverIcon: React.FC<{
 
   const popoverContent = (
     <Space direction="vertical" size={4} style={{ maxWidth: 340 }}>
-      {tokenSummary && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {tokenSummary}
-        </Text>
-      )}
-
       {effectiveRequestTokenUsageIn &&
         renderRequestTokenUsageSection(
           effectiveRequestTokenUsageIn,
@@ -219,16 +206,12 @@ const TokenUsagePopoverIcon: React.FC<{
 
 const renderFooterLineWithUsage = (
   text: string,
-  tokenUsage?: ThreadMessageDtoTokenUsage | null,
   requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null,
 ): React.ReactNode => {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span>{text}</span>
-      <TokenUsagePopoverIcon
-        tokenUsage={tokenUsage}
-        requestTokenUsage={requestTokenUsage}
-      />
+      <TokenUsagePopoverIcon requestTokenUsage={requestTokenUsage} />
     </span>
   );
 };
@@ -710,7 +693,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       return (
         <div style={containerStyle}>
-          {(toolLabel && toolLabel.trim().length > 0) || hasRequestTokenUsage ? (
+          {(toolLabel && toolLabel.trim().length > 0) ||
+          hasRequestTokenUsage ? (
             <div
               style={{
                 marginBottom: 12,
@@ -803,9 +787,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           toolKind?: 'generic' | 'shell';
           shellCommand?: string;
           toolOptions?: Record<string, JsonValue>;
-          tokenUsage?: ThreadMessageDtoTokenUsage | null;
-          tokenUsageIn?: ThreadMessageDtoTokenUsage | null;
-          tokenUsageOut?: ThreadMessageDtoTokenUsage | null;
           requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null;
           requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
           requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
@@ -1080,12 +1061,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               const matchedIsInterAgent = matched
                 ? isInterAgentCommunication(matched)
                 : false;
-              const toolIsInterAgent = isInterAgent || matchedIsInterAgent;
+              // Only show colored border if the INPUT (AI) message has __interAgentCommunication, not the tool result
+              const toolIsInterAgent = isInterAgent;
               const matchedSourceAgentNodeId = matched
                 ? getSourceAgentNodeId(matched)
                 : undefined;
-              const toolSourceAgentNodeId =
-                sourceAgentNodeId || matchedSourceAgentNodeId;
+              const toolSourceAgentNodeId = sourceAgentNodeId;
 
               prepared.push({
                 type: 'tool',
@@ -1100,9 +1081,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 toolKind: isShell ? 'shell' : 'generic',
                 shellCommand,
                 toolOptions: toolOptions || undefined,
-                tokenUsage: matched?.tokenUsage ?? m.tokenUsage,
-                tokenUsageIn: m.tokenUsage,
-                tokenUsageOut: matched?.tokenUsage,
                 requestTokenUsage: m.requestTokenUsage,
                 requestTokenUsageIn: m.requestTokenUsage,
                 requestTokenUsageOut: matched?.requestTokenUsage,
@@ -1161,8 +1139,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               toolKind: isShell ? 'shell' : 'generic',
               shellCommand,
               toolOptions,
-              tokenUsage: m.tokenUsage,
-              tokenUsageOut: m.tokenUsage,
               requestTokenUsage: m.requestTokenUsage,
               requestTokenUsageOut: m.requestTokenUsage,
               nodeId: m.nodeId,
@@ -1206,7 +1182,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const preparedMessages = useMemo(() => {
       return prepareReadyMessages(messages);
     }, [messages, prepareReadyMessages]);
-    const isThinkingVisible = isNodeRunning && isAgentNode;
+    const isThinkingVisible = isNodeRunning && isAgentNode && !isThreadStopped;
 
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
@@ -1230,7 +1206,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       };
 
       return (
-        <div style={{ width: '100%' }}>
+        <div style={{ width: '90%' }}>
           <div style={textContainerStyle}>
             <MarkdownContent content={fullText} allowHorizontalScroll={true} />
           </div>
@@ -1241,7 +1217,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const renderFinishTool = (
       status: ToolRenderStatus,
       resultContent?: unknown,
-      tokenUsage?: ThreadMessageDtoTokenUsage | null,
       requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
       borderColor?: string,
@@ -1309,7 +1284,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   metadata?.roleLabel,
                   metadata?.nodeId,
                 ) ?? '',
-                tokenUsage,
                 requestTokenUsage,
               )}
             </Text>
@@ -1433,8 +1407,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       toolOptions?: Record<string, JsonValue>,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
       titleText?: string,
-      tokenUsageIn?: ThreadMessageDtoTokenUsage | null,
-      tokenUsageOut?: ThreadMessageDtoTokenUsage | null,
       requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
       requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
       borderColor?: string,
@@ -1448,8 +1420,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           toolOptions={toolOptions}
           title={titleText}
           metadata={metadata}
-          tokenUsageIn={tokenUsageIn}
-          tokenUsageOut={tokenUsageOut}
           requestTokenUsageIn={requestTokenUsageIn}
           requestTokenUsageOut={requestTokenUsageOut}
           borderColor={borderColor}
@@ -1583,6 +1553,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               padding: '12px 16px',
               ...bubbleBorderStyle,
             }}
+            copyContent={content}
             footer={
               dateOnlyText ? (
                 <Text
@@ -1594,7 +1565,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   }}>
                   {renderFooterLineWithUsage(
                     dateOnlyText,
-                    message.tokenUsage,
                     message.requestTokenUsage,
                   )}
                 </Text>
@@ -1642,6 +1612,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           avatarSrc={avatarSrc}
           avatarTooltip={avatarTooltip}
           bubbleStyle={bubbleBorderStyle}
+          copyContent={content}
           footer={
             metadataText ? (
               <Text
@@ -1653,7 +1624,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 }}>
                 {renderFooterLineWithUsage(
                   metadataText,
-                  message.tokenUsage,
                   message.requestTokenUsage,
                 )}
               </Text>
@@ -1694,6 +1664,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           avatarTooltip={pendingAvatarTooltip}
           containerStyle={{ opacity: 0.6 }}
           bubbleStyle={{ border: '2px dashed #d9d9d9' }}
+          copyContent={content}
           footer={
             <Text
               type="secondary"
@@ -1857,6 +1828,19 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           bubbleStyle.borderLeft = `3px solid ${borderColor}`;
         }
 
+        const workingContent = items
+          .map((it) => {
+            if (it.type === 'reasoning') {
+              return formatMessageContent(it.message.message?.content) || '';
+            }
+            if (it.type === 'tool') {
+              return `Tool: ${it.name}${it.shellCommand ? ` - ${it.shellCommand}` : ''}`;
+            }
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n\n');
+
         return (
           <ChatBubble
             isHuman={false}
@@ -1864,9 +1848,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             avatarColor="#8c8c8c"
             avatarSrc={avatarSrc}
             avatarTooltip={workingAgentName}
-            containerStyle={{ marginBottom: '8px' }}
+            containerStyle={{ marginBottom: '8px', width: '100%' }}
             bubbleStyle={bubbleStyle}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                width: '100%',
+              }}>
               <Text
                 type="secondary"
                 style={{
@@ -1874,6 +1864,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   fontWeight: 600,
                   color: '#8c8c8c',
                   textAlign: 'left',
+                  width: '100%',
                 }}>
                 Working...
               </Text>
@@ -1911,8 +1902,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                               roleLabel: it.roleLabel ?? it.name,
                             },
                             it.title,
-                            it.tokenUsageIn,
-                            it.tokenUsageOut,
                             it.requestTokenUsageIn,
                             it.requestTokenUsageOut,
                           )}
@@ -2043,7 +2032,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               renderFinishTool(
                 item.status,
                 item.result,
-                item.tokenUsage,
                 item.requestTokenUsage,
                 {
                   nodeId: item.nodeId,
@@ -2072,8 +2060,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   roleLabel: item.roleLabel ?? item.name,
                 },
                 item.title,
-                item.tokenUsageIn,
-                item.tokenUsageOut,
                 item.requestTokenUsageIn,
                 item.requestTokenUsageOut,
                 borderColor,
@@ -2245,6 +2231,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       prevProps.hasMoreMessages === nextProps.hasMoreMessages &&
       prevProps.loadingMore === nextProps.loadingMore &&
       prevProps.isNodeRunning === nextProps.isNodeRunning &&
+      prevProps.isThreadStopped === nextProps.isThreadStopped &&
+      prevProps.currentThreadLastRunId === nextProps.currentThreadLastRunId &&
       pendingMessagesEqual &&
       prevProps.newMessageMode === nextProps.newMessageMode &&
       prevProps.onLoadMoreMessages === nextProps.onLoadMoreMessages

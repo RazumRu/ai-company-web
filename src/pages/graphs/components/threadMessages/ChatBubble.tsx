@@ -1,4 +1,5 @@
-import { Avatar, Tooltip } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
+import { Avatar, message, Tooltip } from 'antd';
 import React from 'react';
 
 interface ChatBubbleProps {
@@ -11,6 +12,7 @@ interface ChatBubbleProps {
   footer?: React.ReactNode;
   bubbleStyle?: React.CSSProperties;
   containerStyle?: React.CSSProperties;
+  copyContent?: string;
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({
@@ -23,7 +25,19 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   footer,
   bubbleStyle,
   containerStyle,
+  copyContent,
 }) => {
+  const handleCopy = async () => {
+    if (!copyContent) return;
+
+    try {
+      await navigator.clipboard.writeText(copyContent);
+      message.success('Message copied to clipboard');
+    } catch (error) {
+      message.error('Failed to copy message');
+    }
+  };
+
   const baseContainer: React.CSSProperties = {
     display: 'flex',
     justifyContent: isHuman ? 'flex-end' : 'flex-start',
@@ -37,14 +51,20 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const baseBubbleStyle: React.CSSProperties = {
     backgroundColor: isHuman ? '#f0f8ff' : '#f3f3f3',
     borderRadius: '5px',
-    padding: '8px 12px',
+    padding: '8px 24px 8px 12px',
     wordBreak: 'break-word',
     minWidth: '100px',
     maxWidth: '100%',
     overflowX: 'auto',
+    position: 'relative',
+    width: '100%',
   };
 
-  const mergedBubbleStyle = { ...baseBubbleStyle, ...bubbleStyle };
+  const mergedBubbleStyle = {
+    ...baseBubbleStyle,
+    ...(copyContent ? null : { padding: '8px 12px' }),
+    ...bubbleStyle,
+  };
 
   const ContentWrapper = (
     <div
@@ -55,7 +75,26 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         flexDirection: 'column',
         alignItems: isHuman ? 'flex-end' : 'flex-start',
       }}>
-      <div style={mergedBubbleStyle}>{children}</div>
+      <div style={mergedBubbleStyle}>
+        {children}
+        {copyContent && (
+          <Tooltip title="Copy message">
+            <CopyOutlined
+              onClick={handleCopy}
+              style={{
+                position: 'absolute',
+                bottom: '5px',
+                right: '5px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                color: '#bfbfbf',
+                padding: '2px',
+                borderRadius: '4px',
+              }}
+            />
+          </Tooltip>
+        )}
+      </div>
       {footer}
     </div>
   );

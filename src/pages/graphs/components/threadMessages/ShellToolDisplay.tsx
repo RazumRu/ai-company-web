@@ -25,14 +25,6 @@ export interface ShellToolDisplayProps {
   title?: string;
   metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string };
   /**
-   * Token usage for the shell request (tool call message).
-   */
-  tokenUsageIn?: ThreadMessageDtoTokenUsage | null;
-  /**
-   * Token usage for the shell response (tool result message).
-   */
-  tokenUsageOut?: ThreadMessageDtoTokenUsage | null;
-  /**
    * Request token usage for the shell tool call input (AI message).
    */
   requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
@@ -322,8 +314,6 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   shellCommand,
   toolOptions,
   title,
-  tokenUsageIn,
-  tokenUsageOut,
   requestTokenUsageIn,
   requestTokenUsageOut,
   borderColor,
@@ -571,18 +561,13 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     return `${tokens} (${cost})`;
   };
 
-  const hasTokenIn =
-    tokenUsageIn && typeof tokenUsageIn.totalTokens === 'number';
-  const hasTokenOut =
-    tokenUsageOut && typeof tokenUsageOut.totalTokens === 'number';
   const hasRequestTokens =
     (requestTokenUsageIn &&
       typeof requestTokenUsageIn.totalTokens === 'number') ||
-    (requestTokenUsageOut && typeof requestTokenUsageOut.totalTokens === 'number');
+    (requestTokenUsageOut &&
+      typeof requestTokenUsageOut.totalTokens === 'number');
 
-  const shouldShowTokens = Boolean(
-    hasTokenIn || hasTokenOut || hasRequestTokens,
-  );
+  const shouldShowTokens = Boolean(hasRequestTokens);
 
   const toolHeaderSuffix = hasToolError ? toolErrorText : undefined;
   const toolHeaderTitle = toolHeaderSuffix
@@ -882,17 +867,11 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
               flexWrap: 'wrap',
               alignItems: 'center',
             }}>
-            <span>IN: {formatTokenUsage(tokenUsageIn)}</span>
-            <span>OUT: {formatTokenUsage(tokenUsageOut)}</span>
-            {hasRequestTokens && (
-              <span>REQ: {formatRequestTokenUsage(requestTokenUsageIn)}</span>
-            )}
-            {hasRequestTokens && (
-              <TokenUsagePopoverIcon
-                requestTokenUsageIn={requestTokenUsageIn}
-                requestTokenUsageOut={requestTokenUsageOut}
-              />
-            )}
+            <span>REQ: {formatRequestTokenUsage(requestTokenUsageIn)}</span>
+            <TokenUsagePopoverIcon
+              requestTokenUsageIn={requestTokenUsageIn}
+              requestTokenUsageOut={requestTokenUsageOut}
+            />
           </div>
         )}
       </div>

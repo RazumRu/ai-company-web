@@ -181,6 +181,10 @@ export const getDefaultEmptyValue = (typeName: string): unknown => {
  * Flattens allOf structures in a JSON Schema.
  * This helps RJSF better understand schemas where properties like enum are nested in allOf.
  * After $RefParser.dereference, we still need to flatten allOf arrays into a single schema.
+ *
+ * Also handles anyOf schemas when a specific UI hint (like x-ui:textarea) is present.
+ * In such cases, we pick the most appropriate type from anyOf to avoid RJSF rendering
+ * multiple fields.
  */
 export const flattenAllOfInSchema = (
   schema: Record<string, unknown>,
@@ -206,9 +210,9 @@ export const flattenAllOfInSchema = (
         Object.assign(merged, subSchema);
       }
 
-      flattenedProperties[key] = merged;
+      flattenedProperties[key] = simplifyAnyOf(merged);
     } else {
-      flattenedProperties[key] = prop;
+      flattenedProperties[key] = simplifyAnyOf(prop);
     }
   }
 
@@ -216,4 +220,60 @@ export const flattenAllOfInSchema = (
     ...schema,
     properties: flattenedProperties,
   };
+};
+
+/**
+ * Simplifies anyOf schemas when UI hints indicate a specific rendering intent.
+ * For example, if x-ui:textarea is true and anyOf contains a string type,
+ * we prefer the string type to avoid duplicate field rendering in RJSF.
+ */
+const simplifyAnyOf = (
+  prop: Record<string, unknown>,
+): Record<string, unknown> => {
+  const anyOf = prop.anyOf as Record<string, unknown>[] | undefined;
+
+  if (!anyOf || !Array.isArray(anyOf) || anyOf.length === 0) {
+    return prop;
+  }
+
+  // If a UI widget is explicitly specified (textarea, select, etc.),
+  // we should pick the most appropriate type from anyOf to avoid RJSF
+  // rendering both a type selector and the actual field
+  const hasUiHint =
+    prop['x-ui:textarea'] === true ||
+    prop['x-ui:litellm-models-list-select'] === true ||
+    prop['x-ui:ai-suggestions'] === true;
+
+  if (!hasUiHint) {
+    return prop;
+  }
+
+  // Try to find a string type in anyOf (most common for UI fields)
+  const stringSchema = anyOf.find(
+    (schema) => (schema as { type?: unknown }).type === 'string',
+  );
+
+  if (stringSchema) {
+    // Merge the string schema with the parent, removing anyOf
+    const result: Record<string, unknown> = { ...prop };
+    delete result.anyOf;
+    Object.assign(result, stringSchema);
+    return result;
+  }
+
+  // If no string type found, try to find an array type
+  const arraySchema = anyOf.find(
+    (schema) => (schema as { type?: unknown }).type === 'array',
+  );
+
+  if (arraySchema) {
+    // Merge the array schema with the parent, removing anyOf
+    const result: Record<string, unknown> = { ...prop };
+    delete result.anyOf;
+    Object.assign(result, arraySchema);
+    return result;
+  }
+
+  // Fallback: keep anyOf if we can't determine a better option
+  return prop;
 };

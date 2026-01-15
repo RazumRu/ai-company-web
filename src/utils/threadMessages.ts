@@ -245,12 +245,12 @@ export const mergeMessagesReplacingStreaming = (
   });
 
   const map = new Map<string, ThreadMessageDto>();
-  
+
   // Add previous messages, but skip optimistic messages that will be replaced
   cleanedPrev.forEach((msg) => {
     const isOptimistic =
       typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
-    
+
     if (isOptimistic && msg.message?.role === 'human') {
       const content = normalizeMessageContent(msg.message?.content);
       if (content) {
@@ -270,17 +270,17 @@ export const mergeMessagesReplacingStreaming = (
           }
           return false;
         });
-        
+
         if (hasMatchingIncoming) {
           // Skip this optimistic message, it will be replaced by the real one
           return;
         }
       }
     }
-    
+
     map.set(msg.id, msg);
   });
-  
+
   // Add incoming messages
   incoming.forEach((msg) => map.set(msg.id, msg));
 

@@ -100,7 +100,7 @@ export const useThreadMessageStore = () => {
                 // Skip duplicate real messages
                 return false;
               }
-              
+
               if (optimisticByContent.has(content)) {
                 const optimisticMsg = optimisticByContent.get(content)!;
                 // Use optimistic timestamp to preserve position
@@ -114,7 +114,7 @@ export const useThreadMessageStore = () => {
                 realMessageContents.add(content);
                 return false; // Don't add the real message yet
               }
-              
+
               // Track this real message content
               realMessageContents.add(content);
             }
@@ -168,7 +168,8 @@ export const useThreadMessageStore = () => {
               if (seenHumanContent.has(content)) {
                 // Prefer real messages over optimistic ones
                 const isOptimistic =
-                  typeof msg.id === 'string' && msg.id.startsWith('optimistic-');
+                  typeof msg.id === 'string' &&
+                  msg.id.startsWith('optimistic-');
                 return !isOptimistic;
               }
               seenHumanContent.add(content);
