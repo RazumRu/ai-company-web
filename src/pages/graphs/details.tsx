@@ -1498,8 +1498,6 @@ export const GraphPage = () => {
       const backupPayload = {
         exportedAt: new Date().toISOString(),
         graph,
-        nodes: draftState.draftState.nodes,
-        edges: draftState.draftState.edges,
         viewport: draftState.draftState.viewport,
       };
 

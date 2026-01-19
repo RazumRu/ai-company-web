@@ -1179,7 +1179,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       };
 
       return (
-        <div style={{ width: '90%' }}>
+        <div style={{ width: '90%', margin: '0 auto' }}>
           <div style={textContainerStyle}>
             <MarkdownContent content={fullText} allowHorizontalScroll={true} />
           </div>
