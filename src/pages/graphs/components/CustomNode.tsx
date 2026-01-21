@@ -107,7 +107,7 @@ export const CustomNode = React.memo(
 
     const validationErrors = useMemo(
       () =>
-        templates.length > 0 && allNodes.length > 0 && allEdges.length > 0
+        templates.length > 0 && allNodes.length > 0
           ? GraphValidationService.getNodeValidationErrors(
               nodeId,
               allNodes,
@@ -117,9 +117,6 @@ export const CustomNode = React.memo(
           : [],
       [allEdges, allNodes, nodeId, templates],
     );
-    const hasValidationErrors = validationErrors.length > 0;
-    const hasConfigErrors = validationErrors.some((e) => e.type === 'config');
-
     const inputRules = useMemo(
       () =>
         templates.length > 0 && nodeId
@@ -135,6 +132,39 @@ export const CustomNode = React.memo(
           : [],
       [nodeData, nodeId, templates],
     );
+
+    const hasValidationErrors = validationErrors.length > 0;
+    const hasConfigErrors = validationErrors.some((e) => e.type === 'config');
+    const hasRequiredErrors = validationErrors.some((e) => e.type === 'required');
+    const hasMissingRequiredInputs = inputRules.some(
+      (rule) =>
+        rule.required &&
+        !allEdges.some(
+          (e) =>
+            e.target === nodeId &&
+            e.targetHandle === makeHandleId('target', rule),
+        ),
+    );
+    const hasMissingRequiredOutputs = Boolean(
+      nodeTemplate?.outputs?.some((output) => {
+        if (!output.required) {
+          return false;
+        }
+        const rule = {
+          type: output.type as 'kind' | 'template',
+          value: String(output.value),
+        };
+        return !allEdges.some(
+          (e) =>
+            e.source === nodeId &&
+            e.sourceHandle === makeHandleId('source', rule),
+        );
+      }),
+    );
+    const hasMissingRequiredConnections =
+      hasMissingRequiredInputs || hasMissingRequiredOutputs;
+    const hasNodeErrors =
+      hasConfigErrors || hasRequiredErrors || hasMissingRequiredConnections;
 
     const contentRef = useRef<HTMLDivElement | null>(null);
 
@@ -240,7 +270,7 @@ export const CustomNode = React.memo(
       const isBlocked = highlight === 'blocked';
 
       const background = isBlocked
-        ? '#ff4d4f'
+        ? '#bfbfbf'
         : isAllowed
           ? '#52c41a'
           : missing
@@ -248,7 +278,7 @@ export const CustomNode = React.memo(
             : base.bg;
 
       const boxShadow = isBlocked
-        ? '0 0 0 1px rgba(255,77,79,0.5)'
+        ? '0 0 0 1px rgba(191,191,191,0.8)'
         : isAllowed
           ? '0 0 0 1px rgba(82,196,26,0.6)'
           : base.sh;
@@ -345,6 +375,7 @@ export const CustomNode = React.memo(
             : selected
               ? '0 4px 12px rgba(24, 144, 255, 0.3)'
               : '0 2px 8px rgba(0, 0, 0, 0.1)',
+          background: hasNodeErrors ? '#fff1f0' : '#ffffff',
         }}
         styles={{
           body: {
@@ -354,7 +385,7 @@ export const CustomNode = React.memo(
         }}>
         <div
           style={{
-            background: hasConfigErrors ? '#fff1f0' : '#F3F6FF',
+            background: hasNodeErrors ? '#fff1f0' : '#F3F6FF',
             padding: 12,
             borderBottom: '1px solid #dfdfdf',
             borderRadius: '8px 8px 0 0',

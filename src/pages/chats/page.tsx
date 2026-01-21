@@ -371,6 +371,17 @@ const isResolvedThreadStatus = (status?: ThreadDto['status']): boolean => {
   return status === ThreadDtoStatusEnum.Done;
 };
 
+const GRAPH_STATUS_META: Record<
+  GraphDtoStatusEnum,
+  { label: string; color: string }
+> = {
+  [GraphDtoStatusEnum.Running]: { label: 'Running', color: '#52c41a' },
+  [GraphDtoStatusEnum.Compiling]: { label: 'Compiled', color: '#1677ff' },
+  [GraphDtoStatusEnum.Created]: { label: 'Created', color: '#1677ff' },
+  [GraphDtoStatusEnum.Stopped]: { label: 'Stopped', color: '#bfbfbf' },
+  [GraphDtoStatusEnum.Error]: { label: 'Error', color: '#ff4d4f' },
+};
+
 const isValidationExceptionsError = (error: unknown): boolean => {
   if (!isAxiosError(error)) return false;
 
@@ -468,6 +479,11 @@ export const ChatsPage = () => {
   const [analysisConversationId, setAnalysisConversationId] = useState<
     string | null
   >(null);
+
+  const [graphPickerOpen, setGraphPickerOpen] = useState(false);
+  const [graphPickerLoading, setGraphPickerLoading] = useState(false);
+  const [graphPickerGraphs, setGraphPickerGraphs] = useState<GraphDto[]>([]);
+  const [graphPickerError, setGraphPickerError] = useState<string | null>(null);
 
   const [usageStatsModalOpen, setUsageStatsModalOpen] = useState(false);
   const [usageStatsModalThreadId, setUsageStatsModalThreadId] = useState<
@@ -1088,6 +1104,38 @@ export const ChatsPage = () => {
       subscribedGraphs.clear();
     };
   }, [unsubscribeFromGraph]);
+
+  useEffect(() => {
+    if (!graphPickerOpen) return;
+    let mounted = true;
+    const loadGraphs = async () => {
+      try {
+        setGraphPickerLoading(true);
+        setGraphPickerError(null);
+        const response = await graphsApi.getAllGraphs();
+        if (!mounted) return;
+        setGraphPickerGraphs(response.data || []);
+      } catch (error) {
+        if (!mounted) return;
+        console.error('Error loading graphs for picker', error);
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load graphs',
+        );
+        setGraphPickerError(errorMessage);
+        antdMessage.error(errorMessage);
+      } finally {
+        if (mounted) {
+          setGraphPickerLoading(false);
+        }
+      }
+    };
+
+    void loadGraphs();
+    return () => {
+      mounted = false;
+    };
+  }, [graphPickerOpen]);
 
   const ensureGraphsLoaded = useCallback(
     async (threadsToCheck: (ThreadDto | DraftThread)[]) => {
@@ -2176,44 +2224,69 @@ export const ChatsPage = () => {
     [selectedThreadId],
   );
 
-  const handleCreateDraftThread = useCallback(() => {
-    const scrollThreadsToTop = () => {
-      const el = threadsContainerRef.current;
-      if (!el) return;
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+  const createDraftThreadForGraph = useCallback(
+    (draftGraphId: string) => {
+      const scrollThreadsToTop = () => {
+        const el = threadsContainerRef.current;
+        if (!el) return;
+        el.scrollTo({ top: 0, behavior: 'smooth' });
+      };
 
-    if (draftThread) {
-      // If draft already exists, just focus it
-      setSelectedThreadId(draftThread.id);
+      if (draftThread && draftThread.graphId === draftGraphId) {
+        // If draft already exists for this graph, just focus it
+        setSelectedThreadId(draftThread.id);
+        requestAnimationFrame(scrollThreadsToTop);
+        return;
+      }
+
+      // Create new draft thread
+      const now = new Date().toISOString();
+      const newDraft: DraftThread = {
+        id: `draft-${Date.now()}`,
+        graphId: draftGraphId,
+        name: 'New Chat',
+        status: 'draft',
+        createdAt: now,
+        updatedAt: now,
+        externalThreadId: '',
+        isDraft: true,
+      };
+
+      setDraftThread(newDraft);
+      setSelectedThreadId(newDraft.id);
       requestAnimationFrame(scrollThreadsToTop);
+    },
+    [draftThread],
+  );
+
+  const handleCreateDraftThread = useCallback(() => {
+    if (!graphFilterId) {
+      setGraphPickerOpen(true);
       return;
     }
+    createDraftThreadForGraph(graphFilterId);
+  }, [createDraftThreadForGraph, graphFilterId]);
 
-    // Determine graphId for draft
-    const draftGraphId = graphFilterId || threads[0]?.graphId;
-    if (!draftGraphId) {
-      antdMessage.warning('Please select a graph first or filter by graph');
-      return;
-    }
-
-    // Create new draft thread
-    const now = new Date().toISOString();
-    const newDraft: DraftThread = {
-      id: `draft-${Date.now()}`,
-      graphId: draftGraphId,
-      name: 'New Chat',
-      status: 'draft',
-      createdAt: now,
-      updatedAt: now,
-      externalThreadId: '',
-      isDraft: true,
-    };
-
-    setDraftThread(newDraft);
-    setSelectedThreadId(newDraft.id);
-    requestAnimationFrame(scrollThreadsToTop);
-  }, [draftThread, graphFilterId, threads]);
+  const handleGraphPickerSelect = useCallback(
+    (graphId: string) => {
+      const selectedGraph = graphPickerGraphs.find(
+        (graph) => graph.id === graphId,
+      );
+      if (selectedGraph) {
+        setGraphCache((prev) => ({
+          ...prev,
+          [graphId]: {
+            graph: selectedGraph,
+            triggerNodes: buildTriggerNodes(selectedGraph, templatesById),
+            nodeDisplayNames: buildNodeDisplayNames(selectedGraph),
+          },
+        }));
+      }
+      setGraphPickerOpen(false);
+      createDraftThreadForGraph(graphId);
+    },
+    [createDraftThreadForGraph, graphPickerGraphs, templatesById],
+  );
 
   const handleDraftMessageSent = useCallback(
     (newThreadId: string) => {
@@ -2565,6 +2638,93 @@ export const ChatsPage = () => {
     return graphFilterId ? 'No threads found for this graph' : 'No threads yet';
   }, [graphFilterId, threadStatusTab]);
 
+  const graphPickerContent = useMemo(() => {
+    if (graphPickerLoading) {
+      return (
+        <div style={{ padding: 12, textAlign: 'center' }}>
+          <Spin size="small" />
+        </div>
+      );
+    }
+    if (graphPickerError) {
+      return (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {graphPickerError}
+        </Text>
+      );
+    }
+    if (graphPickerGraphs.length === 0) {
+      return (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          No graphs available
+        </Text>
+      );
+    }
+    return (
+      <div
+        style={{
+          maxHeight: 300,
+          overflowY: 'auto',
+          minWidth: 260,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}>
+        {graphPickerGraphs.map((graph) => (
+          <Button
+            key={graph.id}
+            type="text"
+            style={{
+              textAlign: 'left',
+              padding: '8px 12px',
+              height: 'auto',
+              lineHeight: 1.2,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              border: '1px solid #f0f0f0',
+              borderRadius: 6,
+              width: '100%',
+            }}
+            onClick={() => handleGraphPickerSelect(graph.id)}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                width: '100%',
+              }}>
+              <Text strong style={{ fontSize: 12, lineHeight: 1.2 }}>
+                {graph.name && graph.name.trim().length > 0
+                  ? graph.name
+                  : `Graph ${graph.id.slice(-6)}`}
+              </Text>
+              <Tag
+                color={GRAPH_STATUS_META[graph.status]?.color ?? '#d9d9d9'}
+                style={{
+                  margin: 0,
+                  borderRadius: 999,
+                  fontSize: 9,
+                  lineHeight: '16px',
+                  padding: '0 6px',
+                }}>
+                {GRAPH_STATUS_META[graph.status]?.label ?? graph.status}
+              </Tag>
+            </div>
+            <Text type="secondary" style={{ fontSize: 10, margin: 0 }}>
+              v{graph.version}
+            </Text>
+          </Button>
+        ))}
+      </div>
+    );
+  }, [
+    graphPickerError,
+    graphPickerGraphs,
+    graphPickerLoading,
+    handleGraphPickerSelect,
+  ]);
+
   return (
     <div
       style={{
@@ -2618,15 +2778,33 @@ export const ChatsPage = () => {
                 </Title>
               </div>
               <Space>
-                <Button
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={handleCreateDraftThread}
-                  style={{
-                    border: 'none',
-                    boxShadow: 'none',
-                  }}
-                />
+                {graphFilterId ? (
+                  <Button
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={handleCreateDraftThread}
+                    style={{
+                      border: 'none',
+                      boxShadow: 'none',
+                    }}
+                  />
+                ) : (
+                  <Popover
+                    open={graphPickerOpen}
+                    placement="bottomRight"
+                    onOpenChange={setGraphPickerOpen}
+                    content={graphPickerContent}>
+                    <Button
+                      size="small"
+                      icon={<PlusOutlined />}
+                      onClick={handleCreateDraftThread}
+                      style={{
+                        border: 'none',
+                        boxShadow: 'none',
+                      }}
+                    />
+                  </Popover>
+                )}
                 <Button
                   size="small"
                   icon={<ReloadOutlined />}
