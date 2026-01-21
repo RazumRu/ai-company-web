@@ -187,13 +187,17 @@ export const useWebSocket = (
 export const useWebSocketEvent = (
   eventType: string,
   handler: SocketEventHandler,
-  deps: React.DependencyList = [],
 ): void => {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stableHandler = useCallback(handler, deps);
+  const handlerRef = useRef(handler);
 
   useEffect(() => {
-    const unsubscribe = webSocketService.on(eventType, stableHandler);
+    handlerRef.current = handler;
+  }, [handler]);
+
+  useEffect(() => {
+    const unsubscribe = webSocketService.on(eventType, (...args) =>
+      handlerRef.current(...args),
+    );
     return unsubscribe;
-  }, [eventType, stableHandler]);
+  }, [eventType]);
 };

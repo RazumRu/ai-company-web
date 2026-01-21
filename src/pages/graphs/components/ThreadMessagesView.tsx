@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // ThreadMessagesView.tsx
 import { BarChartOutlined, ToolOutlined } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
@@ -1151,7 +1150,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       ],
     );
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const preparedMessages = useMemo(() => {
       return prepareReadyMessages(messages);
     }, [messages, prepareReadyMessages]);

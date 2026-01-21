@@ -14,7 +14,7 @@ All URIs are relative to _http://localhost_
 | [**stopThread**](#stopthread)                             | **POST** /api/v1/threads/{threadId}/stop                              |             |
 | [**stopThreadByExternalId**](#stopthreadbyexternalid)     | **POST** /api/v1/threads/external/{externalThreadId}/stop             |             |
 | [**suggestAgentInstructions**](#suggestagentinstructions) | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions |             |
-| [**suggestKnowledgeContent**](#suggestknowledgecontent)   | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge    |             |
+| [**suggestKnowledgeContent**](#suggestknowledgecontent)   | **POST** /api/v1/knowledge-docs/suggest                               |             |
 
 # **analyzeThread**
 
@@ -495,38 +495,36 @@ const { status, data } = await apiInstance.suggestAgentInstructions(
 
 # **suggestKnowledgeContent**
 
-> SuggestKnowledgeContentResponseDto suggestKnowledgeContent(suggestKnowledgeContentDto)
+> KnowledgeContentSuggestionResponseDto suggestKnowledgeContent(knowledgeContentSuggestionRequestDto)
 
 ### Example
 
 ```typescript
-import { ThreadsApi, Configuration, SuggestKnowledgeContentDto } from './api';
+import {
+  ThreadsApi,
+  Configuration,
+  KnowledgeContentSuggestionRequestDto,
+} from './api';
 
 const configuration = new Configuration();
 const apiInstance = new ThreadsApi(configuration);
 
-let graphId: string; // (default to undefined)
-let nodeId: string; // (default to undefined)
-let suggestKnowledgeContentDto: SuggestKnowledgeContentDto; //
+let knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto; //
 
 const { status, data } = await apiInstance.suggestKnowledgeContent(
-  graphId,
-  nodeId,
-  suggestKnowledgeContentDto,
+  knowledgeContentSuggestionRequestDto,
 );
 ```
 
 ### Parameters
 
-| Name                           | Type                           | Description | Notes                 |
-| ------------------------------ | ------------------------------ | ----------- | --------------------- |
-| **suggestKnowledgeContentDto** | **SuggestKnowledgeContentDto** |             |                       |
-| **graphId**                    | [**string**]                   |             | defaults to undefined |
-| **nodeId**                     | [**string**]                   |             | defaults to undefined |
+| Name                                     | Type                                     | Description | Notes |
+| ---------------------------------------- | ---------------------------------------- | ----------- | ----- |
+| **knowledgeContentSuggestionRequestDto** | **KnowledgeContentSuggestionRequestDto** |             |       |
 
 ### Return type
 
-**SuggestKnowledgeContentResponseDto**
+**KnowledgeContentSuggestionResponseDto**
 
 ### Authorization
 

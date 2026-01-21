@@ -2,6 +2,7 @@ import {
   Configuration,
   GraphRevisionsApi,
   GraphsApi,
+  KnowledgeApi,
   LitellmApi,
   TemplatesApi,
   ThreadsApi,
@@ -17,3 +18,4 @@ export const templatesApi = new TemplatesApi(configuration);
 export const threadsApi = new ThreadsApi(configuration);
 export const graphRevisionsApi = new GraphRevisionsApi(configuration);
 export const litellmApi = new LitellmApi(configuration);
+export const knowledgeApi = new KnowledgeApi(configuration);

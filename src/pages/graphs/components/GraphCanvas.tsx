@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 // GraphCanvas.tsx
 import '@xyflow/react/dist/style.css';
 
@@ -29,132 +28,13 @@ import {
 import { GraphValidationService } from '../../../services/GraphValidationService';
 import { getTemplateKindColor } from '../../../utils/templateColors';
 import type { GraphEdge, GraphNode, GraphNodeData } from '../types';
+import {
+  type ConnectionPreview,
+  type ConnectionRule,
+  createEdge,
+  makeHandleId,
+} from '../utils/graphCanvasUtils';
 import { CustomNode } from './CustomNode';
-
-const slug = (v: string | number | undefined | null): string =>
-  String(v ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-');
-
-export const makeHandleId = (
-  dir: 'source' | 'target',
-  rule: ConnectionRule,
-): string => `${dir}-${rule.type}-${slug(rule.value)}`;
-
-export type HandleDirection = {
-  sourceHandle?: string;
-  targetHandle?: string;
-};
-
-export interface ConnectionPreview {
-  fromHandleType: 'source' | 'target';
-  handleId: string;
-  rule?: ConnectionRule;
-  template?: TemplateDto;
-}
-
-export interface ConnectionRule {
-  type: 'kind' | 'template';
-  value: string;
-  required?: boolean;
-  multiple?: boolean;
-}
-
-export const createEdge = (
-  source: string,
-  target: string,
-  sourceHandle?: string,
-  targetHandle?: string,
-  label?: string,
-): GraphEdge => {
-  // Generate deterministic ID based on connection
-  // This ensures the same connection always gets the same ID
-  const idParts = [source, target];
-  if (sourceHandle) idParts.push(sourceHandle);
-  if (targetHandle) idParts.push(targetHandle);
-  const deterministicId = `edge-${idParts.join('-')}`;
-
-  return {
-    id: deterministicId,
-    source,
-    target,
-    sourceHandle,
-    targetHandle,
-    label,
-  };
-};
-
-export const resolveHandlesForNodes = (
-  sourceNode: GraphNode | undefined,
-  targetNode: GraphNode | undefined,
-  templates: TemplateDto[],
-): HandleDirection => {
-  if (!sourceNode || !targetNode) {
-    return {};
-  }
-
-  const sourceTemplate = templates.find(
-    (t) => t.id === (sourceNode.data as unknown as GraphNodeData).template,
-  );
-  const targetTemplate = templates.find(
-    (t) => t.id === (targetNode.data as unknown as GraphNodeData).template,
-  );
-
-  if (!sourceTemplate || !targetTemplate) {
-    return {};
-  }
-
-  const isRule = (r: unknown): r is ConnectionRule =>
-    (!!r &&
-      typeof r === 'object' &&
-      (r as { type?: unknown }).type === 'kind') ||
-    (r as { type?: unknown }).type === 'template';
-
-  const targetInputs: ConnectionRule[] = Array.isArray(targetTemplate.inputs)
-    ? (targetTemplate.inputs.filter((r) => isRule(r)) as ConnectionRule[])
-    : [];
-  const sourceOutputs: ConnectionRule[] = Array.isArray(sourceTemplate.outputs)
-    ? (sourceTemplate.outputs.filter((r) => isRule(r)) as ConnectionRule[])
-    : [];
-
-  const targetByTemplate = targetInputs.find(
-    (r) => r.type === 'template' && r.value === sourceTemplate.id,
-  );
-  const targetByKind = targetInputs.find(
-    (r) =>
-      r.type === 'kind' &&
-      slug(r.value) ===
-        slug((sourceTemplate as TemplateDto & { kind?: string }).kind),
-  );
-  const targetRule = targetByTemplate || targetByKind;
-
-  const sourceByTemplate = sourceOutputs.find(
-    (r) => r.type === 'template' && r.value === targetTemplate.id,
-  );
-  const sourceByKind = sourceOutputs.find(
-    (r) =>
-      r.type === 'kind' &&
-      slug(r.value) ===
-        slug((targetTemplate as TemplateDto & { kind?: string }).kind),
-  );
-  const sourceRule = sourceByTemplate || sourceByKind;
-
-  const result: HandleDirection = {};
-  if (targetRule) {
-    result.targetHandle = makeHandleId('target', targetRule);
-  } else if (targetInputs.length > 0) {
-    result.targetHandle = makeHandleId('target', targetInputs[0]);
-  }
-  if (sourceRule) {
-    result.sourceHandle = makeHandleId('source', sourceRule);
-  } else if (sourceOutputs.length > 0) {
-    result.sourceHandle = makeHandleId('source', sourceOutputs[0]);
-  } else {
-    result.sourceHandle = 'source-out';
-  }
-  return result;
-};
 
 interface GraphCanvasProps {
   nodes: GraphNode[];
@@ -218,7 +98,6 @@ const GraphCanvasInner = ({
 
   // Memoize nodeTypes to prevent recreation on every render
   // Only recreate when templates, graphStatus, or compiledNodesLoading change
-  // compiledNodes is passed per-node, so it doesn't need to be in dependencies
   const nodeTypes = useMemo<NodeTypes>(
     () => ({
       custom: (p) => (
@@ -233,10 +112,10 @@ const GraphCanvasInner = ({
         />
       ),
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       templates,
       graphStatus,
+      compiledNodes,
       compiledNodesLoading,
       onTriggerClick,
       connectionPreview,
@@ -550,7 +429,10 @@ const GraphCanvasInner = ({
           nodeColor={(node) => {
             if (node.type === 'custom') {
               const nodeData = node.data as unknown as GraphNodeData;
-              return getTemplateKindColor(nodeData?.templateKind);
+              const templateKind =
+                nodeData?.templateKind ??
+                templates.find((t) => t.id === nodeData?.template)?.kind;
+              return getTemplateKindColor(templateKind);
             }
             return '#eee';
           }}

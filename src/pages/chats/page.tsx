@@ -1301,10 +1301,14 @@ export const ChatsPage = () => {
     ],
   );
 
+  const loadThreadsRef = useRef(loadThreads);
+
   useEffect(() => {
-    void loadThreads();
-    // We intentionally re-fetch only when graph filter changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadThreadsRef.current = loadThreads;
+  }, [loadThreads]);
+
+  useEffect(() => {
+    void loadThreadsRef.current();
   }, [graphFilterId, threadStatusTab]);
 
   useEffect(() => {
@@ -1506,213 +1510,178 @@ export const ChatsPage = () => {
     [selectedThreadId],
   );
 
-  useWebSocketEvent(
-    'thread.create',
-    (notification) =>
-      handleThreadCreateEvent(notification as ThreadCreateNotification),
-    [handleThreadCreateEvent],
+  useWebSocketEvent('thread.create', (notification) =>
+    handleThreadCreateEvent(notification as ThreadCreateNotification),
   );
-  useWebSocketEvent(
-    'thread.update',
-    (notification) =>
-      handleThreadUpdateEvent(notification as ThreadUpdateNotification),
-    [handleThreadUpdateEvent],
+  useWebSocketEvent('thread.update', (notification) =>
+    handleThreadUpdateEvent(notification as ThreadUpdateNotification),
   );
-  useWebSocketEvent(
-    'thread.delete',
-    (notification) =>
-      handleThreadDeleteEvent(notification as ThreadDeleteNotification),
-    [handleThreadDeleteEvent],
+  useWebSocketEvent('thread.delete', (notification) =>
+    handleThreadDeleteEvent(notification as ThreadDeleteNotification),
   );
-  useWebSocketEvent(
-    'graph.node.update',
-    (notification) => {
-      const data = notification as GraphNodeUpdateNotification;
-      const eventThreadId =
-        (typeof data.threadId === 'string' && data.threadId.length > 0
-          ? data.threadId
-          : undefined) ??
-        (typeof data.data?.metadata?.threadId === 'string'
-          ? data.data.metadata.threadId
-          : undefined);
-      const eventInternalThreadId =
-        typeof data.internalThreadId === 'string' &&
-        data.internalThreadId.length > 0
-          ? data.internalThreadId
-          : undefined;
-      const metadataRunId =
-        typeof data.data?.metadata?.runId === 'string'
-          ? data.data.metadata.runId
-          : undefined;
-      const internalThreadId =
-        eventInternalThreadId || resolveInternalThreadId(eventThreadId);
+  useWebSocketEvent('graph.node.update', (notification) => {
+    const data = notification as GraphNodeUpdateNotification;
+    const eventThreadId =
+      (typeof data.threadId === 'string' && data.threadId.length > 0
+        ? data.threadId
+        : undefined) ??
+      (typeof data.data?.metadata?.threadId === 'string'
+        ? data.data.metadata.threadId
+        : undefined);
+    const eventInternalThreadId =
+      typeof data.internalThreadId === 'string' &&
+      data.internalThreadId.length > 0
+        ? data.internalThreadId
+        : undefined;
+    const metadataRunId =
+      typeof data.data?.metadata?.runId === 'string'
+        ? data.data.metadata.runId
+        : undefined;
+    const internalThreadId =
+      eventInternalThreadId || resolveInternalThreadId(eventThreadId);
 
-      const targetThreadId = internalThreadId ?? eventThreadId;
-      if (!targetThreadId) {
-        return;
-      }
+    const targetThreadId = internalThreadId ?? eventThreadId;
+    if (!targetThreadId) {
+      return;
+    }
 
-      const externalThreadIdForTarget =
-        externalThreadIds[targetThreadId] ?? eventThreadId;
+    const externalThreadIdForTarget =
+      externalThreadIds[targetThreadId] ?? eventThreadId;
 
-      if (eventThreadId) {
-        setExternalThreadIds((prev) => {
-          const existing = prev[targetThreadId];
-          if (existing === eventThreadId) return prev;
-          return { ...prev, [targetThreadId]: eventThreadId };
-        });
-      }
-      const _targetRunIds = buildIdSet(data.runId, metadataRunId);
-
-      const reasoningChunks =
-        data.data?.additionalNodeMetadata?.reasoningChunks;
-
-      // Only process reasoning chunks if they exist
-      // Don't clear streaming reasoning when chunks are absent - they should persist
-      // until replaced by final non-streaming reasoning messages
-      if (!reasoningChunks) {
-        return;
-      }
-
-      const applyUpdateToKeys = buildAgentMessageScopeKeysForGraph(
-        data.graphId,
-        data.nodeId,
-      );
-
-      const reasoningContainer = narrowReasoningContainer(reasoningChunks, [
-        eventThreadId,
-        externalThreadIdForTarget,
-        data.runId ?? metadataRunId,
-      ]);
-      const reasoningEntries = extractReasoningEntries(reasoningContainer, {
-        threadId: externalThreadIdForTarget ?? eventThreadId,
-        runId: data.runId ?? metadataRunId,
+    if (eventThreadId) {
+      setExternalThreadIds((prev) => {
+        const existing = prev[targetThreadId];
+        if (existing === eventThreadId) return prev;
+        return { ...prev, [targetThreadId]: eventThreadId };
       });
+    }
+    const _targetRunIds = buildIdSet(data.runId, metadataRunId);
 
-      // Only upsert if we have valid reasoning entries
-      if (reasoningEntries.length > 0) {
-        applyUpdateToKeys.forEach((key) => {
-          updateMessages(
-            targetThreadId,
-            (prev) =>
-              upsertReasoningEntries(prev, reasoningEntries, {
-                externalThreadId: externalThreadIdForTarget,
-                runId: data.runId ?? metadataRunId,
-                selectedThreadId: targetThreadId,
-                nodeId: key,
-              }),
-            key,
-          );
-        });
-      }
-    },
-    [
-      buildAgentMessageScopeKeysForGraph,
-      resolveInternalThreadId,
-      externalThreadIds,
-      updateMessages,
-      upsertReasoningEntries,
-      setExternalThreadIds,
-    ],
-  );
+    const reasoningChunks = data.data?.additionalNodeMetadata?.reasoningChunks;
 
-  // Handle agent messages - update shared state for all listeners
-  useWebSocketEvent(
-    'agent.message',
-    (notification) => {
-      const data = notification as AgentMessageNotification;
-      if (!data.internalThreadId) return;
+    // Only process reasoning chunks if they exist
+    // Don't clear streaming reasoning when chunks are absent - they should persist
+    // until replaced by final non-streaming reasoning messages
+    if (!reasoningChunks) {
+      return;
+    }
 
-      const threadId = data.internalThreadId;
-      const nodeId = data.nodeId;
-      const incomingMessage = data.data;
+    const applyUpdateToKeys = buildAgentMessageScopeKeysForGraph(
+      data.graphId,
+      data.nodeId,
+    );
 
-      const applyMessageKeys = buildAgentMessageScopeKeysForGraph(
-        data.graphId,
-        nodeId,
-      );
-      applyMessageKeys.forEach((key) => {
+    const reasoningContainer = narrowReasoningContainer(reasoningChunks, [
+      eventThreadId,
+      externalThreadIdForTarget,
+      data.runId ?? metadataRunId,
+    ]);
+    const reasoningEntries = extractReasoningEntries(reasoningContainer, {
+      threadId: externalThreadIdForTarget ?? eventThreadId,
+      runId: data.runId ?? metadataRunId,
+    });
+
+    // Only upsert if we have valid reasoning entries
+    if (reasoningEntries.length > 0) {
+      applyUpdateToKeys.forEach((key) => {
         updateMessages(
-          threadId,
-          (prev) => {
-            const normalized = normalizeIncomingCreatedAtForDisplay(
-              prev,
-              incomingMessage,
-            );
-            return mergeMessagesReplacingStreaming(prev, [normalized]);
-          },
+          targetThreadId,
+          (prev) =>
+            upsertReasoningEntries(prev, reasoningEntries, {
+              externalThreadId: externalThreadIdForTarget,
+              runId: data.runId ?? metadataRunId,
+              selectedThreadId: targetThreadId,
+              nodeId: key,
+            }),
           key,
         );
       });
+    }
+  });
 
-      // Clear pending that matches this incoming message (by content for human messages)
-      const incomingContent =
-        typeof incomingMessage.message?.content === 'string'
-          ? (incomingMessage.message?.content as string)
-          : undefined;
-      const incomingRole = incomingMessage.message?.role as string | undefined;
-      if (incomingContent && incomingRole === 'human') {
-        const applyPendingToKeys = applyMessageKeys;
-        applyPendingToKeys.forEach((key) => {
-          updatePendingMessages(
-            threadId,
-            (prev) =>
-              prev.filter(
-                (p) =>
-                  typeof p.content !== 'string' ||
-                  p.content !== incomingContent,
-              ),
-            key,
+  // Handle agent messages - update shared state for all listeners
+  useWebSocketEvent('agent.message', (notification) => {
+    const data = notification as AgentMessageNotification;
+    if (!data.internalThreadId) return;
+
+    const threadId = data.internalThreadId;
+    const nodeId = data.nodeId;
+    const incomingMessage = data.data;
+
+    const applyMessageKeys = buildAgentMessageScopeKeysForGraph(
+      data.graphId,
+      nodeId,
+    );
+    applyMessageKeys.forEach((key) => {
+      updateMessages(
+        threadId,
+        (prev) => {
+          const normalized = normalizeIncomingCreatedAtForDisplay(
+            prev,
+            incomingMessage,
           );
-        });
-      }
+          return mergeMessagesReplacingStreaming(prev, [normalized]);
+        },
+        key,
+      );
+    });
 
-      // Update external thread ID if present
-      if (incomingMessage.externalThreadId) {
-        setExternalThreadIds((prev) => ({
-          ...prev,
-          [threadId]: incomingMessage.externalThreadId,
-        }));
-      }
-    },
-    [
-      buildAgentMessageScopeKeysForGraph,
-      updateMessages,
-      updatePendingMessages,
-      setExternalThreadIds,
-    ],
-  );
-
-  useWebSocketEvent(
-    'agent.state.update',
-    (notification) => {
-      const data = notification as AgentStateUpdateNotification;
-      const internalThreadId =
-        (typeof data.internalThreadId === 'string' && data.internalThreadId) ||
-        resolveInternalThreadId(data.threadId);
-      if (!internalThreadId) return;
-      if (!data.nodeId) return;
-
-      const usageUpdate = compactUsageUpdate(data.data ?? {});
-      if (Object.keys(usageUpdate).length === 0) return;
-
-      setThreadTokenUsageByNode((prev) => {
-        const existingThread = prev[internalThreadId] ?? {};
-        const existingNode = existingThread[data.nodeId] ?? {};
-        return {
-          ...prev,
-          [internalThreadId]: {
-            ...existingThread,
-            [data.nodeId]: {
-              ...existingNode,
-              ...usageUpdate,
-            },
-          },
-        };
+    // Clear pending that matches this incoming message (by content for human messages)
+    const incomingContent =
+      typeof incomingMessage.message?.content === 'string'
+        ? (incomingMessage.message?.content as string)
+        : undefined;
+    const incomingRole = incomingMessage.message?.role as string | undefined;
+    if (incomingContent && incomingRole === 'human') {
+      const applyPendingToKeys = applyMessageKeys;
+      applyPendingToKeys.forEach((key) => {
+        updatePendingMessages(
+          threadId,
+          (prev) =>
+            prev.filter(
+              (p) =>
+                typeof p.content !== 'string' || p.content !== incomingContent,
+            ),
+          key,
+        );
       });
-    },
-    [resolveInternalThreadId],
-  );
+    }
+
+    // Update external thread ID if present
+    if (incomingMessage.externalThreadId) {
+      setExternalThreadIds((prev) => ({
+        ...prev,
+        [threadId]: incomingMessage.externalThreadId,
+      }));
+    }
+  });
+
+  useWebSocketEvent('agent.state.update', (notification) => {
+    const data = notification as AgentStateUpdateNotification;
+    const internalThreadId =
+      (typeof data.internalThreadId === 'string' && data.internalThreadId) ||
+      resolveInternalThreadId(data.threadId);
+    if (!internalThreadId) return;
+    if (!data.nodeId) return;
+
+    const usageUpdate = compactUsageUpdate(data.data ?? {});
+    if (Object.keys(usageUpdate).length === 0) return;
+
+    setThreadTokenUsageByNode((prev) => {
+      const existingThread = prev[internalThreadId] ?? {};
+      const existingNode = existingThread[data.nodeId] ?? {};
+      return {
+        ...prev,
+        [internalThreadId]: {
+          ...existingThread,
+          [data.nodeId]: {
+            ...existingNode,
+            ...usageUpdate,
+          },
+        },
+      };
+    });
+  });
   const threadStatusMeta = selectedThread
     ? 'isDraft' in selectedThread && selectedThread.isDraft
       ? null

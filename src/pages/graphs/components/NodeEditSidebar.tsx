@@ -110,12 +110,9 @@ interface NodeEditSidebarProps {
   hasNodeUnsavedChangesFromServer?: boolean;
 }
 
-type AiSuggestionMode = 'agent' | 'knowledge';
-
 export type AiSuggestionState = {
   fieldKey: string;
   fieldLabel: string;
-  mode: AiSuggestionMode;
   initialInstructions: string;
   currentInstructions: string;
   suggestedInstructions?: string;
@@ -301,12 +298,10 @@ export const NodeEditSidebar = React.memo(
     );
 
     const nodeData = getNodeData(node);
-    const templateKindLower = (nodeData?.templateKind || '').toLowerCase();
+    const nodeTemplate = templates.find((t) => t.id === nodeData?.template);
+    const templateKind = nodeTemplate?.kind ?? nodeData?.templateKind;
+    const templateKindLower = (templateKind || '').toLowerCase();
     const isAgentNode = templateKindLower === 'simpleagent';
-    const isKnowledgeNode = templateKindLower === 'knowledge';
-    const aiSuggestionMode: AiSuggestionMode = isKnowledgeNode
-      ? 'knowledge'
-      : 'agent';
     const isGraphRunning = graphStatus === GraphDtoStatusEnum.Running;
     const isThreadStopped =
       selectedThreadStatus === ThreadDtoStatusEnum.Stopped;
@@ -434,13 +429,7 @@ export const NodeEditSidebar = React.memo(
     ]);
 
     const openAiSuggestionModal = useCallback(
-      (
-        fieldKey: string,
-        fieldLabel: string,
-        initialValue?: unknown,
-        modeOverride?: AiSuggestionMode,
-      ) => {
-        const modeToUse = modeOverride ?? aiSuggestionMode;
+      (fieldKey: string, fieldLabel: string, initialValue?: unknown) => {
         if (!isGraphRunning) {
           message.warning('Start the graph to use AI suggestions');
           return;
@@ -454,7 +443,6 @@ export const NodeEditSidebar = React.memo(
         setAiSuggestionState({
           fieldKey,
           fieldLabel,
-          mode: modeToUse,
           initialInstructions: formattedValue,
           currentInstructions: formattedValue,
           suggestedInstructions: undefined,
@@ -467,12 +455,7 @@ export const NodeEditSidebar = React.memo(
           loading: false,
         });
       },
-      [
-        aiSuggestionMode,
-        configFormData,
-        formatInstructionsValue,
-        isGraphRunning,
-      ],
+      [configFormData, formatInstructionsValue, isGraphRunning],
     );
 
     const closeAiSuggestionModal = useCallback(() => {
@@ -630,8 +613,13 @@ export const NodeEditSidebar = React.memo(
       const nodeForTabs = node;
       if (!nodeForTabs) return;
       const currentNodeData = getNodeData(nodeForTabs);
+      const currentNodeTemplate = templates.find(
+        (template) => template.id === currentNodeData?.template,
+      );
+      const currentTemplateKind =
+        currentNodeTemplate?.kind ?? currentNodeData?.templateKind;
       const currentNodeIsAgent =
-        currentNodeData?.templateKind === 'simpleAgent';
+        (currentTemplateKind || '').toLowerCase() === 'simpleagent';
       const availableTabs = ['options'];
       if (currentNodeIsAgent) {
         availableTabs.push('messages');
@@ -972,8 +960,6 @@ export const NodeEditSidebar = React.memo(
     const handleAiSuggestionSubmit = useCallback(async () => {
       if (!aiSuggestionState) return;
 
-      const isAgentSuggestion = aiSuggestionState.mode === 'agent';
-
       if (!isGraphRunning) {
         message.warning('Start the graph to use AI suggestions');
         return;
@@ -995,62 +981,32 @@ export const NodeEditSidebar = React.memo(
       );
 
       try {
-        if (isAgentSuggestion) {
-          const response = await graphsApi.suggestAgentInstructions(
-            graphId ?? '',
-            node?.id ?? '',
-            {
-              userRequest,
-              threadId: aiSuggestionState.threadId,
-            },
-          );
+        const response = await graphsApi.suggestAgentInstructions(
+          graphId ?? '',
+          node?.id ?? '',
+          {
+            userRequest,
+            threadId: aiSuggestionState.threadId,
+          },
+        );
 
-          setAiSuggestionState((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  loading: false,
-                  suggestedInstructions:
-                    response.data?.instructions ?? prev.suggestedInstructions,
-                  lastSuggestedInstructions:
-                    response.data?.instructions ??
-                    prev.lastSuggestedInstructions,
-                  manualSuggestedOverride: undefined,
-                  isEditingSuggestion: false,
-                  editSuggestionDraft: undefined,
-                  threadId: response.data?.threadId ?? prev.threadId,
-                  userRequest: '',
-                }
-              : prev,
-          );
-        } else {
-          const response = await graphsApi.suggestKnowledgeContent(
-            graphId,
-            node.id,
-            {
-              userRequest,
-              threadId: aiSuggestionState.threadId,
-            },
-          );
-
-          setAiSuggestionState((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  loading: false,
-                  suggestedInstructions:
-                    response.data?.content ?? prev.suggestedInstructions,
-                  lastSuggestedInstructions:
-                    response.data?.content ?? prev.lastSuggestedInstructions,
-                  manualSuggestedOverride: undefined,
-                  isEditingSuggestion: false,
-                  editSuggestionDraft: undefined,
-                  threadId: response.data?.threadId ?? prev.threadId,
-                  userRequest: '',
-                }
-              : prev,
-          );
-        }
+        setAiSuggestionState((prev) =>
+          prev
+            ? {
+                ...prev,
+                loading: false,
+                suggestedInstructions:
+                  response.data?.instructions ?? prev.suggestedInstructions,
+                lastSuggestedInstructions:
+                  response.data?.instructions ?? prev.lastSuggestedInstructions,
+                manualSuggestedOverride: undefined,
+                isEditingSuggestion: false,
+                editSuggestionDraft: undefined,
+                threadId: response.data?.threadId ?? prev.threadId,
+                userRequest: '',
+              }
+            : prev,
+        );
       } catch (error) {
         setAiSuggestionState((prev) =>
           prev ? { ...prev, loading: false } : prev,
@@ -1104,7 +1060,7 @@ export const NodeEditSidebar = React.memo(
       pushDraftChange,
     ]);
 
-    const isTriggerNode = nodeData?.templateKind === 'trigger';
+    const isTriggerNode = templateKindLower === 'trigger';
     const canTrigger = isTriggerNode && isGraphRunning;
 
     const renderOptionsTabContent = () => {
@@ -1152,14 +1108,8 @@ export const NodeEditSidebar = React.memo(
                   setExpandedTextarea({ fieldKey, value })
                 }
                 onOpenAiSuggestion={(fieldKey, fieldLabel, value) =>
-                  openAiSuggestionModal(
-                    fieldKey,
-                    fieldLabel,
-                    value,
-                    aiSuggestionMode,
-                  )
+                  openAiSuggestionModal(fieldKey, fieldLabel, value)
                 }
-                aiSuggestionMode={aiSuggestionMode}
                 aiSuggestionEnabled={Boolean(
                   isGraphRunning && graphId && node?.id,
                 )}
@@ -1197,7 +1147,7 @@ export const NodeEditSidebar = React.memo(
           selectedThreadId={selectedThreadId}
           nodeId={node?.id}
           nodeDisplayNames={nodeDisplayNames}
-          nodeTemplateKind={nodeData?.templateKind}
+          nodeTemplateKind={templateKind}
           onLoadMoreMessages={onLoadMoreMessages}
           hasMoreMessages={hasMoreMessages}
           loadingMoreMessages={loadingMoreMessages}
@@ -1218,7 +1168,7 @@ export const NodeEditSidebar = React.memo(
       messagesLoading,
       newMessageMode,
       node?.id,
-      nodeData?.templateKind,
+      templateKind,
       nodeDisplayNames,
       onLoadMoreMessages,
       pendingMessages,
@@ -1237,36 +1187,13 @@ export const NodeEditSidebar = React.memo(
       return null;
     }
 
-    const isKnowledgeSuggestion = aiSuggestionState?.mode === 'knowledge';
     const suggestionModalTitle = aiSuggestionState?.fieldLabel
-      ? `${isKnowledgeSuggestion ? 'Generate' : 'Improve'} ${aiSuggestionState.fieldLabel} with AI`
-      : isKnowledgeSuggestion
-        ? 'Generate knowledge with AI'
-        : 'Improve instructions with AI';
-    const currentContentLabel = isKnowledgeSuggestion
-      ? 'Current content'
-      : 'Current instructions';
-    const suggestionSectionLabel = isKnowledgeSuggestion
-      ? 'Suggested content'
-      : 'Suggested instructions';
-    const requestPromptLabel = isKnowledgeSuggestion
-      ? 'What should be generated?'
-      : 'What should be improved?';
-    const requestPlaceholder = isKnowledgeSuggestion
-      ? 'Describe the knowledge you want to generate or refine'
-      : 'Describe what you want to change or add';
-    const sendButtonLabel = isKnowledgeSuggestion ? 'Generate' : 'Send';
-    const suggestionText =
-      aiSuggestionState?.manualSuggestedOverride ??
-      aiSuggestionState?.lastSuggestedInstructions ??
-      aiSuggestionState?.suggestedInstructions ??
-      '';
-    const hasSuggestedContent = Boolean(suggestionText);
-    const shouldShowDiffOnly =
-      isKnowledgeSuggestion &&
-      hasSuggestedContent &&
-      Boolean(suggestionDiffMarkdown);
-
+      ? `Improve ${aiSuggestionState.fieldLabel} with AI`
+      : 'Improve instructions with AI';
+    const currentContentLabel = 'Current instructions';
+    const requestPromptLabel = 'What should be improved?';
+    const requestPlaceholder = 'Describe what you want to change or add';
+    const sendButtonLabel = 'Send';
     return (
       <Sider
         width={400}
@@ -1418,7 +1345,7 @@ export const NodeEditSidebar = React.memo(
                 fontSize: '11px',
                 color: '#bfbfbf',
               }}>
-              {nodeData?.template} ({nodeData?.templateKind})
+              {nodeData?.template} ({templateKind})
             </div>
             {showNodeStatus && (
               <div
@@ -1549,130 +1476,20 @@ export const NodeEditSidebar = React.memo(
                   description="AI suggestions use the current value from the database. Save this node first if you want your latest edits included."
                 />
               )}
-              {!shouldShowDiffOnly && (
-                <div>
-                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
-                    {currentContentLabel}
-                  </Text>
-                  {aiSuggestionState.lastSuggestedInstructions &&
-                  (aiSuggestionState.manualSuggestedOverride ||
-                    suggestionDiffMarkdown) ? (
-                    aiSuggestionState.isEditingSuggestion ? (
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <MarkdownSplitEditor
-                          value={
-                            aiSuggestionState.editSuggestionDraft ??
-                            aiSuggestionState.manualSuggestedOverride ??
-                            aiSuggestionState.lastSuggestedInstructions
-                          }
-                          onChange={(nextValue) =>
-                            setAiSuggestionState((prev) =>
-                              prev
-                                ? { ...prev, editSuggestionDraft: nextValue }
-                                : prev,
-                            )
-                          }
-                          height={360}
-                          placeholder="Edit suggested content…"
-                          initialMode="split"
-                        />
-                        <Space>
-                          <Button
-                            onClick={handleCancelEditSuggested}
-                            size="small">
-                            Cancel
-                          </Button>
-                          <Button
-                            type="primary"
-                            size="small"
-                            onClick={handleApplyEditSuggested}>
-                            Apply
-                          </Button>
-                        </Space>
-                      </Space>
-                    ) : (
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <MarkdownSplitEditor
-                          value={suggestionDiffMarkdown ?? ''}
-                          readOnly
-                          height={360}
-                          initialMode="split"
-                          previewValue={
-                            aiSuggestionState.manualSuggestedOverride ??
-                            aiSuggestionState.lastSuggestedInstructions ??
-                            ''
-                          }
-                          onModeChange={(nextMode) => {
-                            if (nextMode === 'edit') {
-                              handleStartEditSuggested();
-                            }
-                          }}
-                          shouldChangeMode={(nextMode) => nextMode !== 'edit'}
-                        />
-                      </Space>
-                    )
-                  ) : aiSuggestionState.currentInstructions.trim() ? (
-                    <div
-                      style={{
-                        maxHeight: 280,
-                        overflowY: 'auto',
-                      }}>
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          p: (props) => (
-                            <Typography.Paragraph
-                              style={{ marginBottom: 8 }}
-                              {...props}
-                            />
-                          ),
-                          ul: (props) => (
-                            <ul
-                              style={{ paddingLeft: 20, marginBottom: 8 }}
-                              {...props}
-                            />
-                          ),
-                          ol: (props) => (
-                            <ol
-                              style={{ paddingLeft: 20, marginBottom: 8 }}
-                              {...props}
-                            />
-                          ),
-                          code: (props) => (
-                            <Typography.Text
-                              code
-                              style={{
-                                background: '#f5f5f5',
-                                padding: '2px 4px',
-                                borderRadius: 4,
-                                fontSize: 12,
-                              }}
-                              {...props}
-                            />
-                          ),
-                        }}>
-                        {aiSuggestionState.currentInstructions}
-                      </ReactMarkdown>
-                    </div>
-                  ) : (
-                    <Text type="secondary">No content available.</Text>
-                  )}
-                </div>
-              )}
-
-              {shouldShowDiffOnly && (
-                <div>
-                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
-                    Suggested content
-                  </Text>
-                  {aiSuggestionState.isEditingSuggestion ? (
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                  {currentContentLabel}
+                </Text>
+                {aiSuggestionState.lastSuggestedInstructions &&
+                (aiSuggestionState.manualSuggestedOverride ||
+                  suggestionDiffMarkdown) ? (
+                  aiSuggestionState.isEditingSuggestion ? (
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <MarkdownSplitEditor
                         value={
                           aiSuggestionState.editSuggestionDraft ??
                           aiSuggestionState.manualSuggestedOverride ??
-                          aiSuggestionState.lastSuggestedInstructions ??
-                          ''
+                          aiSuggestionState.lastSuggestedInstructions
                         }
                         onChange={(nextValue) =>
                           setAiSuggestionState((prev) =>
@@ -1719,108 +1536,54 @@ export const NodeEditSidebar = React.memo(
                         shouldChangeMode={(nextMode) => nextMode !== 'edit'}
                       />
                     </Space>
-                  )}
-                </div>
-              )}
-
-              {isKnowledgeSuggestion && suggestionText ? (
-                <div>
-                  <Text strong style={{ display: 'block', marginBottom: 6 }}>
-                    {suggestionSectionLabel}
-                  </Text>
-                  {aiSuggestionState.isEditingSuggestion ? (
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <MarkdownSplitEditor
-                        value={
-                          aiSuggestionState.editSuggestionDraft ??
-                          aiSuggestionState.manualSuggestedOverride ??
-                          aiSuggestionState.lastSuggestedInstructions ??
-                          ''
-                        }
-                        onChange={(nextValue) =>
-                          setAiSuggestionState((prev) =>
-                            prev
-                              ? { ...prev, editSuggestionDraft: nextValue }
-                              : prev,
-                          )
-                        }
-                        height={360}
-                        placeholder="Edit suggested content…"
-                        initialMode="split"
-                      />
-                      <Space>
-                        <Button
-                          onClick={handleCancelEditSuggested}
-                          size="small">
-                          Cancel
-                        </Button>
-                        <Button
-                          type="primary"
-                          size="small"
-                          onClick={handleApplyEditSuggested}>
-                          Apply
-                        </Button>
-                      </Space>
-                    </Space>
-                  ) : (
-                    <>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'flex-end',
-                          marginBottom: 8,
-                        }}>
-                        <AiSuggestionLink
-                          onClick={handleStartEditSuggested}
-                          label="Edit"
-                        />
-                      </div>
-                      <div
-                        style={{
-                          maxHeight: 360,
-                          overflowY: 'auto',
-                        }}>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            p: (props) => (
-                              <Typography.Paragraph
-                                style={{ marginBottom: 8 }}
-                                {...props}
-                              />
-                            ),
-                            ul: (props) => (
-                              <ul
-                                style={{ paddingLeft: 20, marginBottom: 8 }}
-                                {...props}
-                              />
-                            ),
-                            ol: (props) => (
-                              <ol
-                                style={{ paddingLeft: 20, marginBottom: 8 }}
-                                {...props}
-                              />
-                            ),
-                            code: (props) => (
-                              <Typography.Text
-                                code
-                                style={{
-                                  background: '#f5f5f5',
-                                  padding: '2px 4px',
-                                  borderRadius: 4,
-                                  fontSize: 12,
-                                }}
-                                {...props}
-                              />
-                            ),
-                          }}>
-                          {suggestionText}
-                        </ReactMarkdown>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : null}
+                  )
+                ) : aiSuggestionState.currentInstructions.trim() ? (
+                  <div
+                    style={{
+                      maxHeight: 280,
+                      overflowY: 'auto',
+                    }}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: (props) => (
+                          <Typography.Paragraph
+                            style={{ marginBottom: 8 }}
+                            {...props}
+                          />
+                        ),
+                        ul: (props) => (
+                          <ul
+                            style={{ paddingLeft: 20, marginBottom: 8 }}
+                            {...props}
+                          />
+                        ),
+                        ol: (props) => (
+                          <ol
+                            style={{ paddingLeft: 20, marginBottom: 8 }}
+                            {...props}
+                          />
+                        ),
+                        code: (props) => (
+                          <Typography.Text
+                            code
+                            style={{
+                              background: '#f5f5f5',
+                              padding: '2px 4px',
+                              borderRadius: 4,
+                              fontSize: 12,
+                            }}
+                            {...props}
+                          />
+                        ),
+                      }}>
+                      {aiSuggestionState.currentInstructions}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <Text type="secondary">No content available.</Text>
+                )}
+              </div>
 
               <div>
                 <Text strong style={{ display: 'block', marginBottom: 6 }}>
@@ -2034,15 +1797,10 @@ export const NodeEditSidebar = React.memo(
                       expandedTextarea.fieldKey,
                       expandedTextareaField?.label || expandedTextarea.fieldKey,
                       expandedTextarea.value,
-                      aiSuggestionMode,
                     )
                   }
                   disabled={!isGraphRunning}
-                  label={
-                    aiSuggestionMode === 'knowledge'
-                      ? 'Generate with AI'
-                      : 'Improve with AI'
-                  }
+                  label="Improve with AI"
                 />
               )}
             </>

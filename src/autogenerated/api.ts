@@ -412,7 +412,6 @@ export const GraphNodeWithStatusDtoTypeEnum = {
   SimpleAgent: 'simpleAgent',
   Trigger: 'trigger',
   Resource: 'resource',
-  Knowledge: 'knowledge',
   Mcp: 'mcp',
 } as const;
 
@@ -540,6 +539,209 @@ export type GraphRevisionDtoStatusEnum =
 /**
  *
  * @export
+ * @interface KnowledgeChunkDto
+ */
+export interface KnowledgeChunkDto {
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeChunkDto
+   */
+  'id': string;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeChunkDto
+   */
+  'docId': string;
+  /**
+   *
+   * @type {number}
+   * @memberof KnowledgeChunkDto
+   */
+  'chunkIndex': number;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeChunkDto
+   */
+  'label'?: string | null;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof KnowledgeChunkDto
+   */
+  'keywords'?: Array<string> | null;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeChunkDto
+   */
+  'text': string;
+  /**
+   *
+   * @type {number}
+   * @memberof KnowledgeChunkDto
+   */
+  'startOffset': number;
+  /**
+   *
+   * @type {number}
+   * @memberof KnowledgeChunkDto
+   */
+  'endOffset': number;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeChunkDto
+   */
+  'createdAt': string;
+}
+/**
+ *
+ * @export
+ * @interface KnowledgeContentSuggestionRequestDto
+ */
+export interface KnowledgeContentSuggestionRequestDto {
+  /**
+   * User request describing knowledge content to create or improve
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionRequestDto
+   */
+  'userRequest': string;
+  /**
+   * Optional existing knowledge document title
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionRequestDto
+   */
+  'currentTitle'?: string;
+  /**
+   * Optional existing knowledge document content
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionRequestDto
+   */
+  'currentContent'?: string;
+  /**
+   * Optional existing tags for the knowledge document
+   * @type {Array<string>}
+   * @memberof KnowledgeContentSuggestionRequestDto
+   */
+  'currentTags'?: Array<string>;
+  /**
+   * Optional thread id to continue a previous suggestion conversation
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionRequestDto
+   */
+  'threadId'?: string;
+}
+/**
+ *
+ * @export
+ * @interface KnowledgeContentSuggestionResponseDto
+ */
+export interface KnowledgeContentSuggestionResponseDto {
+  /**
+   * Suggested knowledge document title
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionResponseDto
+   */
+  'title': string;
+  /**
+   * Suggested knowledge document content
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionResponseDto
+   */
+  'content': string;
+  /**
+   * Suggested tags for the knowledge document
+   * @type {Array<string>}
+   * @memberof KnowledgeContentSuggestionResponseDto
+   */
+  'tags'?: Array<string>;
+  /**
+   * Thread id used for this suggestion session
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionResponseDto
+   */
+  'threadId': string;
+}
+/**
+ *
+ * @export
+ * @interface KnowledgeDocDto
+ */
+export interface KnowledgeDocDto {
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'id': string;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'content': string;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'title': string;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'summary'?: string | null;
+  /**
+   *
+   * @type {Array<string>}
+   * @memberof KnowledgeDocDto
+   */
+  'tags': Array<string>;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'createdAt': string;
+  /**
+   *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'updatedAt': string;
+}
+/**
+ *
+ * @export
+ * @interface KnowledgeDocInputDto
+ */
+export interface KnowledgeDocInputDto {
+  /**
+   * Knowledge document title
+   * @type {string}
+   * @memberof KnowledgeDocInputDto
+   */
+  'title': string;
+  /**
+   * Raw knowledge document content
+   * @type {string}
+   * @memberof KnowledgeDocInputDto
+   */
+  'content': string;
+  /**
+   * Optional tags to apply to the document
+   * @type {Array<string>}
+   * @memberof KnowledgeDocInputDto
+   */
+  'tags'?: Array<string>;
+}
+/**
+ *
+ * @export
  * @interface LiteLlmModelDto
  */
 export interface LiteLlmModelDto {
@@ -591,44 +793,6 @@ export interface SuggestAgentInstructionsResponseDto {
    * Thread id used for this suggestion session
    * @type {string}
    * @memberof SuggestAgentInstructionsResponseDto
-   */
-  'threadId': string;
-}
-/**
- *
- * @export
- * @interface SuggestKnowledgeContentDto
- */
-export interface SuggestKnowledgeContentDto {
-  /**
-   * User request describing the knowledge content to generate
-   * @type {string}
-   * @memberof SuggestKnowledgeContentDto
-   */
-  'userRequest': string;
-  /**
-   * Optional thread id to continue a previous knowledge suggestion conversation
-   * @type {string}
-   * @memberof SuggestKnowledgeContentDto
-   */
-  'threadId'?: string;
-}
-/**
- *
- * @export
- * @interface SuggestKnowledgeContentResponseDto
- */
-export interface SuggestKnowledgeContentResponseDto {
-  /**
-   * Generated knowledge content
-   * @type {string}
-   * @memberof SuggestKnowledgeContentResponseDto
-   */
-  'content': string;
-  /**
-   * Thread id used for this suggestion session
-   * @type {string}
-   * @memberof SuggestKnowledgeContentResponseDto
    */
   'threadId': string;
 }
@@ -688,7 +852,6 @@ export const TemplateDtoKindEnum = {
   SimpleAgent: 'simpleAgent',
   Trigger: 'trigger',
   Resource: 'resource',
-  Knowledge: 'knowledge',
   Mcp: 'mcp',
 } as const;
 
@@ -747,7 +910,6 @@ export const TemplateDtoInputsInnerOneOfValueEnum = {
   SimpleAgent: 'simpleAgent',
   Trigger: 'trigger',
   Resource: 'resource',
-  Knowledge: 'knowledge',
   Mcp: 'mcp',
 } as const;
 
@@ -957,12 +1119,6 @@ export interface ThreadMessageDto {
    * @memberof ThreadMessageDto
    */
   'message': ThreadMessageDtoMessage;
-  /**
-   *
-   * @type {ThreadMessageDtoTokenUsage}
-   * @memberof ThreadMessageDto
-   */
-  'tokenUsage'?: ThreadMessageDtoTokenUsage | null;
   /**
    *
    * @type {ThreadMessageDtoRequestTokenUsage}
@@ -1386,25 +1542,6 @@ export interface ThreadMessageDtoRequestTokenUsage {
    * @memberof ThreadMessageDtoRequestTokenUsage
    */
   'currentContext'?: number;
-}
-/**
- *
- * @export
- * @interface ThreadMessageDtoTokenUsage
- */
-export interface ThreadMessageDtoTokenUsage {
-  /**
-   * Total tokens for this message
-   * @type {number}
-   * @memberof ThreadMessageDtoTokenUsage
-   */
-  'totalTokens': number;
-  /**
-   * Total price for this message in USD
-   * @type {number}
-   * @memberof ThreadMessageDtoTokenUsage
-   */
-  'totalPrice'?: number;
 }
 /**
  *
@@ -3219,32 +3356,21 @@ export const GraphsApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {string} graphId
-     * @param {string} nodeId
-     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     suggestKnowledgeContent: async (
-      graphId: string,
-      nodeId: string,
-      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
       options: RawAxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'graphId' is not null or undefined
-      assertParamExists('suggestKnowledgeContent', 'graphId', graphId);
-      // verify required parameter 'nodeId' is not null or undefined
-      assertParamExists('suggestKnowledgeContent', 'nodeId', nodeId);
-      // verify required parameter 'suggestKnowledgeContentDto' is not null or undefined
+      // verify required parameter 'knowledgeContentSuggestionRequestDto' is not null or undefined
       assertParamExists(
         'suggestKnowledgeContent',
-        'suggestKnowledgeContentDto',
-        suggestKnowledgeContentDto,
+        'knowledgeContentSuggestionRequestDto',
+        knowledgeContentSuggestionRequestDto,
       );
-      const localVarPath =
-        `/api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge`
-          .replace(`{${'graphId'}}`, encodeURIComponent(String(graphId)))
-          .replace(`{${'nodeId'}}`, encodeURIComponent(String(nodeId)));
+      const localVarPath = `/api/v1/knowledge-docs/suggest`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -3275,7 +3401,7 @@ export const GraphsApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        suggestKnowledgeContentDto,
+        knowledgeContentSuggestionRequestDto,
         localVarRequestOptions,
         configuration,
       );
@@ -3684,28 +3810,22 @@ export const GraphsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {string} graphId
-     * @param {string} nodeId
-     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async suggestKnowledgeContent(
-      graphId: string,
-      nodeId: string,
-      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
       options?: RawAxiosRequestConfig,
     ): Promise<
       (
         axios?: AxiosInstance,
         basePath?: string,
-      ) => AxiosPromise<SuggestKnowledgeContentResponseDto>
+      ) => AxiosPromise<KnowledgeContentSuggestionResponseDto>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.suggestKnowledgeContent(
-          graphId,
-          nodeId,
-          suggestKnowledgeContentDto,
+          knowledgeContentSuggestionRequestDto,
           options,
         );
       const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
@@ -3931,25 +4051,16 @@ export const GraphsApiFactory = function (
     },
     /**
      *
-     * @param {string} graphId
-     * @param {string} nodeId
-     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     suggestKnowledgeContent(
-      graphId: string,
-      nodeId: string,
-      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
       options?: RawAxiosRequestConfig,
-    ): AxiosPromise<SuggestKnowledgeContentResponseDto> {
+    ): AxiosPromise<KnowledgeContentSuggestionResponseDto> {
       return localVarFp
-        .suggestKnowledgeContent(
-          graphId,
-          nodeId,
-          suggestKnowledgeContentDto,
-          options,
-        )
+        .suggestKnowledgeContent(knowledgeContentSuggestionRequestDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -4144,26 +4255,17 @@ export class GraphsApi extends BaseAPI {
 
   /**
    *
-   * @param {string} graphId
-   * @param {string} nodeId
-   * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+   * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof GraphsApi
    */
   public suggestKnowledgeContent(
-    graphId: string,
-    nodeId: string,
-    suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+    knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
     options?: RawAxiosRequestConfig,
   ) {
     return GraphsApiFp(this.configuration)
-      .suggestKnowledgeContent(
-        graphId,
-        nodeId,
-        suggestKnowledgeContentDto,
-        options,
-      )
+      .suggestKnowledgeContent(knowledgeContentSuggestionRequestDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -4182,6 +4284,1177 @@ export class GraphsApi extends BaseAPI {
   ) {
     return GraphsApiFp(this.configuration)
       .updateGraph(id, updateGraphDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+}
+
+/**
+ * KnowledgeApi - axios parameter creator
+ * @export
+ */
+export const KnowledgeApiAxiosParamCreator = function (
+  configuration?: Configuration,
+) {
+  return {
+    /**
+     *
+     * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    analyzeThread: async (
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'threadId' is not null or undefined
+      assertParamExists('analyzeThread', 'threadId', threadId);
+      // verify required parameter 'threadAnalysisRequestDto' is not null or undefined
+      assertParamExists(
+        'analyzeThread',
+        'threadAnalysisRequestDto',
+        threadAnalysisRequestDto,
+      );
+      const localVarPath = `/api/v1/threads/{threadId}/analyze`.replace(
+        `{${'threadId'}}`,
+        encodeURIComponent(String(threadId)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        threadAnalysisRequestDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    createDoc: async (
+      knowledgeDocInputDto: KnowledgeDocInputDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'knowledgeDocInputDto' is not null or undefined
+      assertParamExists(
+        'createDoc',
+        'knowledgeDocInputDto',
+        knowledgeDocInputDto,
+      );
+      const localVarPath = `/api/v1/knowledge-docs`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        knowledgeDocInputDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    deleteDoc: async (
+      id: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('deleteDoc', 'id', id);
+      const localVarPath = `/api/v1/knowledge-docs/{id}`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'DELETE',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getDoc: async (
+      id: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('getDoc', 'id', id);
+      const localVarPath = `/api/v1/knowledge-docs/{id}`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getDocChunks: async (
+      id: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('getDocChunks', 'id', id);
+      const localVarPath = `/api/v1/knowledge-docs/{id}/chunks`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {Array<string>} [tags] Filter by tags (match any)
+     * @param {string} [search] Search in title/summary/content
+     * @param {number} [limit]
+     * @param {number} [offset]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    listDocs: async (
+      tags?: Array<string>,
+      search?: string,
+      limit?: number,
+      offset?: number,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      const localVarPath = `/api/v1/knowledge-docs`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      if (tags) {
+        localVarQueryParameter['tags'] = tags;
+      }
+
+      if (search !== undefined) {
+        localVarQueryParameter['search'] = search;
+      }
+
+      if (limit !== undefined) {
+        localVarQueryParameter['limit'] = limit;
+      }
+
+      if (offset !== undefined) {
+        localVarQueryParameter['offset'] = offset;
+      }
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestAgentInstructions: async (
+      graphId: string,
+      nodeId: string,
+      suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'graphId' is not null or undefined
+      assertParamExists('suggestAgentInstructions', 'graphId', graphId);
+      // verify required parameter 'nodeId' is not null or undefined
+      assertParamExists('suggestAgentInstructions', 'nodeId', nodeId);
+      // verify required parameter 'suggestAgentInstructionsDto' is not null or undefined
+      assertParamExists(
+        'suggestAgentInstructions',
+        'suggestAgentInstructionsDto',
+        suggestAgentInstructionsDto,
+      );
+      const localVarPath =
+        `/api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions`
+          .replace(`{${'graphId'}}`, encodeURIComponent(String(graphId)))
+          .replace(`{${'nodeId'}}`, encodeURIComponent(String(nodeId)));
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        suggestAgentInstructionsDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestKnowledgeContent: async (
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'knowledgeContentSuggestionRequestDto' is not null or undefined
+      assertParamExists(
+        'suggestKnowledgeContent',
+        'knowledgeContentSuggestionRequestDto',
+        knowledgeContentSuggestionRequestDto,
+      );
+      const localVarPath = `/api/v1/knowledge-docs/suggest`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        knowledgeContentSuggestionRequestDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    updateDoc: async (
+      id: string,
+      knowledgeDocInputDto: KnowledgeDocInputDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('updateDoc', 'id', id);
+      // verify required parameter 'knowledgeDocInputDto' is not null or undefined
+      assertParamExists(
+        'updateDoc',
+        'knowledgeDocInputDto',
+        knowledgeDocInputDto,
+      );
+      const localVarPath = `/api/v1/knowledge-docs/{id}`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'PUT',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        knowledgeDocInputDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+  };
+};
+
+/**
+ * KnowledgeApi - functional programming interface
+ * @export
+ */
+export const KnowledgeApiFp = function (configuration?: Configuration) {
+  const localVarAxiosParamCreator =
+    KnowledgeApiAxiosParamCreator(configuration);
+  return {
+    /**
+     *
+     * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async analyzeThread(
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<ThreadAnalysisResponseDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.analyzeThread(
+        threadId,
+        threadAnalysisRequestDto,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.analyzeThread']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async createDoc(
+      knowledgeDocInputDto: KnowledgeDocInputDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<KnowledgeDocDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.createDoc(
+        knowledgeDocInputDto,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.createDoc']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async deleteDoc(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.deleteDoc(
+        id,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.deleteDoc']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getDoc(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<KnowledgeDocDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getDoc(
+        id,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.getDoc']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getDocChunks(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<KnowledgeChunkDto>>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getDocChunks(
+        id,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.getDocChunks']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {Array<string>} [tags] Filter by tags (match any)
+     * @param {string} [search] Search in title/summary/content
+     * @param {number} [limit]
+     * @param {number} [offset]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async listDocs(
+      tags?: Array<string>,
+      search?: string,
+      limit?: number,
+      offset?: number,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<KnowledgeDocDto>>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.listDocs(
+        tags,
+        search,
+        limit,
+        offset,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.listDocs']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async suggestAgentInstructions(
+      graphId: string,
+      nodeId: string,
+      suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<SuggestAgentInstructionsResponseDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.suggestAgentInstructions(
+          graphId,
+          nodeId,
+          suggestAgentInstructionsDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.suggestAgentInstructions']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async suggestKnowledgeContent(
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<KnowledgeContentSuggestionResponseDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.suggestKnowledgeContent(
+          knowledgeContentSuggestionRequestDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.suggestKnowledgeContent']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async updateDoc(
+      id: string,
+      knowledgeDocInputDto: KnowledgeDocInputDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<KnowledgeDocDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.updateDoc(
+        id,
+        knowledgeDocInputDto,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['KnowledgeApi.updateDoc']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+  };
+};
+
+/**
+ * KnowledgeApi - factory interface
+ * @export
+ */
+export const KnowledgeApiFactory = function (
+  configuration?: Configuration,
+  basePath?: string,
+  axios?: AxiosInstance,
+) {
+  const localVarFp = KnowledgeApiFp(configuration);
+  return {
+    /**
+     *
+     * @param {string} threadId
+     * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    analyzeThread(
+      threadId: string,
+      threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadAnalysisResponseDto> {
+      return localVarFp
+        .analyzeThread(threadId, threadAnalysisRequestDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    createDoc(
+      knowledgeDocInputDto: KnowledgeDocInputDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<KnowledgeDocDto> {
+      return localVarFp
+        .createDoc(knowledgeDocInputDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    deleteDoc(id: string, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+      return localVarFp
+        .deleteDoc(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getDoc(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<KnowledgeDocDto> {
+      return localVarFp
+        .getDoc(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getDocChunks(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<Array<KnowledgeChunkDto>> {
+      return localVarFp
+        .getDocChunks(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {Array<string>} [tags] Filter by tags (match any)
+     * @param {string} [search] Search in title/summary/content
+     * @param {number} [limit]
+     * @param {number} [offset]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    listDocs(
+      tags?: Array<string>,
+      search?: string,
+      limit?: number,
+      offset?: number,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<Array<KnowledgeDocDto>> {
+      return localVarFp
+        .listDocs(tags, search, limit, offset, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} graphId
+     * @param {string} nodeId
+     * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestAgentInstructions(
+      graphId: string,
+      nodeId: string,
+      suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<SuggestAgentInstructionsResponseDto> {
+      return localVarFp
+        .suggestAgentInstructions(
+          graphId,
+          nodeId,
+          suggestAgentInstructionsDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    suggestKnowledgeContent(
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<KnowledgeContentSuggestionResponseDto> {
+      return localVarFp
+        .suggestKnowledgeContent(knowledgeContentSuggestionRequestDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    updateDoc(
+      id: string,
+      knowledgeDocInputDto: KnowledgeDocInputDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<KnowledgeDocDto> {
+      return localVarFp
+        .updateDoc(id, knowledgeDocInputDto, options)
+        .then((request) => request(axios, basePath));
+    },
+  };
+};
+
+/**
+ * KnowledgeApi - object-oriented interface
+ * @export
+ * @class KnowledgeApi
+ * @extends {BaseAPI}
+ */
+export class KnowledgeApi extends BaseAPI {
+  /**
+   *
+   * @param {string} threadId
+   * @param {ThreadAnalysisRequestDto} threadAnalysisRequestDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public analyzeThread(
+    threadId: string,
+    threadAnalysisRequestDto: ThreadAnalysisRequestDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return KnowledgeApiFp(this.configuration)
+      .analyzeThread(threadId, threadAnalysisRequestDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public createDoc(
+    knowledgeDocInputDto: KnowledgeDocInputDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return KnowledgeApiFp(this.configuration)
+      .createDoc(knowledgeDocInputDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public deleteDoc(id: string, options?: RawAxiosRequestConfig) {
+    return KnowledgeApiFp(this.configuration)
+      .deleteDoc(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public getDoc(id: string, options?: RawAxiosRequestConfig) {
+    return KnowledgeApiFp(this.configuration)
+      .getDoc(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public getDocChunks(id: string, options?: RawAxiosRequestConfig) {
+    return KnowledgeApiFp(this.configuration)
+      .getDocChunks(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {Array<string>} [tags] Filter by tags (match any)
+   * @param {string} [search] Search in title/summary/content
+   * @param {number} [limit]
+   * @param {number} [offset]
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public listDocs(
+    tags?: Array<string>,
+    search?: string,
+    limit?: number,
+    offset?: number,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return KnowledgeApiFp(this.configuration)
+      .listDocs(tags, search, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} graphId
+   * @param {string} nodeId
+   * @param {SuggestAgentInstructionsDto} suggestAgentInstructionsDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public suggestAgentInstructions(
+    graphId: string,
+    nodeId: string,
+    suggestAgentInstructionsDto: SuggestAgentInstructionsDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return KnowledgeApiFp(this.configuration)
+      .suggestAgentInstructions(
+        graphId,
+        nodeId,
+        suggestAgentInstructionsDto,
+        options,
+      )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public suggestKnowledgeContent(
+    knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return KnowledgeApiFp(this.configuration)
+      .suggestKnowledgeContent(knowledgeContentSuggestionRequestDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof KnowledgeApi
+   */
+  public updateDoc(
+    id: string,
+    knowledgeDocInputDto: KnowledgeDocInputDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return KnowledgeApiFp(this.configuration)
+      .updateDoc(id, knowledgeDocInputDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }
@@ -5041,32 +6314,21 @@ export const ThreadsApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {string} graphId
-     * @param {string} nodeId
-     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     suggestKnowledgeContent: async (
-      graphId: string,
-      nodeId: string,
-      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
       options: RawAxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'graphId' is not null or undefined
-      assertParamExists('suggestKnowledgeContent', 'graphId', graphId);
-      // verify required parameter 'nodeId' is not null or undefined
-      assertParamExists('suggestKnowledgeContent', 'nodeId', nodeId);
-      // verify required parameter 'suggestKnowledgeContentDto' is not null or undefined
+      // verify required parameter 'knowledgeContentSuggestionRequestDto' is not null or undefined
       assertParamExists(
         'suggestKnowledgeContent',
-        'suggestKnowledgeContentDto',
-        suggestKnowledgeContentDto,
+        'knowledgeContentSuggestionRequestDto',
+        knowledgeContentSuggestionRequestDto,
       );
-      const localVarPath =
-        `/api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-knowledge`
-          .replace(`{${'graphId'}}`, encodeURIComponent(String(graphId)))
-          .replace(`{${'nodeId'}}`, encodeURIComponent(String(nodeId)));
+      const localVarPath = `/api/v1/knowledge-docs/suggest`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
       const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
       let baseOptions;
@@ -5097,7 +6359,7 @@ export const ThreadsApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        suggestKnowledgeContentDto,
+        knowledgeContentSuggestionRequestDto,
         localVarRequestOptions,
         configuration,
       );
@@ -5456,28 +6718,22 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {string} graphId
-     * @param {string} nodeId
-     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async suggestKnowledgeContent(
-      graphId: string,
-      nodeId: string,
-      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
       options?: RawAxiosRequestConfig,
     ): Promise<
       (
         axios?: AxiosInstance,
         basePath?: string,
-      ) => AxiosPromise<SuggestKnowledgeContentResponseDto>
+      ) => AxiosPromise<KnowledgeContentSuggestionResponseDto>
     > {
       const localVarAxiosArgs =
         await localVarAxiosParamCreator.suggestKnowledgeContent(
-          graphId,
-          nodeId,
-          suggestKnowledgeContentDto,
+          knowledgeContentSuggestionRequestDto,
           options,
         );
       const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
@@ -5672,25 +6928,16 @@ export const ThreadsApiFactory = function (
     },
     /**
      *
-     * @param {string} graphId
-     * @param {string} nodeId
-     * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+     * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     suggestKnowledgeContent(
-      graphId: string,
-      nodeId: string,
-      suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+      knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
       options?: RawAxiosRequestConfig,
-    ): AxiosPromise<SuggestKnowledgeContentResponseDto> {
+    ): AxiosPromise<KnowledgeContentSuggestionResponseDto> {
       return localVarFp
-        .suggestKnowledgeContent(
-          graphId,
-          nodeId,
-          suggestKnowledgeContentDto,
-          options,
-        )
+        .suggestKnowledgeContent(knowledgeContentSuggestionRequestDto, options)
         .then((request) => request(axios, basePath));
     },
   };
@@ -5879,26 +7126,17 @@ export class ThreadsApi extends BaseAPI {
 
   /**
    *
-   * @param {string} graphId
-   * @param {string} nodeId
-   * @param {SuggestKnowledgeContentDto} suggestKnowledgeContentDto
+   * @param {KnowledgeContentSuggestionRequestDto} knowledgeContentSuggestionRequestDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof ThreadsApi
    */
   public suggestKnowledgeContent(
-    graphId: string,
-    nodeId: string,
-    suggestKnowledgeContentDto: SuggestKnowledgeContentDto,
+    knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto,
     options?: RawAxiosRequestConfig,
   ) {
     return ThreadsApiFp(this.configuration)
-      .suggestKnowledgeContent(
-        graphId,
-        nodeId,
-        suggestKnowledgeContentDto,
-        options,
-      )
+      .suggestKnowledgeContent(knowledgeContentSuggestionRequestDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

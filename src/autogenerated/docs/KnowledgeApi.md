@@ -1,21 +1,18 @@
-# GraphsApi
+# KnowledgeApi
 
 All URIs are relative to _http://localhost_
 
 | Method                                                    | HTTP request                                                          | Description |
 | --------------------------------------------------------- | --------------------------------------------------------------------- | ----------- |
 | [**analyzeThread**](#analyzethread)                       | **POST** /api/v1/threads/{threadId}/analyze                           |             |
-| [**createGraph**](#creategraph)                           | **POST** /api/v1/graphs                                               |             |
-| [**deleteGraph**](#deletegraph)                           | **DELETE** /api/v1/graphs/{id}                                        |             |
-| [**destroyGraph**](#destroygraph)                         | **POST** /api/v1/graphs/{id}/destroy                                  |             |
-| [**executeTrigger**](#executetrigger)                     | **POST** /api/v1/graphs/{graphId}/triggers/{triggerId}/execute        |             |
-| [**findGraphById**](#findgraphbyid)                       | **GET** /api/v1/graphs/{id}                                           |             |
-| [**getAllGraphs**](#getallgraphs)                         | **GET** /api/v1/graphs                                                |             |
-| [**getCompiledNodes**](#getcompilednodes)                 | **GET** /api/v1/graphs/{id}/nodes                                     |             |
-| [**runGraph**](#rungraph)                                 | **POST** /api/v1/graphs/{id}/run                                      |             |
+| [**createDoc**](#createdoc)                               | **POST** /api/v1/knowledge-docs                                       |             |
+| [**deleteDoc**](#deletedoc)                               | **DELETE** /api/v1/knowledge-docs/{id}                                |             |
+| [**getDoc**](#getdoc)                                     | **GET** /api/v1/knowledge-docs/{id}                                   |             |
+| [**getDocChunks**](#getdocchunks)                         | **GET** /api/v1/knowledge-docs/{id}/chunks                            |             |
+| [**listDocs**](#listdocs)                                 | **GET** /api/v1/knowledge-docs                                        |             |
 | [**suggestAgentInstructions**](#suggestagentinstructions) | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions |             |
 | [**suggestKnowledgeContent**](#suggestknowledgecontent)   | **POST** /api/v1/knowledge-docs/suggest                               |             |
-| [**updateGraph**](#updategraph)                           | **PUT** /api/v1/graphs/{id}                                           |             |
+| [**updateDoc**](#updatedoc)                               | **PUT** /api/v1/knowledge-docs/{id}                                   |             |
 
 # **analyzeThread**
 
@@ -24,10 +21,10 @@ All URIs are relative to _http://localhost_
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration, ThreadAnalysisRequestDto } from './api';
+import { KnowledgeApi, Configuration, ThreadAnalysisRequestDto } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
 let threadId: string; // (default to undefined)
 let threadAnalysisRequestDto: ThreadAnalysisRequestDto; //
@@ -66,32 +63,32 @@ const { status, data } = await apiInstance.analyzeThread(
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **createGraph**
+# **createDoc**
 
-> GraphDto createGraph(createGraphDto)
+> KnowledgeDocDto createDoc(knowledgeDocInputDto)
 
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration, CreateGraphDto } from './api';
+import { KnowledgeApi, Configuration, KnowledgeDocInputDto } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
-let createGraphDto: CreateGraphDto; //
+let knowledgeDocInputDto: KnowledgeDocInputDto; //
 
-const { status, data } = await apiInstance.createGraph(createGraphDto);
+const { status, data } = await apiInstance.createDoc(knowledgeDocInputDto);
 ```
 
 ### Parameters
 
-| Name               | Type               | Description | Notes |
-| ------------------ | ------------------ | ----------- | ----- |
-| **createGraphDto** | **CreateGraphDto** |             |       |
+| Name                     | Type                     | Description | Notes |
+| ------------------------ | ------------------------ | ----------- | ----- |
+| **knowledgeDocInputDto** | **KnowledgeDocInputDto** |             |       |
 
 ### Return type
 
-**GraphDto**
+**KnowledgeDocDto**
 
 ### Authorization
 
@@ -110,21 +107,21 @@ const { status, data } = await apiInstance.createGraph(createGraphDto);
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **deleteGraph**
+# **deleteDoc**
 
-> deleteGraph()
+> deleteDoc()
 
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration } from './api';
+import { KnowledgeApi, Configuration } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
 let id: string; // (default to undefined)
 
-const { status, data } = await apiInstance.deleteGraph(id);
+const { status, data } = await apiInstance.deleteDoc(id);
 ```
 
 ### Parameters
@@ -154,21 +151,21 @@ void (empty response body)
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **destroyGraph**
+# **getDoc**
 
-> GraphDto destroyGraph()
+> KnowledgeDocDto getDoc()
 
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration } from './api';
+import { KnowledgeApi, Configuration } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
 let id: string; // (default to undefined)
 
-const { status, data } = await apiInstance.destroyGraph(id);
+const { status, data } = await apiInstance.getDoc(id);
 ```
 
 ### Parameters
@@ -179,7 +176,7 @@ const { status, data } = await apiInstance.destroyGraph(id);
 
 ### Return type
 
-**GraphDto**
+**KnowledgeDocDto**
 
 ### Authorization
 
@@ -194,88 +191,91 @@ const { status, data } = await apiInstance.destroyGraph(id);
 
 | Status code | Description | Response headers |
 | ----------- | ----------- | ---------------- |
-| **201**     |             | -                |
+| **200**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **executeTrigger**
+# **getDocChunks**
 
-> ExecuteTriggerResponseDto executeTrigger(executeTriggerDto)
+> Array<KnowledgeChunkDto> getDocChunks()
 
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration, ExecuteTriggerDto } from './api';
+import { KnowledgeApi, Configuration } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
-let graphId: string; // (default to undefined)
-let triggerId: string; // (default to undefined)
-let executeTriggerDto: ExecuteTriggerDto; //
+let id: string; // (default to undefined)
 
-const { status, data } = await apiInstance.executeTrigger(
-  graphId,
-  triggerId,
-  executeTriggerDto,
+const { status, data } = await apiInstance.getDocChunks(id);
+```
+
+### Parameters
+
+| Name   | Type         | Description | Notes                 |
+| ------ | ------------ | ----------- | --------------------- |
+| **id** | [**string**] |             | defaults to undefined |
+
+### Return type
+
+**Array<KnowledgeChunkDto>**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **200**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **listDocs**
+
+> Array<KnowledgeDocDto> listDocs()
+
+### Example
+
+```typescript
+import { KnowledgeApi, Configuration } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new KnowledgeApi(configuration);
+
+let tags: Array<string>; //Filter by tags (match any) (optional) (default to undefined)
+let search: string; //Search in title/summary/content (optional) (default to undefined)
+let limit: number; // (optional) (default to 50)
+let offset: number; // (optional) (default to 0)
+
+const { status, data } = await apiInstance.listDocs(
+  tags,
+  search,
+  limit,
+  offset,
 );
 ```
 
 ### Parameters
 
-| Name                  | Type                  | Description | Notes                 |
-| --------------------- | --------------------- | ----------- | --------------------- |
-| **executeTriggerDto** | **ExecuteTriggerDto** |             |                       |
-| **graphId**           | [**string**]          |             | defaults to undefined |
-| **triggerId**         | [**string**]          |             | defaults to undefined |
+| Name       | Type                    | Description                     | Notes                            |
+| ---------- | ----------------------- | ------------------------------- | -------------------------------- |
+| **tags**   | **Array&lt;string&gt;** | Filter by tags (match any)      | (optional) defaults to undefined |
+| **search** | [**string**]            | Search in title/summary/content | (optional) defaults to undefined |
+| **limit**  | [**number**]            |                                 | (optional) defaults to 50        |
+| **offset** | [**number**]            |                                 | (optional) defaults to 0         |
 
 ### Return type
 
-**ExecuteTriggerResponseDto**
-
-### Authorization
-
-[bearer](../README.md#bearer)
-
-### HTTP request headers
-
-- **Content-Type**: application/json
-- **Accept**: application/json
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-| ----------- | ----------- | ---------------- |
-| **201**     |             | -                |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **findGraphById**
-
-> GraphDto findGraphById()
-
-### Example
-
-```typescript
-import { GraphsApi, Configuration } from './api';
-
-const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
-
-let id: string; // (default to undefined)
-
-const { status, data } = await apiInstance.findGraphById(id);
-```
-
-### Parameters
-
-| Name   | Type         | Description | Notes                 |
-| ------ | ------------ | ----------- | --------------------- |
-| **id** | [**string**] |             | defaults to undefined |
-
-### Return type
-
-**GraphDto**
+**Array<KnowledgeDocDto>**
 
 ### Authorization
 
@@ -291,146 +291,6 @@ const { status, data } = await apiInstance.findGraphById(id);
 | Status code | Description | Response headers |
 | ----------- | ----------- | ---------------- |
 | **200**     |             | -                |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **getAllGraphs**
-
-> Array<GraphDto> getAllGraphs()
-
-### Example
-
-```typescript
-import { GraphsApi, Configuration } from './api';
-
-const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
-
-let ids: Array<string>; //Filter graphs by IDs (comma-separated or repeated params) (optional) (default to undefined)
-
-const { status, data } = await apiInstance.getAllGraphs(ids);
-```
-
-### Parameters
-
-| Name    | Type                    | Description                                               | Notes                            |
-| ------- | ----------------------- | --------------------------------------------------------- | -------------------------------- |
-| **ids** | **Array&lt;string&gt;** | Filter graphs by IDs (comma-separated or repeated params) | (optional) defaults to undefined |
-
-### Return type
-
-**Array<GraphDto>**
-
-### Authorization
-
-[bearer](../README.md#bearer)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-| ----------- | ----------- | ---------------- |
-| **200**     |             | -                |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **getCompiledNodes**
-
-> Array<GraphNodeWithStatusDto> getCompiledNodes()
-
-### Example
-
-```typescript
-import { GraphsApi, Configuration } from './api';
-
-const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
-
-let id: string; // (default to undefined)
-let threadId: string; // (optional) (default to undefined)
-let runId: string; // (optional) (default to undefined)
-
-const { status, data } = await apiInstance.getCompiledNodes(
-  id,
-  threadId,
-  runId,
-);
-```
-
-### Parameters
-
-| Name         | Type         | Description | Notes                            |
-| ------------ | ------------ | ----------- | -------------------------------- |
-| **id**       | [**string**] |             | defaults to undefined            |
-| **threadId** | [**string**] |             | (optional) defaults to undefined |
-| **runId**    | [**string**] |             | (optional) defaults to undefined |
-
-### Return type
-
-**Array<GraphNodeWithStatusDto>**
-
-### Authorization
-
-[bearer](../README.md#bearer)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-| ----------- | ----------- | ---------------- |
-| **200**     |             | -                |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **runGraph**
-
-> GraphDto runGraph()
-
-### Example
-
-```typescript
-import { GraphsApi, Configuration } from './api';
-
-const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
-
-let id: string; // (default to undefined)
-
-const { status, data } = await apiInstance.runGraph(id);
-```
-
-### Parameters
-
-| Name   | Type         | Description | Notes                 |
-| ------ | ------------ | ----------- | --------------------- |
-| **id** | [**string**] |             | defaults to undefined |
-
-### Return type
-
-**GraphDto**
-
-### Authorization
-
-[bearer](../README.md#bearer)
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: application/json
-
-### HTTP response details
-
-| Status code | Description | Response headers |
-| ----------- | ----------- | ---------------- |
-| **201**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -441,10 +301,14 @@ const { status, data } = await apiInstance.runGraph(id);
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration, SuggestAgentInstructionsDto } from './api';
+import {
+  KnowledgeApi,
+  Configuration,
+  SuggestAgentInstructionsDto,
+} from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
 let graphId: string; // (default to undefined)
 let nodeId: string; // (default to undefined)
@@ -494,13 +358,13 @@ const { status, data } = await apiInstance.suggestAgentInstructions(
 
 ```typescript
 import {
-  GraphsApi,
+  KnowledgeApi,
   Configuration,
   KnowledgeContentSuggestionRequestDto,
 } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
 let knowledgeContentSuggestionRequestDto: KnowledgeContentSuggestionRequestDto; //
 
@@ -536,34 +400,34 @@ const { status, data } = await apiInstance.suggestKnowledgeContent(
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **updateGraph**
+# **updateDoc**
 
-> UpdateGraphResponseDto updateGraph(updateGraphDto)
+> KnowledgeDocDto updateDoc(knowledgeDocInputDto)
 
 ### Example
 
 ```typescript
-import { GraphsApi, Configuration, UpdateGraphDto } from './api';
+import { KnowledgeApi, Configuration, KnowledgeDocInputDto } from './api';
 
 const configuration = new Configuration();
-const apiInstance = new GraphsApi(configuration);
+const apiInstance = new KnowledgeApi(configuration);
 
 let id: string; // (default to undefined)
-let updateGraphDto: UpdateGraphDto; //
+let knowledgeDocInputDto: KnowledgeDocInputDto; //
 
-const { status, data } = await apiInstance.updateGraph(id, updateGraphDto);
+const { status, data } = await apiInstance.updateDoc(id, knowledgeDocInputDto);
 ```
 
 ### Parameters
 
-| Name               | Type               | Description | Notes                 |
-| ------------------ | ------------------ | ----------- | --------------------- |
-| **updateGraphDto** | **UpdateGraphDto** |             |                       |
-| **id**             | [**string**]       |             | defaults to undefined |
+| Name                     | Type                     | Description | Notes                 |
+| ------------------------ | ------------------------ | ----------- | --------------------- |
+| **knowledgeDocInputDto** | **KnowledgeDocInputDto** |             |                       |
+| **id**                   | [**string**]             |             | defaults to undefined |
 
 ### Return type
 
-**UpdateGraphResponseDto**
+**KnowledgeDocDto**
 
 ### Authorization
 

@@ -31,7 +31,6 @@ type FormContext = {
     fieldLabel: string,
     value?: unknown,
   ) => void;
-  aiSuggestionMode: 'agent' | 'knowledge';
   aiSuggestionEnabled: boolean;
 };
 
@@ -53,7 +52,6 @@ const getFormContext = (props: {
     litellmModelsLoading: false,
     openExpandedTextarea: () => {},
     openAiSuggestion: () => {},
-    aiSuggestionMode: 'agent',
     aiSuggestionEnabled: false,
   };
 
@@ -148,7 +146,6 @@ export interface TemplateConfigFormProps {
     fieldLabel: string,
     value?: unknown,
   ) => void;
-  aiSuggestionMode: 'agent' | 'knowledge';
   aiSuggestionEnabled: boolean;
 }
 
@@ -160,7 +157,6 @@ export const TemplateConfigForm: React.FC<TemplateConfigFormProps> = ({
   litellmModelsLoading,
   onOpenExpandedTextarea,
   onOpenAiSuggestion,
-  aiSuggestionMode,
   aiSuggestionEnabled,
 }) => {
   const uiSchema = useMemo(() => buildUiSchema(schema), [schema]);
@@ -171,12 +167,10 @@ export const TemplateConfigForm: React.FC<TemplateConfigFormProps> = ({
       litellmModelsLoading,
       openExpandedTextarea: onOpenExpandedTextarea,
       openAiSuggestion: onOpenAiSuggestion,
-      aiSuggestionMode,
       aiSuggestionEnabled,
     }),
     [
       aiSuggestionEnabled,
-      aiSuggestionMode,
       liteLlmModels,
       litellmModelsLoading,
       onOpenAiSuggestion,
@@ -311,7 +305,7 @@ export const TemplateConfigForm: React.FC<TemplateConfigFormProps> = ({
             maximum?: number;
             multipleOf?: number;
           };
-          const rawValue = props.value;
+          const rawValue: unknown = props.value;
           const value =
             typeof rawValue === 'number' && Number.isFinite(rawValue)
               ? rawValue
@@ -399,9 +393,7 @@ export const TemplateConfigForm: React.FC<TemplateConfigFormProps> = ({
                       props.value,
                     )
                   }>
-                  {ctx.aiSuggestionMode === 'knowledge'
-                    ? 'Generate with AI'
-                    : 'Improve with AI'}
+                  Improve with AI
                 </Button>
               )}
             </div>
@@ -456,9 +448,7 @@ export const TemplateConfigForm: React.FC<TemplateConfigFormProps> = ({
                       props.value,
                     )
                   }>
-                  {ctx.aiSuggestionMode === 'knowledge'
-                    ? 'Generate with AI'
-                    : 'Improve with AI'}
+                  Improve with AI
                 </Button>
               )}
             </div>

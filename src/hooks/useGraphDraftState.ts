@@ -110,13 +110,17 @@ function normalizeState(state: GraphDraftState): GraphDraftState {
         } = node;
         const strippedData = stripCallbacks(node.data);
         const strippedDataRecord = strippedData as Record<string, unknown>;
+        const normalizedData = {
+          label: strippedDataRecord.label,
+          template: strippedDataRecord.template,
+          config: strippedDataRecord?.config
+            ? deepSortKeys(strippedDataRecord.config)
+            : strippedDataRecord?.config,
+        };
         return {
           ...coreNode,
           data: {
-            ...strippedDataRecord,
-            config: strippedDataRecord?.config
-              ? deepSortKeys(strippedDataRecord.config)
-              : strippedDataRecord?.config,
+            ...normalizedData,
           },
         } as GraphNode;
       })

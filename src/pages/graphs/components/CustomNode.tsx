@@ -17,8 +17,11 @@ import { GraphValidationService } from '../../../services/GraphValidationService
 import { getAgentAvatarDataUri } from '../../../utils/agentAvatars';
 import { getTemplateKindColor } from '../../../utils/templateColors';
 import type { GraphEdge, GraphNode, GraphNodeData } from '../types';
-import type { ConnectionPreview, ConnectionRule } from './GraphCanvas';
-import { makeHandleId } from './GraphCanvas';
+import type {
+  ConnectionPreview,
+  ConnectionRule,
+} from '../utils/graphCanvasUtils';
+import { makeHandleId } from '../utils/graphCanvasUtils';
 
 const ensureNodeStatusPulseStyle = (() => {
   let injected = false;
@@ -265,7 +268,8 @@ export const CustomNode = React.memo(
       stopped: '#ff4d4f',
     };
 
-    const templateKindLower = (nodeTemplate?.kind || '').toLowerCase();
+    const templateKind = nodeTemplate?.kind ?? nodeData.templateKind;
+    const templateKindLower = (templateKind || '').toLowerCase();
     const isAgentNode = templateKindLower === 'simpleagent';
     const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
       templateKindLower,
@@ -380,9 +384,9 @@ export const CustomNode = React.memo(
                 </Text>
               </Space>
               <Tag
-                color={getTemplateKindColor(nodeData.templateKind)}
+                color={getTemplateKindColor(templateKind)}
                 style={{ margin: 0, fontSize: 10 }}>
-                {nodeData.templateKind}
+                {templateKind}
               </Tag>
               <Tag color="geekblue" style={{ margin: 0, fontSize: 10 }}>
                 {nodeData.template}

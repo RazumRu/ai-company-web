@@ -18,12 +18,16 @@ docs/GraphNodeWithStatusDtoMetadata.md
 docs/GraphRevisionDto.md
 docs/GraphRevisionsApi.md
 docs/GraphsApi.md
+docs/KnowledgeApi.md
+docs/KnowledgeChunkDto.md
+docs/KnowledgeContentSuggestionRequestDto.md
+docs/KnowledgeContentSuggestionResponseDto.md
+docs/KnowledgeDocDto.md
+docs/KnowledgeDocInputDto.md
 docs/LiteLlmModelDto.md
 docs/LitellmApi.md
 docs/SuggestAgentInstructionsDto.md
 docs/SuggestAgentInstructionsResponseDto.md
-docs/SuggestKnowledgeContentDto.md
-docs/SuggestKnowledgeContentResponseDto.md
 docs/TemplateDto.md
 docs/TemplateDtoInputsInner.md
 docs/TemplateDtoInputsInnerOneOf.md
@@ -43,7 +47,6 @@ docs/ThreadMessageDtoMessageOneOf4.md
 docs/ThreadMessageDtoMessageOneOf4Content.md
 docs/ThreadMessageDtoMessageOneOf5.md
 docs/ThreadMessageDtoRequestTokenUsage.md
-docs/ThreadMessageDtoTokenUsage.md
 docs/ThreadUsageStatisticsDto.md
 docs/ThreadUsageStatisticsDtoByNodeValue.md
 docs/ThreadUsageStatisticsDtoByToolInner.md

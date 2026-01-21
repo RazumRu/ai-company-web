@@ -1,6 +1,7 @@
 import '@refinedev/antd/dist/reset.css';
 
 import {
+  BookOutlined,
   HomeOutlined,
   MessageOutlined,
   NodeIndexOutlined,
@@ -30,6 +31,7 @@ import { API_URL, PROJECT_ID } from './config';
 import { ChatsPage } from './pages/chats/page';
 import { GraphPage } from './pages/graphs/details';
 import { GraphsListPage } from './pages/graphs/list';
+import { KnowledgeListPage } from './pages/knowledge/list';
 import { MainPage } from './pages/main/page';
 
 // Login page component that redirects to Keycloak
@@ -98,6 +100,14 @@ function App() {
                 icon: <MessageOutlined />,
               },
             },
+            {
+              name: 'Knowledge',
+              list: '/knowledge',
+              meta: {
+                label: 'Knowledge',
+                icon: <BookOutlined />,
+              },
+            },
           ]}
           options={{
             syncWithLocation: true,
@@ -144,6 +154,7 @@ function App() {
               <Route path="/graphs" element={<GraphsListPage />} />
               <Route path="/graphs/:id" element={<GraphPage />} />
               <Route path="/chats" element={<ChatsPage />} />
+              <Route path="/knowledge" element={<KnowledgeListPage />} />
               <Route path="*" element={<ErrorComponent />} />
             </Route>
             <Route

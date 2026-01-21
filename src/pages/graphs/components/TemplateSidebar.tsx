@@ -46,6 +46,9 @@ export const TemplateSidebar = ({
   // Filter templates based on search text
   const filteredTemplates = useMemo(() => {
     return templates.filter((template) => {
+      if (template.kind?.toLowerCase() === 'knowledge') {
+        return false;
+      }
       const matchesSearch =
         !searchText ||
         template.name?.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -93,8 +96,6 @@ export const TemplateSidebar = ({
         return 'Resource';
       case 'runtime':
         return 'Runtime';
-      case 'knowledge':
-        return 'Knowledge';
       default:
         return kind;
     }
