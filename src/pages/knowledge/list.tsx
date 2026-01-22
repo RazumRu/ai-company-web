@@ -712,6 +712,11 @@ export const KnowledgeListPage = () => {
                 </Text>
               )}
             </div>
+            {viewDoc.politic && (
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                {viewDoc.politic}
+              </Paragraph>
+            )}
             {viewDoc.summary && (
               <Paragraph type="secondary">{viewDoc.summary}</Paragraph>
             )}

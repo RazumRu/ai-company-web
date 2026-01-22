@@ -14,6 +14,7 @@ All URIs are relative to _http://localhost_
 | [**stopThread**](#stopthread)                             | **POST** /api/v1/threads/{threadId}/stop                              |             |
 | [**stopThreadByExternalId**](#stopthreadbyexternalid)     | **POST** /api/v1/threads/external/{externalThreadId}/stop             |             |
 | [**suggestAgentInstructions**](#suggestagentinstructions) | **POST** /api/v1/graphs/{graphId}/nodes/{nodeId}/suggest-instructions |             |
+| [**suggestGraphInstructions**](#suggestgraphinstructions) | **POST** /api/v1/graphs/{graphId}/suggest-instructions                |             |
 | [**suggestKnowledgeContent**](#suggestknowledgecontent)   | **POST** /api/v1/knowledge-docs/suggest                               |             |
 
 # **analyzeThread**
@@ -475,6 +476,55 @@ const { status, data } = await apiInstance.suggestAgentInstructions(
 ### Return type
 
 **SuggestAgentInstructionsResponseDto**
+
+### Authorization
+
+[bearer](../README.md#bearer)
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+### HTTP response details
+
+| Status code | Description | Response headers |
+| ----------- | ----------- | ---------------- |
+| **201**     |             | -                |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **suggestGraphInstructions**
+
+> SuggestGraphInstructionsResponseDto suggestGraphInstructions(suggestGraphInstructionsDto)
+
+### Example
+
+```typescript
+import { ThreadsApi, Configuration, SuggestGraphInstructionsDto } from './api';
+
+const configuration = new Configuration();
+const apiInstance = new ThreadsApi(configuration);
+
+let graphId: string; // (default to undefined)
+let suggestGraphInstructionsDto: SuggestGraphInstructionsDto; //
+
+const { status, data } = await apiInstance.suggestGraphInstructions(
+  graphId,
+  suggestGraphInstructionsDto,
+);
+```
+
+### Parameters
+
+| Name                            | Type                            | Description | Notes                 |
+| ------------------------------- | ------------------------------- | ----------- | --------------------- |
+| **suggestGraphInstructionsDto** | **SuggestGraphInstructionsDto** |             |                       |
+| **graphId**                     | [**string**]                    |             | defaults to undefined |
+
+### Return type
+
+**SuggestGraphInstructionsResponseDto**
 
 ### Authorization
 

@@ -28,6 +28,9 @@ docs/LiteLlmModelDto.md
 docs/LitellmApi.md
 docs/SuggestAgentInstructionsDto.md
 docs/SuggestAgentInstructionsResponseDto.md
+docs/SuggestGraphInstructionsDto.md
+docs/SuggestGraphInstructionsResponseDto.md
+docs/SuggestGraphInstructionsResponseDtoUpdatesInner.md
 docs/TemplateDto.md
 docs/TemplateDtoInputsInner.md
 docs/TemplateDtoInputsInnerOneOf.md

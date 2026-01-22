@@ -5,11 +5,12 @@ import {
   DownloadOutlined,
   DownOutlined,
   EditOutlined,
+  EllipsisOutlined,
   ExclamationCircleOutlined,
   LoadingOutlined,
-  MessageFilled,
   MessageOutlined,
   PlayCircleFilled,
+  RobotOutlined,
   RightOutlined,
   SaveFilled,
   XFilled,
@@ -22,6 +23,7 @@ import {
 } from '@xyflow/react';
 import {
   Button,
+  Dropdown,
   Input,
   Layout,
   message,
@@ -53,6 +55,7 @@ import {
   GraphNodeWithStatusDto,
   GraphRevisionDto,
   GraphRevisionDtoStatusEnum,
+  SuggestGraphInstructionsResponseDtoUpdatesInner,
   TemplateDto,
   ThreadDto,
   ThreadDtoStatusEnum,
@@ -92,6 +95,7 @@ import {
 import { getThreadStatusDisplay } from '../../utils/threadStatus';
 import ThreadChatPanel from '../chats/components/ThreadChatPanel';
 import { GraphCanvas } from './components/GraphCanvas';
+import { GraphAiSuggestionModal } from './components/GraphAiSuggestionModal';
 import { NodeEditSidebar } from './components/NodeEditSidebar';
 import { TemplateModal } from './components/TemplateModal';
 import { TemplateSidebar } from './components/TemplateSidebar';
@@ -294,6 +298,7 @@ export const GraphPage = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false);
   const [graph, setGraph] = useState<GraphDto | null>(null);
 
@@ -447,6 +452,70 @@ export const GraphPage = () => {
 
   const isGraphRunning = graph?.status === GraphDtoStatusEnum.Running;
   const isGraphCompiling = graph?.status === GraphDtoStatusEnum.Compiling;
+
+  const [graphAiModalOpen, setGraphAiModalOpen] = useState(false);
+  const [graphAiUserRequest, setGraphAiUserRequest] = useState('');
+  const [graphAiLoading, setGraphAiLoading] = useState(false);
+  const [graphAiSelectedNodeId, setGraphAiSelectedNodeId] = useState<
+    string | null
+  >(null);
+  const [graphAiUpdatesByNodeId, setGraphAiUpdatesByNodeId] = useState<
+    Record<string, SuggestGraphInstructionsResponseDtoUpdatesInner>
+  >({});
+
+  const formatInstructionsValue = useCallback((value: unknown): string => {
+    if (value === undefined || value === null) {
+      return '';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item)).join('\n\n');
+    }
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }, []);
+
+  const resolveAiSuggestionFieldKey = useCallback((node: GraphNode) => {
+    const data = node.data as unknown as GraphNodeData;
+    const schemaProps = data?.templateSchema?.properties;
+    if (schemaProps && typeof schemaProps === 'object') {
+      const aiEntry = Object.entries(schemaProps).find(
+        ([, prop]) => prop?.['x-ui:ai-suggestions'] === true,
+      );
+      if (aiEntry) return aiEntry[0];
+      if (schemaProps.instructions) return 'instructions';
+    }
+    const config = data?.config as Record<string, unknown> | undefined;
+    if (config && Object.prototype.hasOwnProperty.call(config, 'instructions')) {
+      return 'instructions';
+    }
+    return null;
+  }, []);
+
+  const getCurrentNodeInstructions = useCallback(
+    (node: GraphNode) => {
+      const fieldKey = resolveAiSuggestionFieldKey(node);
+      if (!fieldKey) return '';
+      const data = node.data as unknown as GraphNodeData;
+      const config = (data?.config ?? {}) as Record<string, unknown>;
+      return formatInstructionsValue(config[fieldKey]);
+    },
+    [formatInstructionsValue, resolveAiSuggestionFieldKey],
+  );
+
+  const agentNodes = useMemo(() => {
+    return nodes.filter((node) => {
+      const data = node.data as unknown as GraphNodeData;
+      const kind =
+        data?.templateKind ?? templatesById[data?.template]?.kind ?? '';
+      return String(kind).toLowerCase() === 'simpleagent';
+    });
+  }, [nodes, templatesById]);
 
   const [threads, setThreads] = useState<ThreadDto[]>([]);
   const threadsRef = useRef<ThreadDto[]>([]);
@@ -2466,6 +2535,126 @@ export const GraphPage = () => {
     [handleThreadChange],
   );
 
+  const handleOpenGraphAiModal = useCallback(() => {
+    if (agentNodes.length === 0) {
+      message.warning('No agent nodes available for AI suggestions');
+      return;
+    }
+    setGraphAiModalOpen(true);
+    setGraphAiUserRequest('');
+    setGraphAiUpdatesByNodeId({});
+    setGraphAiSelectedNodeId(agentNodes[0]?.id ?? null);
+  }, [agentNodes]);
+
+  const handleCloseGraphAiModal = useCallback(() => {
+    setGraphAiModalOpen(false);
+    setGraphAiUserRequest('');
+    setGraphAiUpdatesByNodeId({});
+    setGraphAiSelectedNodeId(null);
+    setGraphAiLoading(false);
+  }, []);
+
+  const handleGraphAiSuggestionSubmit = useCallback(async () => {
+    if (!graph?.id) {
+      message.error('Graph is missing for suggestions');
+      return;
+    }
+    if (!isGraphRunning) {
+      message.warning('Start the graph to use AI suggestions');
+      return;
+    }
+    if (agentNodes.length === 0) {
+      message.warning('No agent nodes available for AI suggestions');
+      return;
+    }
+    const userRequest = graphAiUserRequest.trim();
+    if (!userRequest) {
+      message.warning('Enter a request for the AI suggestion');
+      return;
+    }
+
+    setGraphAiLoading(true);
+    try {
+      const response = await graphsApi.suggestGraphInstructions(graph.id, {
+        userRequest,
+      });
+      const updates = response.data?.updates ?? [];
+      const updatesById = updates.reduce(
+        (acc, update) => {
+          if (update?.nodeId) {
+            acc[update.nodeId] = update;
+          }
+          return acc;
+        },
+        {} as Record<string, SuggestGraphInstructionsResponseDtoUpdatesInner>,
+      );
+
+      setGraphAiUpdatesByNodeId(updatesById);
+      setGraphAiSelectedNodeId((prev) => {
+        if (prev && updatesById[prev]) return prev;
+        return updates[0]?.nodeId ?? prev ?? null;
+      });
+      setGraphAiUserRequest('');
+
+      if (updates.length === 0) {
+        message.info('No instruction changes returned');
+      }
+    } catch (error) {
+      const errorMessage = extractApiErrorMessage(
+        error,
+        'Failed to fetch AI suggestions',
+      );
+      message.error(errorMessage);
+    } finally {
+      setGraphAiLoading(false);
+    }
+  }, [agentNodes.length, graph?.id, graphAiUserRequest, isGraphRunning]);
+
+  const handleApplyGraphAiSuggestions = useCallback(() => {
+    if (Object.keys(graphAiUpdatesByNodeId).length === 0) return;
+
+    const currentNodes = draftStateRef.current.draftState.nodes;
+    const missingFields: string[] = [];
+    const updatedNodes = currentNodes.map((node) => {
+      const update = graphAiUpdatesByNodeId[node.id];
+      if (!update) return node;
+
+      const fieldKey = resolveAiSuggestionFieldKey(node);
+      if (!fieldKey) {
+        missingFields.push(node.id);
+        return node;
+      }
+
+      const data = node.data as unknown as GraphNodeData;
+      const nextConfig = {
+        ...(data.config ?? {}),
+        [fieldKey]: update.instructions,
+      };
+
+      return {
+        ...node,
+        data: {
+          ...data,
+          config: nextConfig,
+        },
+      };
+    });
+
+    draftStateRef.current.updateNodes(updatedNodes);
+    setGraphAiModalOpen(false);
+    setGraphAiUserRequest('');
+    setGraphAiUpdatesByNodeId({});
+    setGraphAiSelectedNodeId(null);
+
+    if (missingFields.length > 0) {
+      message.warning(
+        `Applied suggestions, but ${missingFields.length} node(s) lack instruction fields.`,
+      );
+    } else {
+      message.success('Applied AI suggestions to agent nodes');
+    }
+  }, [graphAiUpdatesByNodeId, resolveAiSuggestionFieldKey]);
+
   const handleSave = useCallback(async () => {
     if (!graph || !id) return;
 
@@ -2895,11 +3084,56 @@ export const GraphPage = () => {
       return;
     }
 
-    // Local-only: treat name change as an unsaved draft change.
-    draftStateRef.current.updateGraphName(nextName);
-    setGraph((prev) => (prev ? { ...prev, name: nextName } : prev));
-    setEditingName(nextName);
-    setIsEditingName(false);
+    if (isSavingName) return;
+
+    if (nextName === graph.name) {
+      setEditingName(nextName);
+      setIsEditingName(false);
+      return;
+    }
+
+    try {
+      setIsSavingName(true);
+      const response = await graphsApi.updateGraph(id, {
+        name: nextName,
+        currentVersion: graph.version,
+      });
+      const updatedGraph = response.data.graph;
+
+      setGraph(updatedGraph);
+      setEditingName(updatedGraph.name);
+      setIsEditingName(false);
+
+      draftStateRef.current.updateGraphName(updatedGraph.name);
+
+      const nextServerState: GraphDiffState = {
+        ...serverGraphState,
+        graphName: updatedGraph.name,
+        baseVersion: updatedGraph.version ?? serverGraphState.baseVersion,
+      };
+      setServerGraphState(nextServerState);
+      draftStateRef.current.updateServerBaseline(nextServerState);
+
+      const existingDraft = GraphStorageService.loadDraft(id);
+      if (existingDraft) {
+        GraphStorageService.saveDraft(id, {
+          ...existingDraft,
+          graphName: updatedGraph.name,
+          baseVersion: updatedGraph.version ?? existingDraft.baseVersion,
+        });
+      }
+
+      message.success('Graph name updated');
+    } catch (error) {
+      console.error('Error updating graph name:', error);
+      const errorMessage = extractApiErrorMessage(
+        error,
+        'Failed to update graph name',
+      );
+      message.error(errorMessage);
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   const handleNameCancel = () => {
@@ -2960,6 +3194,63 @@ export const GraphPage = () => {
     }
   };
 
+  const hasAgentNodes = agentNodes.length > 0;
+  const canSubmitGraphAi =
+    Boolean(graph?.id) && hasAgentNodes && isGraphRunning;
+
+  const graphMenuItems = useMemo(
+    () => [
+      {
+        key: 'download',
+        disabled: !graph,
+        label: (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <DownloadOutlined />
+            Download graph
+          </div>
+        ),
+      },
+      {
+        key: 'chats',
+        disabled: !graph,
+        label: (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <MessageOutlined />
+            Open chats
+          </div>
+        ),
+      },
+      {
+        key: 'improve',
+        disabled: !hasAgentNodes,
+        label: (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <RobotOutlined />
+            Improve workflow
+          </div>
+        ),
+      },
+    ],
+    [graph, hasAgentNodes],
+  );
+
+  const handleGraphMenuAction = useCallback(
+    (key: string) => {
+      if (key === 'download') {
+        if (!graph) return;
+        handleDownloadGraphBackup();
+      }
+      if (key === 'chats') {
+        if (!graph) return;
+        navigate(`/chats?graphId=${graph.id}`);
+      }
+      if (key === 'improve') {
+        handleOpenGraphAiModal();
+      }
+    },
+    [graph, handleDownloadGraphBackup, handleOpenGraphAiModal, navigate],
+  );
+
   if (loading) {
     return (
       <div
@@ -3005,6 +3296,7 @@ export const GraphPage = () => {
                   onChange={(e) => setEditingName(e.target.value)}
                   onPressEnter={handleNameSave}
                   onBlur={handleNameSave}
+                  disabled={isSavingName}
                   autoFocus
                   style={{ width: 300 }}
                 />
@@ -3013,12 +3305,14 @@ export const GraphPage = () => {
                   icon={<CheckOutlined />}
                   onClick={handleNameSave}
                   size="small"
+                  disabled={isSavingName}
                 />
                 <Button
                   type="text"
                   icon={<CloseOutlined />}
                   onClick={handleNameCancel}
                   size="small"
+                  disabled={isSavingName}
                 />
               </div>
             ) : (
@@ -3090,19 +3384,6 @@ export const GraphPage = () => {
                 </Popover>
               </div>
             )}
-            <Tooltip
-              title="Download current graph as JSON backup"
-              placement="bottom">
-              <Button
-                type="text"
-                size="small"
-                icon={<DownloadOutlined />}
-                onClick={handleDownloadGraphBackup}
-                aria-label="Download graph JSON backup"
-                disabled={!graph}
-                style={{ padding: '4px 8px', color: 'gray' }}
-              />
-            </Tooltip>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -3687,33 +3968,6 @@ export const GraphPage = () => {
                 alignItems: 'center',
                 gap: 0,
               }}>
-              {graph && (
-                <Tooltip title="Open chats" placement="bottom">
-                  <span
-                    role="button"
-                    aria-label="Open chats for this graph"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      color: '#cbcbcb',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s',
-                    }}
-                    onClick={() => navigate(`/chats?graphId=${graph.id}`)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f0f0f0';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}>
-                    <MessageFilled style={{ fontSize: 20 }} />
-                  </span>
-                </Tooltip>
-              )}
               <Tooltip
                 title={
                   isRevisionApplying
@@ -3813,6 +4067,26 @@ export const GraphPage = () => {
                   </span>
                 </Tooltip>
               )}
+              <Dropdown
+                trigger={['click']}
+                placement="bottomRight"
+                menu={{
+                  items: graphMenuItems,
+                  onClick: ({ key }) => handleGraphMenuAction(key),
+                }}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EllipsisOutlined />}
+                  aria-label="Graph actions"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    color: '#6b7280',
+                  }}
+                />
+              </Dropdown>
             </div>
           </div>
         </div>
@@ -3996,6 +4270,23 @@ export const GraphPage = () => {
         selectedThreadSource={
           threads.find((t) => t.id === selectedThreadId)?.source ?? null
         }
+      />
+
+      <GraphAiSuggestionModal
+        open={graphAiModalOpen}
+        agentNodes={agentNodes}
+        selectedNodeId={graphAiSelectedNodeId}
+        updatesByNodeId={graphAiUpdatesByNodeId}
+        userRequest={graphAiUserRequest}
+        loading={graphAiLoading}
+        canSubmit={canSubmitGraphAi}
+        showRunningWarning={!isGraphRunning}
+        onClose={handleCloseGraphAiModal}
+        onSelectNode={setGraphAiSelectedNodeId}
+        onUserRequestChange={setGraphAiUserRequest}
+        onSubmit={handleGraphAiSuggestionSubmit}
+        onApply={handleApplyGraphAiSuggestions}
+        getCurrentInstructions={getCurrentNodeInstructions}
       />
 
       <Modal
