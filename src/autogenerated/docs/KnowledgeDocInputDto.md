@@ -2,11 +2,12 @@
 
 ## Properties
 
-| Name        | Type                    | Description                            | Notes                             |
-| ----------- | ----------------------- | -------------------------------------- | --------------------------------- |
-| **title**   | **string**              | Knowledge document title               | [default to undefined]            |
-| **content** | **string**              | Raw knowledge document content         | [default to undefined]            |
-| **tags**    | **Array&lt;string&gt;** | Optional tags to apply to the document | [optional] [default to undefined] |
+| Name        | Type                    | Description                                   | Notes                             |
+| ----------- | ----------------------- | --------------------------------------------- | --------------------------------- |
+| **title**   | **string**              | Knowledge document title                      | [default to undefined]            |
+| **content** | **string**              | Raw knowledge document content                | [default to undefined]            |
+| **politic** | **string**              | Optional LLM usage guidance for this document | [optional] [default to undefined] |
+| **tags**    | **Array&lt;string&gt;** | Optional tags to apply to the document        | [optional] [default to undefined] |
 
 ## Example
 
@@ -16,6 +17,7 @@ import { KnowledgeDocInputDto } from './api';
 const instance: KnowledgeDocInputDto = {
   title,
   content,
+  politic,
   tags,
 };
 ```

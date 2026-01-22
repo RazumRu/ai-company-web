@@ -135,7 +135,9 @@ export const CustomNode = React.memo(
 
     const hasValidationErrors = validationErrors.length > 0;
     const hasConfigErrors = validationErrors.some((e) => e.type === 'config');
-    const hasRequiredErrors = validationErrors.some((e) => e.type === 'required');
+    const hasRequiredErrors = validationErrors.some(
+      (e) => e.type === 'required',
+    );
     const hasMissingRequiredInputs = inputRules.some(
       (rule) =>
         rule.required &&

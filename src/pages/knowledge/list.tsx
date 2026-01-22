@@ -132,6 +132,7 @@ export const KnowledgeListPage = () => {
     setActiveDoc(doc);
     form.setFieldsValue({
       title: doc.title || '',
+      politic: doc.politic || '',
       tags: doc.tags || [],
     });
     setEditorValue(doc.content || '');
@@ -253,6 +254,7 @@ export const KnowledgeListPage = () => {
       setSaving(true);
       const payload = {
         title: values.title.trim(),
+        politic: values.politic?.trim() || undefined,
         content: editorValue,
         tags: values.tags?.map((tag) => tag.trim()).filter(Boolean),
       };

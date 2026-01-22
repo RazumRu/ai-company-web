@@ -697,6 +697,12 @@ export interface KnowledgeDocDto {
   'summary'?: string | null;
   /**
    *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'politic'?: string | null;
+  /**
+   *
    * @type {Array<string>}
    * @memberof KnowledgeDocDto
    */
@@ -732,6 +738,12 @@ export interface KnowledgeDocInputDto {
    * @memberof KnowledgeDocInputDto
    */
   'content': string;
+  /**
+   * Optional LLM usage guidance for this document
+   * @type {string}
+   * @memberof KnowledgeDocInputDto
+   */
+  'politic'?: string;
   /**
    * Optional tags to apply to the document
    * @type {Array<string>}

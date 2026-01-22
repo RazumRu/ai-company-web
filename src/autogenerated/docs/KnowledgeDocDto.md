@@ -8,6 +8,7 @@
 | **content**   | **string**              |             | [default to undefined]            |
 | **title**     | **string**              |             | [default to undefined]            |
 | **summary**   | **string**              |             | [optional] [default to undefined] |
+| **politic**   | **string**              |             | [optional] [default to undefined] |
 | **tags**      | **Array&lt;string&gt;** |             | [default to undefined]            |
 | **createdAt** | **string**              |             | [default to undefined]            |
 | **updatedAt** | **string**              |             | [default to undefined]            |
@@ -22,6 +23,7 @@ const instance: KnowledgeDocDto = {
   content,
   title,
   summary,
+  politic,
   tags,
   createdAt,
   updatedAt,
