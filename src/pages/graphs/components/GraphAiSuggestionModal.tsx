@@ -113,7 +113,7 @@ export const GraphAiSuggestionModal = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
                 gap: 12,
               }}>
               {agentNodes.map((node) => {
@@ -201,6 +201,15 @@ export const GraphAiSuggestionModal = ({
         </div>
 
         <div>
+          <Text strong style={{ display: 'block', marginBottom: 6 }}>
+            What should be improved?
+          </Text>
+          <Input.TextArea
+            value={userRequest}
+            onChange={(e) => onUserRequestChange(e.target.value)}
+            placeholder="Describe the workflow improvements for all agents"
+            autoSize={{ minRows: 3, maxRows: 6 }}
+          />
           <div
             style={{
               marginTop: 8,
@@ -215,16 +224,6 @@ export const GraphAiSuggestionModal = ({
               Send
             </Button>
           </div>
-
-          <Text strong style={{ display: 'block', marginBottom: 6 }}>
-            What should be improved?
-          </Text>
-          <Input.TextArea
-            value={userRequest}
-            onChange={(e) => onUserRequestChange(e.target.value)}
-            placeholder="Describe the workflow improvements for all agents"
-            autoSize={{ minRows: 3, maxRows: 6 }}
-          />
         </div>
 
         <div>
