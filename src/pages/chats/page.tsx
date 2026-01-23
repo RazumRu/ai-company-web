@@ -48,6 +48,7 @@ import type {
   AgentMessageNotification,
   AgentStateUpdateNotification,
   GraphNodeUpdateNotification,
+  SocketNotification,
   ThreadCreateNotification,
   ThreadDeleteNotification,
   ThreadUpdateNotification,
@@ -72,6 +73,7 @@ import ThreadChatPanel from './components/ThreadChatPanel';
 
 const THREADS_PAGE_SIZE = 30;
 const THREAD_MESSAGES_PAGE_SIZE = 100;
+const MAX_THREAD_SOCKET_EVENTS = 200;
 
 const { Title, Text } = Typography;
 
@@ -83,6 +85,16 @@ type ThreadTokenUsageSnapshot = {
   totalTokens?: number;
   totalPrice?: number;
   currentContext?: number;
+};
+
+type ThreadSocketEventEntry = {
+  id: string;
+  receivedAt: string;
+  type: string;
+  nodeId?: string;
+  runId?: string;
+  graphId?: string;
+  payload: SocketNotification;
 };
 
 const mergeTokenUsageByNode = (
@@ -489,6 +501,13 @@ export const ChatsPage = () => {
   const [usageStatsModalThreadId, setUsageStatsModalThreadId] = useState<
     string | null
   >(null);
+  const [threadSocketEvents, setThreadSocketEvents] = useState<
+    Record<string, ThreadSocketEventEntry[]>
+  >({});
+  const [threadSocketEventsModalOpen, setThreadSocketEventsModalOpen] =
+    useState(false);
+  const [threadSocketEventsModalThreadId, setThreadSocketEventsModalThreadId] =
+    useState<string | null>(null);
 
   const threadsContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingThreadSelectionRef = useRef<string | null>(null);
@@ -525,6 +544,28 @@ export const ChatsPage = () => {
     );
     return found?.id;
   }, []);
+
+  const appendThreadSocketEvent = useCallback(
+    (threadId: string | undefined, notification: SocketNotification) => {
+      if (!threadId) return;
+      setThreadSocketEvents((prev) => {
+        const existing = prev[threadId] ?? [];
+        const receivedAt = new Date().toISOString();
+        const nextEntry: ThreadSocketEventEntry = {
+          id: `${threadId}-${Date.now()}-${existing.length}`,
+          receivedAt,
+          type: notification.type,
+          nodeId: notification.nodeId,
+          runId: notification.runId,
+          graphId: notification.graphId,
+          payload: notification,
+        };
+        const next = [...existing, nextEntry].slice(-MAX_THREAD_SOCKET_EVENTS);
+        return { ...prev, [threadId]: next };
+      });
+    },
+    [],
+  );
 
   const sortThreadsByTimestampDesc = useCallback(
     (list: ThreadDto[]) => {
@@ -1379,10 +1420,8 @@ export const ChatsPage = () => {
     }
   }, [loadThreads, threadsHasMore, threadsLoading, threadsLoadingMore]);
 
-  const handleThreadCreateEvent = useCallback(
-    (notification: ThreadCreateNotification) => {
-      const newThread = notification.data;
-      if (!newThread) return;
+  const applyThreadCreate = useCallback(
+    (newThread: ThreadDto) => {
       if (graphFilterId && newThread.graphId !== graphFilterId) {
         return;
       }
@@ -1480,10 +1519,42 @@ export const ChatsPage = () => {
     ],
   );
 
+  const handleThreadCreateEvent = useCallback(
+    (notification: ThreadCreateNotification) => {
+      const newThread = notification.data;
+      const newThreadId =
+        newThread?.id ||
+        notification.internalThreadId ||
+        resolveInternalThreadId(notification.threadId);
+      appendThreadSocketEvent(newThreadId, notification);
+      if (newThread) {
+        applyThreadCreate(newThread);
+        return;
+      }
+
+      const externalThreadId = notification.threadId;
+      if (!externalThreadId) return;
+
+      void (async () => {
+        try {
+          const response =
+            await threadsApi.getThreadByExternalId(externalThreadId);
+          const fetchedThread = response.data;
+          if (!fetchedThread) return;
+          applyThreadCreate(fetchedThread);
+        } catch (error) {
+          console.error('Error fetching thread by external ID:', error);
+        }
+      })();
+    },
+    [appendThreadSocketEvent, applyThreadCreate, resolveInternalThreadId],
+  );
+
   const handleThreadUpdateEvent = useCallback(
     (notification: ThreadUpdateNotification) => {
       const updatedThread = notification.data;
       if (!updatedThread) return;
+      appendThreadSocketEvent(updatedThread.id, notification);
       if (graphFilterId && updatedThread.graphId !== graphFilterId) {
         return;
       }
@@ -1528,6 +1599,7 @@ export const ChatsPage = () => {
       }
     },
     [
+      appendThreadSocketEvent,
       selectedThreadId,
       setExternalThreadIds,
       shouldApplyThreadUpdate,
@@ -1541,6 +1613,7 @@ export const ChatsPage = () => {
     (notification: ThreadDeleteNotification) => {
       const deletedThread = notification.data;
       if (!deletedThread) return;
+      appendThreadSocketEvent(deletedThread.id, notification);
       setThreads((prev) =>
         prev.filter((thread) => thread.id !== deletedThread.id),
       );
@@ -1555,7 +1628,7 @@ export const ChatsPage = () => {
         pendingThreadSelectionRef.current = null;
       }
     },
-    [selectedThreadId],
+    [appendThreadSocketEvent, selectedThreadId],
   );
 
   useWebSocketEvent('thread.create', (notification) =>
@@ -1592,6 +1665,7 @@ export const ChatsPage = () => {
     if (!targetThreadId) {
       return;
     }
+    appendThreadSocketEvent(targetThreadId, data);
 
     const externalThreadIdForTarget =
       externalThreadIds[targetThreadId] ?? eventThreadId;
@@ -1653,6 +1727,7 @@ export const ChatsPage = () => {
     if (!data.internalThreadId) return;
 
     const threadId = data.internalThreadId;
+    appendThreadSocketEvent(threadId, data);
     const nodeId = data.nodeId;
     const incomingMessage = data.data;
 
@@ -1710,6 +1785,7 @@ export const ChatsPage = () => {
       (typeof data.internalThreadId === 'string' && data.internalThreadId) ||
       resolveInternalThreadId(data.threadId);
     if (!internalThreadId) return;
+    appendThreadSocketEvent(internalThreadId, data);
     if (!data.nodeId) return;
 
     const usageUpdate = compactUsageUpdate(data.data ?? {});
@@ -1793,6 +1869,20 @@ export const ChatsPage = () => {
   const analysisButtonDisabled =
     !selectedThread || selectedThreadIsDraft || !graphIsRunning;
 
+  const socketEventsForUsageStatsThread = useMemo(() => {
+    if (!usageStatsModalThreadId) return [];
+    return threadSocketEvents[usageStatsModalThreadId] ?? [];
+  }, [threadSocketEvents, usageStatsModalThreadId]);
+
+  const socketEventsForModalThread = useMemo(() => {
+    if (!threadSocketEventsModalThreadId) return [];
+    return threadSocketEvents[threadSocketEventsModalThreadId] ?? [];
+  }, [threadSocketEvents, threadSocketEventsModalThreadId]);
+
+  const socketEventsJson = useMemo(() => {
+    return JSON.stringify(socketEventsForModalThread, null, 2);
+  }, [socketEventsForModalThread]);
+
   const handleOpenAnalyzeModal = useCallback(() => {
     if (analysisButtonDisabled) return;
     setAnalyzeModalOpen(true);
@@ -1862,6 +1952,35 @@ export const ChatsPage = () => {
   const handleCloseUsageStatsModal = useCallback(() => {
     setUsageStatsModalOpen(false);
   }, []);
+
+  const handleOpenThreadSocketEventsModal = useCallback((threadId: string) => {
+    setThreadSocketEventsModalThreadId(threadId);
+    setThreadSocketEventsModalOpen(true);
+  }, []);
+
+  const handleCloseThreadSocketEventsModal = useCallback(() => {
+    setThreadSocketEventsModalOpen(false);
+    setThreadSocketEventsModalThreadId(null);
+  }, []);
+
+  const handleCopyThreadSocketEventsJson = useCallback(async () => {
+    if (!threadSocketEventsModalThreadId) return;
+    if (socketEventsForModalThread.length === 0) {
+      antdMessage.info('No socket events available for this thread.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(socketEventsJson);
+      antdMessage.success('Socket events copied as JSON.');
+    } catch (error) {
+      console.error('Failed to copy socket events JSON:', error);
+      antdMessage.error('Failed to copy socket events JSON.');
+    }
+  }, [
+    socketEventsForModalThread.length,
+    socketEventsJson,
+    threadSocketEventsModalThreadId,
+  ]);
 
   const handleAnalyzeThread = useCallback(async () => {
     if (!selectedThread || selectedThreadIsDraft) return;
@@ -2289,62 +2408,10 @@ export const ChatsPage = () => {
   );
 
   const handleDraftMessageSent = useCallback(
-    (newThreadId: string) => {
-      if (draftThread) {
-        const draftId = draftThread.id;
-
-        // Migrate any optimistic/pending messages from the draft thread
-        const draftThreadMessages = messages[draftId];
-        if (draftThreadMessages) {
-          Object.entries(draftThreadMessages).forEach(([scopeKey, msgs]) => {
-            const nodeScope = scopeKey === 'all' ? undefined : scopeKey;
-            // Update threadId in all migrated messages to match the new thread
-            const migratedMessages = msgs.map((msg) => ({
-              ...msg,
-              threadId: newThreadId,
-            }));
-            updateMessages(newThreadId, () => migratedMessages, nodeScope);
-          });
-
-          // Carry over meta so we don't refetch immediately and flash loader
-          const draftAllMessages = draftThreadMessages['all'] ?? [];
-          setMessageMeta((prev) => ({
-            ...prev,
-            [newThreadId]: {
-              loading: false,
-              loadingMore: false,
-              hasMore: true,
-              offset: draftAllMessages.length,
-              initialLoadFailed: false,
-            },
-          }));
-        }
-
-        const draftPending = pendingMessages[draftId];
-        if (draftPending) {
-          Object.entries(draftPending).forEach(([scopeKey, msgs]) => {
-            const nodeScope = scopeKey === 'all' ? undefined : scopeKey;
-            updatePendingMessages(newThreadId, () => msgs ?? [], nodeScope);
-          });
-        }
-      }
-
-      // Delete draft and select the newly created thread
-      const wasDraftSelected =
-        draftThread && draftThread.id === selectedThreadId;
-      setDraftThread(null);
-      if (wasDraftSelected) {
-        setSelectedThreadId(newThreadId);
-      }
+    (newThread: ThreadDto) => {
+      applyThreadCreate(newThread);
     },
-    [
-      draftThread,
-      messages,
-      pendingMessages,
-      selectedThreadId,
-      updateMessages,
-      updatePendingMessages,
-    ],
+    [applyThreadCreate],
   );
 
   const renderThreadItem = (thread: ThreadDto | DraftThread) => {
@@ -2526,6 +2593,7 @@ export const ChatsPage = () => {
                       usage={selectedThreadThreadUsage}
                       contextPercent={selectedThreadContextPercent}
                       contextMaxTokens={selectedThreadContextMaxTokens}
+                      withPopover
                     />
                   </div>
                 </div>
@@ -2606,6 +2674,7 @@ export const ChatsPage = () => {
                           <ThreadTokenUsageLine
                             usage={agentUsage}
                             contextMaxTokens={summarizeMaxTokens}
+                            withPopover
                           />
                         </div>
                       </div>
@@ -3192,9 +3261,44 @@ export const ChatsPage = () => {
                 error={null}
                 nodeDisplayNames={nodeNames}
                 nodeKinds={nodeKinds}
+                localEventsCount={socketEventsForUsageStatsThread.length}
+                onShowLocalEvents={() =>
+                  handleOpenThreadSocketEventsModal(thread.id)
+                }
               />
             );
           })()}
+      </Modal>
+      <Modal
+        title="Thread Socket Events"
+        open={threadSocketEventsModalOpen}
+        onCancel={handleCloseThreadSocketEventsModal}
+        destroyOnClose
+        footer={[
+          <Button key="close" onClick={handleCloseThreadSocketEventsModal}>
+            Close
+          </Button>,
+        ]}
+        width={900}>
+        {threadSocketEventsModalThreadId ? (
+          <>
+            <Text type="secondary">
+              {socketEventsForModalThread.length} event
+              {socketEventsForModalThread.length === 1 ? '' : 's'} recorded for
+              this thread.
+            </Text>
+            <div style={{ marginTop: 12 }}>
+              <Button
+                type="primary"
+                onClick={handleCopyThreadSocketEventsJson}
+                disabled={socketEventsForModalThread.length === 0}>
+                Copy events JSON
+              </Button>
+            </div>
+          </>
+        ) : (
+          <Empty description="Select a thread to view events" />
+        )}
       </Modal>
     </div>
   );

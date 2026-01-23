@@ -1476,6 +1476,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         normalizedAdditional?.__isAgentInstructionMessage ??
           normalizedAdditional?.isAgentInstructionMessage,
       );
+      const isReportingMessage = Boolean(
+        normalizedAdditional?.__isReportingMessage ??
+          normalizedAdditional?.isReportingMessage,
+      );
 
       const isHuman = role === 'human';
       const avatarSeedNodeId = message.nodeId || nodeId;
@@ -1560,6 +1564,72 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                     letterSpacing: '0.5px',
                   }}>
                   Providing Instructions for {agentName}
+                </span>
+              </div>
+              <MarkdownContent
+                content={content}
+                style={{
+                  fontSize: '14px',
+                  lineHeight: '1.4',
+                  color: '#000000',
+                }}
+              />
+            </div>
+          </ChatBubble>
+        );
+      }
+
+      if (isReportingMessage) {
+        return (
+          <ChatBubble
+            isHuman={isHuman}
+            avatarLabel={isHuman ? 'ME' : 'AI'}
+            avatarColor="#1890ff"
+            avatarSrc={avatarSrc}
+            avatarTooltip={avatarTooltip}
+            bubbleStyle={{
+              backgroundColor: '#e6f7ff',
+              border: '1px solid #91d5ff',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              ...bubbleBorderStyle,
+            }}
+            copyContent={content}
+            footer={
+              metadataText ? (
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: '11px',
+                    marginTop: '4px',
+                    color: '#8c8c8c',
+                  }}>
+                  {renderFooterLineWithUsage(
+                    metadataText,
+                    message.requestTokenUsage,
+                  )}
+                </Text>
+              ) : undefined
+            }>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '8px',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid #91d5ff',
+                }}>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#1890ff',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                  Status report
                 </span>
               </div>
               <MarkdownContent

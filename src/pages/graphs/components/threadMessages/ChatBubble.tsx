@@ -74,27 +74,32 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         flexDirection: 'column',
         alignItems: isHuman ? 'flex-end' : 'flex-start',
       }}>
-      <div style={mergedBubbleStyle}>
-        {children}
-        {copyContent && (
-          <Tooltip title="Copy message">
-            <CopyOutlined
-              onClick={handleCopy}
-              style={{
-                position: 'absolute',
-                bottom: '5px',
-                right: '5px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                color: '#bfbfbf',
-                padding: '2px',
-                borderRadius: '4px',
-              }}
-            />
-          </Tooltip>
-        )}
-      </div>
-      {footer}
+      <div style={mergedBubbleStyle}>{children}</div>
+      {(footer || copyContent) && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginTop: '4px',
+          }}>
+          {footer}
+          {copyContent && (
+            <Tooltip title="Copy message">
+              <CopyOutlined
+                onClick={handleCopy}
+                style={{
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  color: '#9ca3af',
+                  position: 'relative',
+                  top: '2px',
+                }}
+              />
+            </Tooltip>
+          )}
+        </div>
+      )}
     </div>
   );
 

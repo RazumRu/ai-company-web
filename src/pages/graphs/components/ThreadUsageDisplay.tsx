@@ -1,5 +1,19 @@
-import { BarChartOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Card, Divider, Space, Statistic, Table, Tag, Typography } from 'antd';
+import {
+  BarChartOutlined,
+  HistoryOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Divider,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import React from 'react';
 
@@ -13,6 +27,8 @@ interface ThreadUsageDisplayProps {
   error: string | null;
   nodeDisplayNames?: Record<string, string>;
   nodeKinds?: Record<string, string>;
+  localEventsCount?: number;
+  onShowLocalEvents?: () => void;
 }
 
 const formatNumber = (num?: number | null): string => {
@@ -36,6 +52,8 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
   error,
   nodeDisplayNames = {},
   nodeKinds = {},
+  localEventsCount,
+  onShowLocalEvents,
 }) => {
   if (loading) {
     return (
@@ -103,6 +121,21 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
     },
   ];
 
+  const hasLocalEvents =
+    typeof localEventsCount === 'number' && localEventsCount > 0;
+
+  const localEventsButton =
+    hasLocalEvents && onShowLocalEvents ? (
+      <Tooltip title={`View ${localEventsCount} socket events`}>
+        <Button
+          size="small"
+          type="text"
+          icon={<HistoryOutlined />}
+          onClick={onShowLocalEvents}
+        />
+      </Tooltip>
+    ) : null;
+
   return (
     <Card
       size="small"
@@ -112,6 +145,7 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
           <Text strong>Thread Usage Statistics</Text>
         </Space>
       }
+      extra={localEventsButton}
       style={{ marginTop: 8 }}>
       {/* Total Statistics */}
       <div style={{ marginBottom: 16 }}>

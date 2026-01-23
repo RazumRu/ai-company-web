@@ -30,7 +30,7 @@ interface ThreadChatPanelProps {
   graphLoaded?: boolean;
   onRequestThreadSwitch?: (externalThreadId: string | null) => void;
   isDraft?: boolean;
-  onDraftMessageSent?: (newThreadId: string) => void;
+  onDraftMessageSent?: (newThread: ThreadDto) => void;
   style?: React.CSSProperties;
   messages: ThreadMessageDto[];
   messagesLoading: boolean;
@@ -111,6 +111,12 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       pendingDraftExternalIdRef.current = undefined;
     }
   }, [thread.id, isDraft]);
+
+  useEffect(() => {
+    if (threadStatusOverride && thread.status !== ThreadDtoStatusEnum.Running) {
+      setThreadStatusOverride(undefined);
+    }
+  }, [thread.status, threadStatusOverride]);
 
   useEffect(() => {
     if (!triggerNodes.length) {
@@ -255,12 +261,14 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
     if (isDraft) return;
     try {
       setStoppingThread(true);
+      setThreadStatusOverride(ThreadDtoStatusEnum.Stopped);
       const response = await threadsApi.stopThread(thread.id);
       const stoppedThread = response.data;
-      if (stoppedThread?.status) {
+      if (
+        stoppedThread?.status &&
+        stoppedThread.status !== ThreadDtoStatusEnum.Running
+      ) {
         setThreadStatusOverride(stoppedThread.status);
-      } else {
-        setThreadStatusOverride(ThreadDtoStatusEnum.Stopped);
       }
       antdMessage.success('Thread stop requested');
     } catch (error) {
@@ -268,6 +276,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       antdMessage.error(
         extractApiErrorMessage(error, 'Failed to stop thread execution'),
       );
+      setThreadStatusOverride(undefined);
     } finally {
       setStoppingThread(false);
     }
@@ -365,7 +374,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
               );
               const existingThread = response.data;
               if (existingThread) {
-                onDraftMessageSent(existingThread.id);
+                onDraftMessageSent(existingThread);
                 pendingDraftExternalIdRef.current = undefined;
               }
             } catch (error) {

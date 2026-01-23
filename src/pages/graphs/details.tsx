@@ -10,8 +10,8 @@ import {
   LoadingOutlined,
   MessageOutlined,
   PlayCircleFilled,
-  RobotOutlined,
   RightOutlined,
+  RobotOutlined,
   SaveFilled,
   XFilled,
 } from '@ant-design/icons';
@@ -94,8 +94,8 @@ import {
 } from '../../utils/threadMessages';
 import { getThreadStatusDisplay } from '../../utils/threadStatus';
 import ThreadChatPanel from '../chats/components/ThreadChatPanel';
-import { GraphCanvas } from './components/GraphCanvas';
 import { GraphAiSuggestionModal } from './components/GraphAiSuggestionModal';
+import { GraphCanvas } from './components/GraphCanvas';
 import { NodeEditSidebar } from './components/NodeEditSidebar';
 import { TemplateModal } from './components/TemplateModal';
 import { TemplateSidebar } from './components/TemplateSidebar';
@@ -491,7 +491,10 @@ export const GraphPage = () => {
       if (schemaProps.instructions) return 'instructions';
     }
     const config = data?.config as Record<string, unknown> | undefined;
-    if (config && Object.prototype.hasOwnProperty.call(config, 'instructions')) {
+    if (
+      config &&
+      Object.prototype.hasOwnProperty.call(config, 'instructions')
+    ) {
       return 'instructions';
     }
     return null;

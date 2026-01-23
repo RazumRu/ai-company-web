@@ -42,7 +42,7 @@ type GraphAiSuggestionModalProps = {
 };
 
 const getNodeData = (node: GraphNode): GraphNodeData =>
-  node.data as GraphNodeData;
+  node.data as unknown as GraphNodeData;
 
 export const GraphAiSuggestionModal = ({
   open,

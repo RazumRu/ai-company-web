@@ -12,6 +12,7 @@ export type MessageAdditionalKwargs = Record<string, unknown> & {
   __hideForLlm?: boolean;
   __hideForSummary?: boolean;
   __isAgentInstructionMessage?: boolean;
+  __isReportingMessage?: boolean;
 
   __context?: unknown;
 };
