@@ -5,6 +5,7 @@
 | Name          | Type                    | Description | Notes                             |
 | ------------- | ----------------------- | ----------- | --------------------------------- |
 | **id**        | **string**              |             | [default to undefined]            |
+| **publicId**  | **number**              |             | [default to undefined]            |
 | **content**   | **string**              |             | [default to undefined]            |
 | **title**     | **string**              |             | [default to undefined]            |
 | **summary**   | **string**              |             | [optional] [default to undefined] |
@@ -20,6 +21,7 @@ import { KnowledgeDocDto } from './api';
 
 const instance: KnowledgeDocDto = {
   id,
+  publicId,
   content,
   title,
   summary,

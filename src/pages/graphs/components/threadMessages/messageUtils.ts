@@ -20,6 +20,7 @@ export const limitConsecutiveNewlines = (value: string): string =>
 export const createReasoningPreview = (
   value: string,
   maxLines = 6,
+  maxChars = 420,
 ): { text: string; isTruncated: boolean } => {
   if (!value) {
     return { text: '', isTruncated: false };
@@ -39,11 +40,20 @@ export const createReasoningPreview = (
     normalized.push(line);
   }
 
-  const isTruncated = normalized.length > maxLines;
-  const truncated = normalized.slice(0, maxLines).join('\n').trim();
+  const normalizedText = normalized.join('\n');
+  const isTruncatedByLines = normalized.length > maxLines;
+  let truncated = isTruncatedByLines
+    ? normalized.slice(0, maxLines).join('\n').trim()
+    : normalizedText.trim();
+
+  const isTruncatedByChars =
+    !isTruncatedByLines && maxChars > 0 && truncated.length > maxChars;
+  if (isTruncatedByChars) {
+    truncated = truncated.slice(0, maxChars).trimEnd();
+  }
 
   return {
     text: truncated.length > 0 ? truncated : 'Reasoning hidden.',
-    isTruncated,
+    isTruncated: isTruncatedByLines || isTruncatedByChars,
   };
 };

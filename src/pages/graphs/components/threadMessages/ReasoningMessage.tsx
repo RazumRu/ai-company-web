@@ -142,21 +142,9 @@ export const ReasoningMessage: React.FC<ReasoningMessageProps> = ({
       ) : (
         <div style={collapsedStyle}>
           <MarkdownContent
-            content={preview.text}
+            content={preview.isTruncated ? `${preview.text}...` : preview.text}
             allowHorizontalScroll={false}
             style={{ color: 'inherit' }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '24px',
-              background:
-                'linear-gradient(180deg, rgba(255,255,255,0) 0%, #fff 100%)',
-              pointerEvents: 'none',
-            }}
           />
         </div>
       )}

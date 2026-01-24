@@ -2,14 +2,15 @@
 
 ## Properties
 
-| Name                 | Type                                                                                | Description                 | Notes                             |
-| -------------------- | ----------------------------------------------------------------------------------- | --------------------------- | --------------------------------- |
-| **role**             | **string**                                                                          | Message role                | [default to undefined]            |
-| **name**             | **string**                                                                          | Tool name - shell           | [default to undefined]            |
-| **content**          | [**ThreadMessageDtoMessageOneOf4Content**](ThreadMessageDtoMessageOneOf4Content.md) |                             | [default to undefined]            |
-| **toolCallId**       | **string**                                                                          | Tool call ID                | [default to undefined]            |
-| **runId**            | **string**                                                                          |                             | [optional] [default to undefined] |
-| **additionalKwargs** | **{ [key: string]: any; }**                                                         | Additional message metadata | [optional] [default to undefined] |
+| Name                 | Type                        | Description                             | Notes                             |
+| -------------------- | --------------------------- | --------------------------------------- | --------------------------------- |
+| **role**             | **string**                  | Message role                            | [default to undefined]            |
+| **name**             | **string**                  | Tool name                               | [default to undefined]            |
+| **content**          | **{ [key: string]: any; }** | Parsed tool result as JSON              | [default to undefined]            |
+| **toolCallId**       | **string**                  | Tool call ID                            | [default to undefined]            |
+| **runId**            | **string**                  |                                         | [optional] [default to undefined] |
+| **title**            | **string**                  | Optional human-readable tool call title | [optional] [default to undefined] |
+| **additionalKwargs** | **{ [key: string]: any; }** | Additional message metadata             | [optional] [default to undefined] |
 
 ## Example
 
@@ -22,6 +23,7 @@ const instance: ThreadMessageDtoMessageOneOf4 = {
   content,
   toolCallId,
   runId,
+  title,
   additionalKwargs,
 };
 ```

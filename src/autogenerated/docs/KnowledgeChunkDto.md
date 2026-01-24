@@ -5,6 +5,7 @@
 | Name            | Type                    | Description | Notes                             |
 | --------------- | ----------------------- | ----------- | --------------------------------- |
 | **id**          | **string**              |             | [default to undefined]            |
+| **publicId**    | **number**              |             | [default to undefined]            |
 | **docId**       | **string**              |             | [default to undefined]            |
 | **chunkIndex**  | **number**              |             | [default to undefined]            |
 | **label**       | **string**              |             | [optional] [default to undefined] |
@@ -21,6 +22,7 @@ import { KnowledgeChunkDto } from './api';
 
 const instance: KnowledgeChunkDto = {
   id,
+  publicId,
   docId,
   chunkIndex,
   label,

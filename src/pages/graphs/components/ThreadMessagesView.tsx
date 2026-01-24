@@ -1,5 +1,10 @@
 // ThreadMessagesView.tsx
-import { BarChartOutlined, ToolOutlined } from '@ant-design/icons';
+import {
+  BarChartOutlined,
+  CaretDownOutlined,
+  CaretRightOutlined,
+  ToolOutlined,
+} from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
 import { Popover, Space, Spin, Typography } from 'antd';
@@ -447,6 +452,21 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       });
     }, []);
 
+    const [expandedWorkingIds, setExpandedWorkingIds] = useState<Set<string>>(
+      () => new Set(),
+    );
+    const toggleWorkingBlock = useCallback((id: string) => {
+      setExpandedWorkingIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }, []);
+
     useEffect(() => {
       ensureThinkingIndicatorStyles();
       ensureReasoningAnimationStyles();
@@ -559,7 +579,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
     const isToolLikeRole = (role?: string): boolean => {
       if (!role) return false;
-      return role === 'tool' || role === 'tool-shell';
+      return role === 'tool';
     };
 
     const buildToolCallResultIndex = useCallback(
@@ -1822,6 +1842,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         items: PreparedMessage[],
         borderColor?: string,
       ) => {
+        const groupId = `working-${items[0]?.id ?? 'group'}`;
+        const isExpanded = expandedWorkingIds.has(groupId);
+        const isCollapsible = items.length > 1;
+        const toolCallCount = items.reduce(
+          (count, item) => (item.type === 'tool' ? count + 1 : count),
+          0,
+        );
+        const lastToolItem =
+          [...items].reverse().find((it) => it.type === 'tool') ?? null;
+        const collapsedItems = lastToolItem ? [lastToolItem] : items.slice(-1);
+
         const avatarSeedNodeId =
           items.find((it) => it.nodeId)?.nodeId ?? nodeId ?? undefined;
         const avatarLabel = getAvatarInitials(
@@ -1846,6 +1877,79 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           bubbleStyle.borderLeft = `3px solid ${borderColor}`;
         }
 
+        const renderWorkingItem = (it: PreparedMessage, idx: number) => {
+          if (it.type === 'reasoning') {
+            const reasoningId =
+              getReasoningIdentifier(it.message) ?? it.message.id;
+            return (
+              <div key={`work-reasoning-${it.id}-${idx}`}>
+                <ReasoningMessage
+                  message={it.message}
+                  isExpanded={expandedReasoningIds.has(reasoningId)}
+                  onToggle={toggleReasoningMessage}
+                  align="left"
+                />
+              </div>
+            );
+          }
+
+          if (it.type === 'tool') {
+            if (it.toolKind === 'shell') {
+              return (
+                <div key={`work-shell-${it.id}-${idx}`}>
+                  {renderShellStatusLine(
+                    it.name,
+                    it.status,
+                    it.result,
+                    it.shellCommand,
+                    it.toolOptions,
+                    {
+                      nodeId: it.nodeId,
+                      createdAt: it.createdAt,
+                      roleLabel: it.roleLabel ?? it.name,
+                    },
+                    it.title,
+                    it.requestTokenUsageIn,
+                    it.requestTokenUsageOut,
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div key={`work-tool-${it.id}-${idx}`}>
+                {renderToolStatusLine(
+                  it.name,
+                  it.status,
+                  it.result,
+                  it.toolOptions,
+                  it.title,
+                  'left',
+                  it.requestTokenUsageIn,
+                  it.requestTokenUsageOut,
+                )}
+              </div>
+            );
+          }
+
+          return null;
+        };
+
+        const handleWorkingToggle = () => {
+          if (!isCollapsible) return;
+          toggleWorkingBlock(groupId);
+        };
+
+        const handleWorkingKeyDown = (
+          event: React.KeyboardEvent<HTMLDivElement>,
+        ) => {
+          if (!isCollapsible) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleWorkingBlock(groupId);
+          }
+        };
+
         return (
           <ChatBubble
             isHuman={false}
@@ -1859,79 +1963,53 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10,
+                gap: 5,
                 width: '100%',
               }}>
-              <Text
-                type="secondary"
+              <div
+                role={isCollapsible ? 'button' : undefined}
+                tabIndex={isCollapsible ? 0 : -1}
+                onClick={handleWorkingToggle}
+                onKeyDown={handleWorkingKeyDown}
                 style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: '#8c8c8c',
-                  textAlign: 'left',
-                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  cursor: isCollapsible ? 'pointer' : 'default',
+                  width: 'fit-content',
                 }}>
-                Working...
-              </Text>
+                {isCollapsible ? (
+                  isExpanded ? (
+                    <CaretDownOutlined
+                      style={{ fontSize: 12, color: '#8c8c8c' }}
+                    />
+                  ) : (
+                    <CaretRightOutlined
+                      style={{ fontSize: 12, color: '#8c8c8c' }}
+                    />
+                  )
+                ) : null}
+                <Text
+                  type="secondary"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#8c8c8c',
+                    textAlign: 'left',
+                  }}>
+                  Working...
+                </Text>
+                {!isExpanded && isCollapsible ? (
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {`${toolCallCount} tool call${toolCallCount === 1 ? '' : 's'}`}
+                  </Text>
+                ) : null}
+              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {items.map((it, idx) => {
-                  if (it.type === 'reasoning') {
-                    const reasoningId =
-                      getReasoningIdentifier(it.message) ?? it.message.id;
-                    return (
-                      <div key={`work-reasoning-${it.id}-${idx}`}>
-                        <ReasoningMessage
-                          message={it.message}
-                          isExpanded={expandedReasoningIds.has(reasoningId)}
-                          onToggle={toggleReasoningMessage}
-                          align="left"
-                        />
-                      </div>
-                    );
-                  }
-
-                  if (it.type === 'tool') {
-                    if (it.toolKind === 'shell') {
-                      return (
-                        <div key={`work-shell-${it.id}-${idx}`}>
-                          {renderShellStatusLine(
-                            it.name,
-                            it.status,
-                            it.result,
-                            it.shellCommand,
-                            it.toolOptions,
-                            {
-                              nodeId: it.nodeId,
-                              createdAt: it.createdAt,
-                              roleLabel: it.roleLabel ?? it.name,
-                            },
-                            it.title,
-                            it.requestTokenUsageIn,
-                            it.requestTokenUsageOut,
-                          )}
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={`work-tool-${it.id}-${idx}`}>
-                        {renderToolStatusLine(
-                          it.name,
-                          it.status,
-                          it.result,
-                          it.toolOptions,
-                          it.title,
-                          'left',
-                          it.requestTokenUsageIn,
-                          it.requestTokenUsageOut,
-                        )}
-                      </div>
-                    );
-                  }
-
-                  return null;
-                })}
+                {(isExpanded ? items : collapsedItems).map((it, idx) =>
+                  renderWorkingItem(it, idx),
+                )}
               </div>
             </div>
           </ChatBubble>
@@ -1971,7 +2049,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               (g) => g.sourceAgentNodeId,
             )?.sourceAgentNodeId;
             const hasCommExec =
-              group.length > 0 && group.every((g) => g.inCommunicationExec);
+              group.length > 0 && group.some((g) => g.inCommunicationExec);
             const groupBorderColor =
               hasCommExec && groupSourceNodeId
                 ? generateColorFromNodeId(groupSourceNodeId)
@@ -2019,7 +2097,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               (g) => g.sourceAgentNodeId,
             )?.sourceAgentNodeId;
             const hasCommExec =
-              group.length > 0 && group.every((g) => g.inCommunicationExec);
+              group.length > 0 && group.some((g) => g.inCommunicationExec);
             const groupBorderColor =
               hasCommExec && groupSourceNodeId
                 ? generateColorFromNodeId(groupSourceNodeId)

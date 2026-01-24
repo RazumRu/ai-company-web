@@ -550,6 +550,12 @@ export interface KnowledgeChunkDto {
   'id': string;
   /**
    *
+   * @type {number}
+   * @memberof KnowledgeChunkDto
+   */
+  'publicId': number;
+  /**
+   *
    * @type {string}
    * @memberof KnowledgeChunkDto
    */
@@ -677,6 +683,12 @@ export interface KnowledgeDocDto {
    * @memberof KnowledgeDocDto
    */
   'id': string;
+  /**
+   *
+   * @type {number}
+   * @memberof KnowledgeDocDto
+   */
+  'publicId': number;
   /**
    *
    * @type {string}
@@ -1198,8 +1210,7 @@ export type ThreadMessageDtoMessage =
   | ThreadMessageDtoMessageOneOf1
   | ThreadMessageDtoMessageOneOf2
   | ThreadMessageDtoMessageOneOf3
-  | ThreadMessageDtoMessageOneOf4
-  | ThreadMessageDtoMessageOneOf5;
+  | ThreadMessageDtoMessageOneOf4;
 
 /**
  *
@@ -1431,17 +1442,17 @@ export interface ThreadMessageDtoMessageOneOf4 {
    */
   'role': ThreadMessageDtoMessageOneOf4RoleEnum;
   /**
-   * Tool name - shell
+   * Tool name
    * @type {string}
    * @memberof ThreadMessageDtoMessageOneOf4
    */
-  'name': ThreadMessageDtoMessageOneOf4NameEnum;
+  'name': string;
   /**
-   *
-   * @type {ThreadMessageDtoMessageOneOf4Content}
+   * Parsed tool result as JSON
+   * @type {{ [key: string]: any; }}
    * @memberof ThreadMessageDtoMessageOneOf4
    */
-  'content': ThreadMessageDtoMessageOneOf4Content;
+  'content': { [key: string]: any };
   /**
    * Tool call ID
    * @type {string}
@@ -1454,6 +1465,12 @@ export interface ThreadMessageDtoMessageOneOf4 {
    * @memberof ThreadMessageDtoMessageOneOf4
    */
   'runId'?: string | null;
+  /**
+   * Optional human-readable tool call title
+   * @type {string}
+   * @memberof ThreadMessageDtoMessageOneOf4
+   */
+  'title'?: string;
   /**
    * Additional message metadata
    * @type {{ [key: string]: any; }}
@@ -1463,99 +1480,11 @@ export interface ThreadMessageDtoMessageOneOf4 {
 }
 
 export const ThreadMessageDtoMessageOneOf4RoleEnum = {
-  ToolShell: 'tool-shell',
+  Tool: 'tool',
 } as const;
 
 export type ThreadMessageDtoMessageOneOf4RoleEnum =
   (typeof ThreadMessageDtoMessageOneOf4RoleEnum)[keyof typeof ThreadMessageDtoMessageOneOf4RoleEnum];
-export const ThreadMessageDtoMessageOneOf4NameEnum = {
-  Shell: 'shell',
-} as const;
-
-export type ThreadMessageDtoMessageOneOf4NameEnum =
-  (typeof ThreadMessageDtoMessageOneOf4NameEnum)[keyof typeof ThreadMessageDtoMessageOneOf4NameEnum];
-
-/**
- * Parsed shell execution result
- * @export
- * @interface ThreadMessageDtoMessageOneOf4Content
- */
-export interface ThreadMessageDtoMessageOneOf4Content {
-  /**
-   * Exit code of the shell command
-   * @type {number}
-   * @memberof ThreadMessageDtoMessageOneOf4Content
-   */
-  'exitCode': number;
-  /**
-   * Standard output from the command
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf4Content
-   */
-  'stdout': string;
-  /**
-   * Standard error from the command
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf4Content
-   */
-  'stderr': string;
-}
-/**
- *
- * @export
- * @interface ThreadMessageDtoMessageOneOf5
- */
-export interface ThreadMessageDtoMessageOneOf5 {
-  /**
-   * Message role
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'role': ThreadMessageDtoMessageOneOf5RoleEnum;
-  /**
-   * Tool name
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'name': string;
-  /**
-   * Parsed tool result as JSON
-   * @type {{ [key: string]: any; }}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'content': { [key: string]: any };
-  /**
-   * Tool call ID
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'toolCallId': string;
-  /**
-   *
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'runId'?: string | null;
-  /**
-   * Optional human-readable tool call title
-   * @type {string}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'title'?: string;
-  /**
-   * Additional message metadata
-   * @type {{ [key: string]: any; }}
-   * @memberof ThreadMessageDtoMessageOneOf5
-   */
-  'additionalKwargs'?: { [key: string]: any };
-}
-
-export const ThreadMessageDtoMessageOneOf5RoleEnum = {
-  Tool: 'tool',
-} as const;
-
-export type ThreadMessageDtoMessageOneOf5RoleEnum =
-  (typeof ThreadMessageDtoMessageOneOf5RoleEnum)[keyof typeof ThreadMessageDtoMessageOneOf5RoleEnum];
 
 /**
  *
