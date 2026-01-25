@@ -17,14 +17,18 @@ export type KnowledgeSuggestionState = {
   editSuggestionDraft?: string;
   userRequest: string;
   threadId?: string;
+  model?: string;
   loading: boolean;
 };
 
 type KnowledgeAiSuggestionModalProps = {
   open: boolean;
   state: KnowledgeSuggestionState | null;
+  models: { label: string; value: string }[];
+  modelsLoading: boolean;
   onClose: () => void;
   onUserRequestChange: (value: string) => void;
+  onModelChange: (value?: string) => void;
   onSubmit: () => void;
   onApplySuggestion: () => void;
   onStartEditSuggested: () => void;
@@ -38,8 +42,11 @@ type KnowledgeAiSuggestionModalProps = {
 export const KnowledgeAiSuggestionModal = ({
   open,
   state,
+  models,
+  modelsLoading,
   onClose,
   onUserRequestChange,
+  onModelChange,
   onSubmit,
   onApplySuggestion,
   onStartEditSuggested,
@@ -158,6 +165,31 @@ export const KnowledgeAiSuggestionModal = ({
               initialMode="split"
             />
           )}
+        </div>
+
+        <div>
+          <Text strong style={{ display: 'block', marginBottom: 6 }}>
+            Model
+          </Text>
+          <Select
+            value={state.model}
+            onChange={(value) => onModelChange(value)}
+            allowClear
+            showSearch
+            loading={modelsLoading}
+            notFoundContent={
+              modelsLoading ? 'Loading models...' : 'No models available'
+            }
+            filterOption={(input, option) =>
+              (option?.label ?? '')
+                .toString()
+                .toLowerCase()
+                .includes(input.toLowerCase())
+            }
+            options={models}
+            placeholder="Select model"
+            style={{ width: '100%' }}
+          />
         </div>
 
         <div>

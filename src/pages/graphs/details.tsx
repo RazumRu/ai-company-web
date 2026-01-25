@@ -43,6 +43,7 @@ import { useNavigate, useParams } from 'react-router';
 import {
   graphRevisionsApi,
   graphsApi,
+  litellmApi,
   templatesApi,
   threadsApi,
 } from '../../api';
@@ -55,6 +56,7 @@ import {
   GraphNodeWithStatusDto,
   GraphRevisionDto,
   GraphRevisionDtoStatusEnum,
+  LiteLlmModelDto,
   SuggestGraphInstructionsResponseDtoUpdatesInner,
   TemplateDto,
   ThreadDto,
@@ -459,6 +461,11 @@ export const GraphPage = () => {
   const [graphAiSelectedNodeId, setGraphAiSelectedNodeId] = useState<
     string | null
   >(null);
+  const [graphAiModel, setGraphAiModel] = useState<string | undefined>(
+    undefined,
+  );
+  const [graphAiModels, setGraphAiModels] = useState<LiteLlmModelDto[]>([]);
+  const [graphAiModelsLoading, setGraphAiModelsLoading] = useState(false);
   const [graphAiUpdatesByNodeId, setGraphAiUpdatesByNodeId] = useState<
     Record<string, SuggestGraphInstructionsResponseDtoUpdatesInner>
   >({});
@@ -2557,6 +2564,40 @@ export const GraphPage = () => {
     setGraphAiLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (!graphAiModalOpen) return;
+    if (graphAiModels.length > 0) return;
+
+    let isActive = true;
+
+    const fetchGraphAiModels = async () => {
+      try {
+        setGraphAiModelsLoading(true);
+        const response = await litellmApi.listModels();
+        if (!isActive) return;
+        setGraphAiModels(response.data ?? []);
+      } catch (error) {
+        if (!isActive) return;
+        console.error('Failed to load LiteLLM models:', error);
+        const errorMessage = extractApiErrorMessage(
+          error,
+          'Failed to load LiteLLM models',
+        );
+        message.error(errorMessage);
+      } finally {
+        if (isActive) {
+          setGraphAiModelsLoading(false);
+        }
+      }
+    };
+
+    fetchGraphAiModels();
+
+    return () => {
+      isActive = false;
+    };
+  }, [graphAiModalOpen, graphAiModels.length]);
+
   const handleGraphAiSuggestionSubmit = useCallback(async () => {
     if (!graph?.id) {
       message.error('Graph is missing for suggestions');
@@ -2580,6 +2621,7 @@ export const GraphPage = () => {
     try {
       const response = await graphsApi.suggestGraphInstructions(graph.id, {
         userRequest,
+        model: graphAiModel,
       });
       const updates = response.data?.updates ?? [];
       const updatesById = updates.reduce(
@@ -2611,7 +2653,13 @@ export const GraphPage = () => {
     } finally {
       setGraphAiLoading(false);
     }
-  }, [agentNodes.length, graph?.id, graphAiUserRequest, isGraphRunning]);
+  }, [
+    agentNodes.length,
+    graph?.id,
+    graphAiModel,
+    graphAiUserRequest,
+    isGraphRunning,
+  ]);
 
   const handleApplyGraphAiSuggestions = useCallback(() => {
     if (Object.keys(graphAiUpdatesByNodeId).length === 0) return;
@@ -4284,9 +4332,13 @@ export const GraphPage = () => {
         loading={graphAiLoading}
         canSubmit={canSubmitGraphAi}
         showRunningWarning={!isGraphRunning}
+        models={graphAiModels}
+        modelsLoading={graphAiModelsLoading}
+        selectedModel={graphAiModel}
         onClose={handleCloseGraphAiModal}
         onSelectNode={setGraphAiSelectedNodeId}
         onUserRequestChange={setGraphAiUserRequest}
+        onModelChange={setGraphAiModel}
         onSubmit={handleGraphAiSuggestionSubmit}
         onApply={handleApplyGraphAiSuggestions}
         getCurrentInstructions={getCurrentNodeInstructions}

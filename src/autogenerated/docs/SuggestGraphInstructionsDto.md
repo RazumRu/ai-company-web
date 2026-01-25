@@ -2,9 +2,10 @@
 
 ## Properties
 
-| Name            | Type       | Description                                              | Notes                  |
-| --------------- | ---------- | -------------------------------------------------------- | ---------------------- |
-| **userRequest** | **string** | User request describing how to adjust agent instructions | [default to undefined] |
+| Name            | Type       | Description                                              | Notes                             |
+| --------------- | ---------- | -------------------------------------------------------- | --------------------------------- |
+| **userRequest** | **string** | User request describing how to adjust agent instructions | [default to undefined]            |
+| **model**       | **string** | Optional LLM model to use for this suggestion            | [optional] [default to undefined] |
 
 ## Example
 
@@ -13,6 +14,7 @@ import { SuggestGraphInstructionsDto } from './api';
 
 const instance: SuggestGraphInstructionsDto = {
   userRequest,
+  model,
 };
 ```
 

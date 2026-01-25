@@ -199,7 +199,12 @@ const renderToolPopoverContent = (
   let parsed: JsonValue | null = null;
   if (typeof value === 'string') {
     parsed = parseJsonSafe(value);
-  } else if (isPlainObject(value)) {
+  } else if (
+    value !== null &&
+    (typeof value === 'object' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean')
+  ) {
     parsed = value as JsonValue;
   }
 

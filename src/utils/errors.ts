@@ -35,24 +35,40 @@ const extractMessageFromUnknown = (value: unknown): string | null => {
   return null;
 };
 
-const extractDetailFromError = (error: unknown): string | null => {
+type ExtractedErrorDetail = {
+  message: string;
+  isFullMessage: boolean;
+};
+
+const extractDetailFromError = (
+  error: unknown,
+): ExtractedErrorDetail | null => {
   if (isAxiosError(error)) {
     const data: unknown = error.response?.data;
 
     if (typeof data === 'string') {
-      return data;
+      return { message: data, isFullMessage: false };
     }
 
     if (data && typeof data === 'object') {
+      if ('fullMessage' in data) {
+        const extracted = extractMessageFromUnknown(
+          (data as Record<string, unknown>).fullMessage,
+        );
+        if (extracted) {
+          return { message: extracted, isFullMessage: true };
+        }
+      }
+
       const extracted = extractMessageFromUnknown(data);
       if (extracted) {
-        return extracted;
+        return { message: extracted, isFullMessage: false };
       }
     }
   }
 
   if (error instanceof Error) {
-    return error.message;
+    return { message: error.message, isFullMessage: false };
   }
 
   return null;
@@ -68,9 +84,13 @@ export const extractApiErrorMessage = (
     return fallback;
   }
 
-  if (detail.toLowerCase() === fallback.toLowerCase()) {
-    return detail;
+  if (detail.isFullMessage) {
+    return detail.message;
   }
 
-  return `${fallback}: ${detail}`;
+  if (detail.message.toLowerCase() === fallback.toLowerCase()) {
+    return detail.message;
+  }
+
+  return `${fallback}: ${detail.message}`;
 };

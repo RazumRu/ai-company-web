@@ -19,7 +19,6 @@ docs/GraphRevisionDto.md
 docs/GraphRevisionsApi.md
 docs/GraphsApi.md
 docs/KnowledgeApi.md
-docs/KnowledgeChunkDto.md
 docs/KnowledgeContentSuggestionRequestDto.md
 docs/KnowledgeContentSuggestionResponseDto.md
 docs/KnowledgeDocDto.md

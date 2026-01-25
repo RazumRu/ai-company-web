@@ -17,6 +17,7 @@ import {
   Modal,
   Popconfirm,
   Popover,
+  Select,
   Space,
   Spin,
   Tabs,
@@ -28,9 +29,10 @@ import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 
-import { graphsApi, templatesApi, threadsApi } from '../../api';
+import { graphsApi, litellmApi, templatesApi, threadsApi } from '../../api';
 import type {
   GraphDto,
+  LiteLlmModelDto,
   TemplateDto,
   ThreadDto,
   ThreadMessageDto,
@@ -491,6 +493,11 @@ export const ChatsPage = () => {
   const [analysisConversationId, setAnalysisConversationId] = useState<
     string | null
   >(null);
+  const [analysisModel, setAnalysisModel] = useState<string | undefined>(
+    undefined,
+  );
+  const [liteLlmModels, setLiteLlmModels] = useState<LiteLlmModelDto[]>([]);
+  const [litellmModelsLoading, setLitellmModelsLoading] = useState(false);
 
   const [graphPickerOpen, setGraphPickerOpen] = useState(false);
   const [graphPickerLoading, setGraphPickerLoading] = useState(false);
@@ -1992,6 +1999,7 @@ export const ChatsPage = () => {
             ? analysisUserInput
             : undefined,
         threadId: analysisConversationId ?? undefined,
+        model: analysisModel,
       });
       const analysisText = response.data?.analysis ?? '';
       const conversationId = response.data?.conversationId ?? null;
@@ -2019,7 +2027,49 @@ export const ChatsPage = () => {
     selectedThreadIsDraft,
     analysisUserInput,
     analysisConversationId,
+    analysisModel,
   ]);
+
+  const analysisModelOptions = useMemo(
+    () =>
+      liteLlmModels.map((model) => ({
+        label: model.ownedBy ? `${model.id} (${model.ownedBy})` : model.id,
+        value: model.id,
+      })),
+    [liteLlmModels],
+  );
+
+  useEffect(() => {
+    if (!analyzeModalOpen) return;
+    if (liteLlmModels.length > 0) return;
+
+    let isActive = true;
+
+    const fetchLiteLlmModels = async () => {
+      try {
+        setLitellmModelsLoading(true);
+        const response = await litellmApi.listModels();
+        if (!isActive) return;
+        setLiteLlmModels(response.data ?? []);
+      } catch (error) {
+        if (!isActive) return;
+        console.error('Failed to load LiteLLM models:', error);
+        antdMessage.error(
+          extractApiErrorMessage(error, 'Failed to load LiteLLM models'),
+        );
+      } finally {
+        if (isActive) {
+          setLitellmModelsLoading(false);
+        }
+      }
+    };
+
+    fetchLiteLlmModels();
+
+    return () => {
+      isActive = false;
+    };
+  }, [analyzeModalOpen, liteLlmModels.length]);
 
   const filteredGraphLabel = useMemo(() => {
     if (!graphFilterId) return undefined;
@@ -3183,6 +3233,33 @@ export const ChatsPage = () => {
             AI will analyze this thread and share hints about improvements or
             potential problems.
           </Text>
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 6 }}>
+              Model
+            </Text>
+            <Select
+              value={analysisModel}
+              onChange={(value) => setAnalysisModel(value)}
+              allowClear
+              showSearch
+              loading={litellmModelsLoading}
+              notFoundContent={
+                litellmModelsLoading
+                  ? 'Loading models...'
+                  : 'No models available'
+              }
+              filterOption={(input, option) =>
+                (option?.label ?? '')
+                  .toString()
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+              options={analysisModelOptions}
+              disabled={analysisButtonDisabled || analyzeLoading}
+              placeholder="Select model"
+              style={{ width: '100%' }}
+            />
+          </div>
           <Input.TextArea
             rows={4}
             placeholder="Optional context or questions for the analysis"

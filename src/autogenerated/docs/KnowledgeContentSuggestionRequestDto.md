@@ -9,6 +9,7 @@
 | **currentContent** | **string**              | Optional existing knowledge document content                      | [optional] [default to undefined] |
 | **currentTags**    | **Array&lt;string&gt;** | Optional existing tags for the knowledge document                 | [optional] [default to undefined] |
 | **threadId**       | **string**              | Optional thread id to continue a previous suggestion conversation | [optional] [default to undefined] |
+| **model**          | **string**              | Optional LLM model to use for this suggestion                     | [optional] [default to undefined] |
 
 ## Example
 
@@ -21,6 +22,7 @@ const instance: KnowledgeContentSuggestionRequestDto = {
   currentContent,
   currentTags,
   threadId,
+  model,
 };
 ```
 

@@ -539,73 +539,6 @@ export type GraphRevisionDtoStatusEnum =
 /**
  *
  * @export
- * @interface KnowledgeChunkDto
- */
-export interface KnowledgeChunkDto {
-  /**
-   *
-   * @type {string}
-   * @memberof KnowledgeChunkDto
-   */
-  'id': string;
-  /**
-   *
-   * @type {number}
-   * @memberof KnowledgeChunkDto
-   */
-  'publicId': number;
-  /**
-   *
-   * @type {string}
-   * @memberof KnowledgeChunkDto
-   */
-  'docId': string;
-  /**
-   *
-   * @type {number}
-   * @memberof KnowledgeChunkDto
-   */
-  'chunkIndex': number;
-  /**
-   *
-   * @type {string}
-   * @memberof KnowledgeChunkDto
-   */
-  'label'?: string | null;
-  /**
-   *
-   * @type {Array<string>}
-   * @memberof KnowledgeChunkDto
-   */
-  'keywords'?: Array<string> | null;
-  /**
-   *
-   * @type {string}
-   * @memberof KnowledgeChunkDto
-   */
-  'text': string;
-  /**
-   *
-   * @type {number}
-   * @memberof KnowledgeChunkDto
-   */
-  'startOffset': number;
-  /**
-   *
-   * @type {number}
-   * @memberof KnowledgeChunkDto
-   */
-  'endOffset': number;
-  /**
-   *
-   * @type {string}
-   * @memberof KnowledgeChunkDto
-   */
-  'createdAt': string;
-}
-/**
- *
- * @export
  * @interface KnowledgeContentSuggestionRequestDto
  */
 export interface KnowledgeContentSuggestionRequestDto {
@@ -639,6 +572,12 @@ export interface KnowledgeContentSuggestionRequestDto {
    * @memberof KnowledgeContentSuggestionRequestDto
    */
   'threadId'?: string;
+  /**
+   * Optional LLM model to use for this suggestion
+   * @type {string}
+   * @memberof KnowledgeContentSuggestionRequestDto
+   */
+  'model'?: string;
 }
 /**
  *
@@ -800,6 +739,12 @@ export interface SuggestAgentInstructionsDto {
    * @memberof SuggestAgentInstructionsDto
    */
   'threadId'?: string;
+  /**
+   * Optional LLM model to use for this suggestion
+   * @type {string}
+   * @memberof SuggestAgentInstructionsDto
+   */
+  'model'?: string;
 }
 /**
  *
@@ -832,6 +777,12 @@ export interface SuggestGraphInstructionsDto {
    * @memberof SuggestGraphInstructionsDto
    */
   'userRequest': string;
+  /**
+   * Optional LLM model to use for this suggestion
+   * @type {string}
+   * @memberof SuggestGraphInstructionsDto
+   */
+  'model'?: string;
 }
 /**
  *
@@ -1048,6 +999,12 @@ export interface ThreadAnalysisRequestDto {
    * @memberof ThreadAnalysisRequestDto
    */
   'threadId'?: string;
+  /**
+   * Optional LLM model to use for this analysis
+   * @type {string}
+   * @memberof ThreadAnalysisRequestDto
+   */
+  'model'?: string;
 }
 /**
  *
@@ -4644,55 +4601,6 @@ export const KnowledgeApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {string} id
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    getDocChunks: async (
-      id: string,
-      options: RawAxiosRequestConfig = {},
-    ): Promise<RequestArgs> => {
-      // verify required parameter 'id' is not null or undefined
-      assertParamExists('getDocChunks', 'id', id);
-      const localVarPath = `/api/v1/knowledge-docs/{id}/chunks`.replace(
-        `{${'id'}}`,
-        encodeURIComponent(String(id)),
-      );
-      // use dummy base URL string because the URL constructor only accepts absolute URLs.
-      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-      let baseOptions;
-      if (configuration) {
-        baseOptions = configuration.baseOptions;
-      }
-
-      const localVarRequestOptions = {
-        method: 'GET',
-        ...baseOptions,
-        ...options,
-      };
-      const localVarHeaderParameter = {} as any;
-      const localVarQueryParameter = {} as any;
-
-      // authentication bearer required
-      // http bearer authentication required
-      await setBearerAuthToObject(localVarHeaderParameter, configuration);
-
-      setSearchParams(localVarUrlObj, localVarQueryParameter);
-      let headersFromBaseOptions =
-        baseOptions && baseOptions.headers ? baseOptions.headers : {};
-      localVarRequestOptions.headers = {
-        ...localVarHeaderParameter,
-        ...headersFromBaseOptions,
-        ...options.headers,
-      };
-
-      return {
-        url: toPathString(localVarUrlObj),
-        options: localVarRequestOptions,
-      };
-    },
-    /**
-     *
      * @param {Array<string>} [tags] Filter by tags (match any)
      * @param {string} [search] Search in title/summary/content
      * @param {number} [limit]
@@ -5152,38 +5060,6 @@ export const KnowledgeApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {string} id
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    async getDocChunks(
-      id: string,
-      options?: RawAxiosRequestConfig,
-    ): Promise<
-      (
-        axios?: AxiosInstance,
-        basePath?: string,
-      ) => AxiosPromise<Array<KnowledgeChunkDto>>
-    > {
-      const localVarAxiosArgs = await localVarAxiosParamCreator.getDocChunks(
-        id,
-        options,
-      );
-      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-      const localVarOperationServerBasePath =
-        operationServerMap['KnowledgeApi.getDocChunks']?.[
-          localVarOperationServerIndex
-        ]?.url;
-      return (axios, basePath) =>
-        createRequestFunction(
-          localVarAxiosArgs,
-          globalAxios,
-          BASE_PATH,
-          configuration,
-        )(axios, localVarOperationServerBasePath || basePath);
-    },
-    /**
-     *
      * @param {Array<string>} [tags] Filter by tags (match any)
      * @param {string} [search] Search in title/summary/content
      * @param {number} [limit]
@@ -5437,20 +5313,6 @@ export const KnowledgeApiFactory = function (
     },
     /**
      *
-     * @param {string} id
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     */
-    getDocChunks(
-      id: string,
-      options?: RawAxiosRequestConfig,
-    ): AxiosPromise<Array<KnowledgeChunkDto>> {
-      return localVarFp
-        .getDocChunks(id, options)
-        .then((request) => request(axios, basePath));
-    },
-    /**
-     *
      * @param {Array<string>} [tags] Filter by tags (match any)
      * @param {string} [search] Search in title/summary/content
      * @param {number} [limit]
@@ -5605,19 +5467,6 @@ export class KnowledgeApi extends BaseAPI {
   public getDoc(id: string, options?: RawAxiosRequestConfig) {
     return KnowledgeApiFp(this.configuration)
       .getDoc(id, options)
-      .then((request) => request(this.axios, this.basePath));
-  }
-
-  /**
-   *
-   * @param {string} id
-   * @param {*} [options] Override http request option.
-   * @throws {RequiredError}
-   * @memberof KnowledgeApi
-   */
-  public getDocChunks(id: string, options?: RawAxiosRequestConfig) {
-    return KnowledgeApiFp(this.configuration)
-      .getDocChunks(id, options)
       .then((request) => request(this.axios, this.basePath));
   }
 

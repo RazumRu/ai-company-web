@@ -20,6 +20,7 @@ import {
   message,
   Modal,
   Popover,
+  Select,
   Space,
   Tag,
   Tooltip,
@@ -122,6 +123,7 @@ export type AiSuggestionState = {
   editSuggestionDraft?: string;
   userRequest: string;
   threadId?: string;
+  model?: string;
   loading: boolean;
 };
 
@@ -296,6 +298,14 @@ export const NodeEditSidebar = React.memo(
         ),
       [schemaProperties],
     );
+    const liteLlmModelOptions = useMemo(
+      () =>
+        liteLlmModels.map((model) => ({
+          label: model.ownedBy ? `${model.id} (${model.ownedBy})` : model.id,
+          value: model.id,
+        })),
+      [liteLlmModels],
+    );
 
     const nodeData = getNodeData(node);
     const nodeTemplate = templates.find((t) => t.id === nodeData?.template);
@@ -452,6 +462,7 @@ export const NodeEditSidebar = React.memo(
           editSuggestionDraft: undefined,
           userRequest: '',
           threadId: undefined,
+          model: undefined,
           loading: false,
         });
       },
@@ -566,8 +577,11 @@ export const NodeEditSidebar = React.memo(
       setAiSuggestionState(null);
     }, [node?.id]);
 
+    const shouldLoadLiteLlmModels =
+      hasLiteLlmSelectField || Boolean(aiSuggestionState);
+
     useEffect(() => {
-      if (!hasLiteLlmSelectField) {
+      if (!shouldLoadLiteLlmModels) {
         return;
       }
       if (liteLlmModels.length > 0) {
@@ -606,7 +620,7 @@ export const NodeEditSidebar = React.memo(
       return () => {
         isActive = false;
       };
-    }, [hasLiteLlmSelectField, liteLlmModels.length]);
+    }, [liteLlmModels.length, shouldLoadLiteLlmModels]);
 
     // Keep active tab valid for the currently selected node (does NOT touch form state).
     useEffect(() => {
@@ -627,7 +641,7 @@ export const NodeEditSidebar = React.memo(
       if (!availableTabs.includes(activeTab)) {
         setActiveTab('options');
       }
-    }, [activeTab, node]);
+    }, [activeTab, node, templates]);
 
     // Hydrate form ONLY when switching nodes or switching templates.
     // Critically, do NOT re-run on every `node` object reference change, otherwise
@@ -987,6 +1001,7 @@ export const NodeEditSidebar = React.memo(
           {
             userRequest,
             threadId: aiSuggestionState.threadId,
+            model: aiSuggestionState.model,
           },
         );
 
@@ -1583,6 +1598,38 @@ export const NodeEditSidebar = React.memo(
                 ) : (
                   <Text type="secondary">No content available.</Text>
                 )}
+              </div>
+
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 6 }}>
+                  Model
+                </Text>
+                <Select
+                  value={aiSuggestionState.model}
+                  onChange={(value) =>
+                    setAiSuggestionState((prev) =>
+                      prev ? { ...prev, model: value } : prev,
+                    )
+                  }
+                  allowClear
+                  showSearch
+                  loading={litellmModelsLoading}
+                  notFoundContent={
+                    litellmModelsLoading
+                      ? 'Loading models...'
+                      : 'No models available'
+                  }
+                  filterOption={(input, option) =>
+                    (option?.label ?? '')
+                      .toString()
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  options={liteLlmModelOptions}
+                  disabled={aiSuggestionState.loading}
+                  placeholder="Select model"
+                  style={{ width: '100%' }}
+                />
               </div>
 
               <div>

@@ -6,6 +6,7 @@
 | --------------- | ---------- | ----------------------------------------------------------------- | --------------------------------- |
 | **userRequest** | **string** | User request describing how to adjust agent instructions          | [default to undefined]            |
 | **threadId**    | **string** | Optional thread id to continue a previous suggestion conversation | [optional] [default to undefined] |
+| **model**       | **string** | Optional LLM model to use for this suggestion                     | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,6 +16,7 @@ import { SuggestAgentInstructionsDto } from './api';
 const instance: SuggestAgentInstructionsDto = {
   userRequest,
   threadId,
+  model,
 };
 ```
 
