@@ -467,6 +467,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       });
     }, []);
 
+    // Helper to identify working group items
+    const isWorkGroupItem = useCallback((item: PreparedMessage): boolean => {
+      if (item.type === 'reasoning') return true;
+      if (item.type === 'tool') {
+        return (item.name || '').toLowerCase() !== 'finish';
+      }
+      return false;
+    }, []);
+
     useEffect(() => {
       ensureThinkingIndicatorStyles();
       ensureReasoningAnimationStyles();
@@ -756,7 +765,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     type PreparedMessage =
       | {
           type: 'system';
-          messages: ThreadMessageDto[];
+          message: ThreadMessageDto;
           id: string;
           nodeId?: string;
           createdAt?: string;
@@ -963,25 +972,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           }
 
           if (role === 'system') {
-            const sys: ThreadMessageDto[] = [m];
-            let j = i + 1;
-            while (
-              j < msgs.length &&
-              (msgs[j].message?.role as string) === 'system'
-            ) {
-              sys.push(msgs[j]);
-              j++;
-            }
             prepared.push({
               type: 'system',
-              messages: sys,
-              id: `system-${sys[0].id || sys[0].createdAt}`,
-              nodeId: sys[0]?.nodeId,
-              createdAt: sys[0]?.createdAt,
+              message: m,
+              id: `system-${m.id || m.createdAt}`,
+              nodeId: m.nodeId,
+              createdAt: m.createdAt,
               inCommunicationExec: isInterAgent,
               sourceAgentNodeId,
             });
-            i = j;
+            i++;
             continue;
           }
 
@@ -1180,20 +1180,63 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     }, [messages, prepareReadyMessages]);
     const isThinkingVisible = isNodeRunning && isAgentNode && !isThreadStopped;
 
+    // Auto-expand new working groups by default
+    useEffect(() => {
+      const workingGroupIds = new Set<string>();
+
+      for (let i = 0; i < preparedMessages.length; i++) {
+        const item = preparedMessages[i];
+
+        // Check if this is the start of a working group
+        if (isWorkGroupItem(item)) {
+          const groupId = `working-${item.id}`;
+          workingGroupIds.add(groupId);
+
+          // Skip to the end of this working group
+          let j = i + 1;
+          while (
+            j < preparedMessages.length &&
+            isWorkGroupItem(preparedMessages[j])
+          ) {
+            j++;
+          }
+          i = j - 1; // -1 because the for loop will increment
+        }
+      }
+
+      // Add any new working group IDs to the expanded set
+      setExpandedWorkingIds((prev) => {
+        const newIds = Array.from(workingGroupIds).filter(
+          (id) => !prev.has(id),
+        );
+        if (newIds.length > 0) {
+          // Schedule scroll after state update and DOM re-render
+          setTimeout(() => {
+            const el = scrollContainerRef.current;
+            if (!el || messagesLoading) return;
+
+            const shouldAutoScroll =
+              pendingAutoScrollRef.current || !autoScrollDisabledRef.current;
+
+            if (shouldAutoScroll) {
+              el.scrollTop = el.scrollHeight;
+            }
+          }, 0);
+
+          return new Set([...prev, ...newIds]);
+        }
+        return prev;
+      });
+    }, [preparedMessages, isWorkGroupItem, messagesLoading]);
+
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
         <div style={centeredStateStyle}>{content}</div>
       </div>
     );
 
-    const renderSystemGroup = (
-      systemMessages: ThreadMessageDto[],
-      count: number,
-    ) => {
-      const firstMessage = systemMessages[0];
-      const content = formatMessageContent(firstMessage.message?.content);
-      const countSuffix = count > 1 ? ` (${count} system messages)` : '';
-      const fullText = `${content}${countSuffix}`;
+    const renderSystemMessage = (message: ThreadMessageDto) => {
+      const content = formatMessageContent(message.message?.content);
 
       const textContainerStyle: React.CSSProperties = {
         fontSize: '12px',
@@ -1204,7 +1247,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       return (
         <div style={{ width: '90%', margin: '0 auto' }}>
           <div style={textContainerStyle}>
-            <MarkdownContent content={fullText} allowHorizontalScroll={true} />
+            <MarkdownContent content={content} allowHorizontalScroll={true} />
           </div>
         </div>
       );
@@ -1820,13 +1863,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         );
       };
 
-      const isWorkGroupItem = (item: PreparedMessage): boolean => {
-        if (item.type === 'reasoning') return true;
-        if (item.type === 'tool') {
-          return (item.name || '').toLowerCase() !== 'finish';
-        }
-        return false;
-      };
+      // isWorkGroupItem is now defined at component level for reuse
 
       const getAvatarInitials = (label?: string): string => {
         if (!label) return 'AI';
@@ -2031,10 +2068,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             : undefined;
 
         if (item.type === 'system') {
-          pushRow(
-            item.id,
-            renderSystemGroup(item.messages, item.messages.length),
-          );
+          pushRow(item.id, renderSystemMessage(item.message));
           i++;
           continue;
         }

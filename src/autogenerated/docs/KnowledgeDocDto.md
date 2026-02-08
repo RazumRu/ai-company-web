@@ -2,17 +2,18 @@
 
 ## Properties
 
-| Name          | Type                    | Description | Notes                             |
-| ------------- | ----------------------- | ----------- | --------------------------------- |
-| **id**        | **string**              |             | [default to undefined]            |
-| **publicId**  | **number**              |             | [default to undefined]            |
-| **content**   | **string**              |             | [default to undefined]            |
-| **title**     | **string**              |             | [default to undefined]            |
-| **summary**   | **string**              |             | [optional] [default to undefined] |
-| **politic**   | **string**              |             | [optional] [default to undefined] |
-| **tags**      | **Array&lt;string&gt;** |             | [default to undefined]            |
-| **createdAt** | **string**              |             | [default to undefined]            |
-| **updatedAt** | **string**              |             | [default to undefined]            |
+| Name               | Type                    | Description | Notes                             |
+| ------------------ | ----------------------- | ----------- | --------------------------------- |
+| **id**             | **string**              |             | [default to undefined]            |
+| **publicId**       | **number**              |             | [default to undefined]            |
+| **content**        | **string**              |             | [default to undefined]            |
+| **title**          | **string**              |             | [default to undefined]            |
+| **summary**        | **string**              |             | [optional] [default to undefined] |
+| **politic**        | **string**              |             | [optional] [default to undefined] |
+| **embeddingModel** | **string**              |             | [optional] [default to undefined] |
+| **tags**           | **Array&lt;string&gt;** |             | [default to undefined]            |
+| **createdAt**      | **string**              |             | [default to undefined]            |
+| **updatedAt**      | **string**              |             | [default to undefined]            |
 
 ## Example
 
@@ -26,6 +27,7 @@ const instance: KnowledgeDocDto = {
   title,
   summary,
   politic,
+  embeddingModel,
   tags,
   createdAt,
   updatedAt,

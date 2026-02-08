@@ -3,7 +3,13 @@ import {
   ExclamationCircleOutlined,
   PlayCircleOutlined,
 } from '@ant-design/icons';
-import { Handle, NodeProps, Position, useStore } from '@xyflow/react';
+import {
+  Handle,
+  NodeProps,
+  Position,
+  useReactFlow,
+  useStore,
+} from '@xyflow/react';
 import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
 import type { CSSProperties } from 'react';
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -82,6 +88,8 @@ export const CustomNode = React.memo(
     const nodeData = data as unknown as GraphNodeData;
     const allNodes = useStore((s) => s.nodes) as GraphNode[];
     const allEdges = useStore((s) => s.edges) as GraphEdge[];
+    const { setNodes: setReactFlowNodes, setEdges: setReactFlowEdges } =
+      useReactFlow();
     const nodeTemplate = templates?.find((t) => t.id === nodeData.template);
 
     useEffect(() => {
@@ -458,9 +466,20 @@ export const CustomNode = React.memo(
                   type="text"
                   size="small"
                   danger
+                  className="nodrag"
                   icon={<DeleteOutlined />}
-                  onClick={(e) => {
+                  onPointerDown={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
+                    setReactFlowEdges((edges) =>
+                      edges.filter(
+                        (edge) =>
+                          edge.source !== nodeId && edge.target !== nodeId,
+                      ),
+                    );
+                    setReactFlowNodes((nodes) =>
+                      nodes.filter((node) => node.id !== nodeId),
+                    );
                     nodeData.onDelete?.();
                   }}
                 />

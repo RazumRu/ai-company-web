@@ -212,6 +212,51 @@ export interface CreateGraphDtoSchemaNodesInner {
 /**
  *
  * @export
+ * @interface CreateRepositoryDto
+ */
+export interface CreateRepositoryDto {
+  /**
+   * Repository owner
+   * @type {string}
+   * @memberof CreateRepositoryDto
+   */
+  'owner': string;
+  /**
+   * Repository name
+   * @type {string}
+   * @memberof CreateRepositoryDto
+   */
+  'repo': string;
+  /**
+   * HTTPS URL of the repository
+   * @type {string}
+   * @memberof CreateRepositoryDto
+   */
+  'url': string;
+  /**
+   * Git repository host provider
+   * @type {string}
+   * @memberof CreateRepositoryDto
+   */
+  'provider'?: CreateRepositoryDtoProviderEnum;
+  /**
+   * GitHub personal access token (encrypted at rest, write-only)
+   * @type {string}
+   * @memberof CreateRepositoryDto
+   */
+  'token'?: string;
+}
+
+export const CreateRepositoryDtoProviderEnum = {
+  Github: 'GITHUB',
+} as const;
+
+export type CreateRepositoryDtoProviderEnum =
+  (typeof CreateRepositoryDtoProviderEnum)[keyof typeof CreateRepositoryDtoProviderEnum];
+
+/**
+ *
+ * @export
  * @interface ExecuteTriggerDto
  */
 export interface ExecuteTriggerDto {
@@ -253,6 +298,69 @@ export interface ExecuteTriggerResponseDto {
    */
   'checkpointNs'?: string;
 }
+/**
+ *
+ * @export
+ * @interface GitRepositoryDto
+ */
+export interface GitRepositoryDto {
+  /**
+   * Repository ID
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'id': string;
+  /**
+   * Repository owner (GitHub username or organization)
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'owner': string;
+  /**
+   * Repository name
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'repo': string;
+  /**
+   * HTTPS URL of the repository
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'url': string;
+  /**
+   * Git repository host provider
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'provider': GitRepositoryDtoProviderEnum;
+  /**
+   * User ID who cloned the repository
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'createdBy': string;
+  /**
+   *
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'createdAt': string;
+  /**
+   *
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'updatedAt': string;
+}
+
+export const GitRepositoryDtoProviderEnum = {
+  Github: 'GITHUB',
+} as const;
+
+export type GitRepositoryDtoProviderEnum =
+  (typeof GitRepositoryDtoProviderEnum)[keyof typeof GitRepositoryDtoProviderEnum];
+
 /**
  *
  * @export
@@ -613,6 +721,37 @@ export interface KnowledgeContentSuggestionResponseDto {
 /**
  *
  * @export
+ * @interface KnowledgeDocCreateDto
+ */
+export interface KnowledgeDocCreateDto {
+  /**
+   * Knowledge document title
+   * @type {string}
+   * @memberof KnowledgeDocCreateDto
+   */
+  'title': string;
+  /**
+   * Raw knowledge document content
+   * @type {string}
+   * @memberof KnowledgeDocCreateDto
+   */
+  'content': string;
+  /**
+   * Optional LLM usage guidance for this document. If the politic instructs to fetch full content (e.g. \"always fetch the full content instead of fetching only specific chunks\"), full document retrieval is permitted.
+   * @type {string}
+   * @memberof KnowledgeDocCreateDto
+   */
+  'politic'?: string;
+  /**
+   * Optional tags to apply to the document
+   * @type {Array<string>}
+   * @memberof KnowledgeDocCreateDto
+   */
+  'tags'?: Array<string>;
+}
+/**
+ *
+ * @export
  * @interface KnowledgeDocDto
  */
 export interface KnowledgeDocDto {
@@ -654,6 +793,12 @@ export interface KnowledgeDocDto {
   'politic'?: string | null;
   /**
    *
+   * @type {string}
+   * @memberof KnowledgeDocDto
+   */
+  'embeddingModel'?: string | null;
+  /**
+   *
    * @type {Array<string>}
    * @memberof KnowledgeDocDto
    */
@@ -674,31 +819,31 @@ export interface KnowledgeDocDto {
 /**
  *
  * @export
- * @interface KnowledgeDocInputDto
+ * @interface KnowledgeDocUpdateDto
  */
-export interface KnowledgeDocInputDto {
+export interface KnowledgeDocUpdateDto {
   /**
    * Knowledge document title
    * @type {string}
-   * @memberof KnowledgeDocInputDto
+   * @memberof KnowledgeDocUpdateDto
    */
-  'title': string;
+  'title'?: string;
   /**
    * Raw knowledge document content
    * @type {string}
-   * @memberof KnowledgeDocInputDto
+   * @memberof KnowledgeDocUpdateDto
    */
-  'content': string;
+  'content'?: string;
   /**
    * Optional LLM usage guidance for this document. If the politic instructs to fetch full content (e.g. \"always fetch the full content instead of fetching only specific chunks\"), full document retrieval is permitted.
    * @type {string}
-   * @memberof KnowledgeDocInputDto
+   * @memberof KnowledgeDocUpdateDto
    */
   'politic'?: string;
   /**
    * Optional tags to apply to the document
    * @type {Array<string>}
-   * @memberof KnowledgeDocInputDto
+   * @memberof KnowledgeDocUpdateDto
    */
   'tags'?: Array<string>;
 }
@@ -721,6 +866,108 @@ export interface LiteLlmModelDto {
    */
   'ownedBy': string;
 }
+/**
+ *
+ * @export
+ * @interface RepoIndexDto
+ */
+export interface RepoIndexDto {
+  /**
+   * Index ID
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'id': string;
+  /**
+   * Repository ID
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'repositoryId': string;
+  /**
+   * Repository URL
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'repoUrl': string;
+  /**
+   * Indexing status
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'status': RepoIndexDtoStatusEnum;
+  /**
+   * Qdrant collection name
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'qdrantCollection': string;
+  /**
+   *
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'lastIndexedCommit': string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'embeddingModel': string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof RepoIndexDto
+   */
+  'vectorSize': number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'chunkingSignatureHash': string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof RepoIndexDto
+   */
+  'estimatedTokens': number | null;
+  /**
+   *
+   * @type {number}
+   * @memberof RepoIndexDto
+   */
+  'indexedTokens': number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'errorMessage': string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'createdAt': string;
+  /**
+   *
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'updatedAt': string;
+}
+
+export const RepoIndexDtoStatusEnum = {
+  Pending: 'pending',
+  InProgress: 'in_progress',
+  Completed: 'completed',
+  Failed: 'failed',
+} as const;
+
+export type RepoIndexDtoStatusEnum =
+  (typeof RepoIndexDtoStatusEnum)[keyof typeof RepoIndexDtoStatusEnum];
+
 /**
  *
  * @export
@@ -1777,6 +2024,140 @@ export interface ThreadUsageStatisticsDtoTotal {
 /**
  *
  * @export
+ * @interface TriggerReindexDto
+ */
+export interface TriggerReindexDto {
+  /**
+   * Repository ID to reindex
+   * @type {string}
+   * @memberof TriggerReindexDto
+   */
+  'repositoryId': string;
+}
+/**
+ *
+ * @export
+ * @interface TriggerReindexResponseDto
+ */
+export interface TriggerReindexResponseDto {
+  /**
+   *
+   * @type {TriggerReindexResponseDtoRepoIndex}
+   * @memberof TriggerReindexResponseDto
+   */
+  'repoIndex': TriggerReindexResponseDtoRepoIndex;
+  /**
+   * Human-readable status message
+   * @type {string}
+   * @memberof TriggerReindexResponseDto
+   */
+  'message': string;
+}
+/**
+ *
+ * @export
+ * @interface TriggerReindexResponseDtoRepoIndex
+ */
+export interface TriggerReindexResponseDtoRepoIndex {
+  /**
+   * Index ID
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'id': string;
+  /**
+   * Repository ID
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'repositoryId': string;
+  /**
+   * Repository URL
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'repoUrl': string;
+  /**
+   * Indexing status
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'status': TriggerReindexResponseDtoRepoIndexStatusEnum;
+  /**
+   * Qdrant collection name
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'qdrantCollection': string;
+  /**
+   *
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'lastIndexedCommit': string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'embeddingModel': string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'vectorSize': number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'chunkingSignatureHash': string | null;
+  /**
+   *
+   * @type {number}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'estimatedTokens': number | null;
+  /**
+   *
+   * @type {number}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'indexedTokens': number | null;
+  /**
+   *
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'errorMessage': string | null;
+  /**
+   *
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'createdAt': string;
+  /**
+   *
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'updatedAt': string;
+}
+
+export const TriggerReindexResponseDtoRepoIndexStatusEnum = {
+  Pending: 'pending',
+  InProgress: 'in_progress',
+  Completed: 'completed',
+  Failed: 'failed',
+} as const;
+
+export type TriggerReindexResponseDtoRepoIndexStatusEnum =
+  (typeof TriggerReindexResponseDtoRepoIndexStatusEnum)[keyof typeof TriggerReindexResponseDtoRepoIndexStatusEnum];
+
+/**
+ *
+ * @export
  * @interface UpdateGraphDto
  */
 export interface UpdateGraphDto {
@@ -2424,6 +2805,1088 @@ export interface UpdateGraphResponseDtoRevisionNewConfig {
    */
   'temporary': boolean;
 }
+/**
+ *
+ * @export
+ * @interface UpdateRepositoryDto
+ */
+export interface UpdateRepositoryDto {
+  /**
+   * HTTPS URL of the repository
+   * @type {string}
+   * @memberof UpdateRepositoryDto
+   */
+  'url'?: string;
+  /**
+   * GitHub personal access token (encrypted at rest, write-only)
+   * @type {string}
+   * @memberof UpdateRepositoryDto
+   */
+  'token'?: string;
+}
+
+/**
+ * GitRepositoriesApi - axios parameter creator
+ * @export
+ */
+export const GitRepositoriesApiAxiosParamCreator = function (
+  configuration?: Configuration,
+) {
+  return {
+    /**
+     *
+     * @param {CreateRepositoryDto} createRepositoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    createRepository: async (
+      createRepositoryDto: CreateRepositoryDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'createRepositoryDto' is not null or undefined
+      assertParamExists(
+        'createRepository',
+        'createRepositoryDto',
+        createRepositoryDto,
+      );
+      const localVarPath = `/api/v1/git-repositories`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        createRepositoryDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    deleteRepository: async (
+      id: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('deleteRepository', 'id', id);
+      const localVarPath = `/api/v1/git-repositories/{id}`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'DELETE',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepoIndexByRepositoryId: async (
+      id: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('getRepoIndexByRepositoryId', 'id', id);
+      const localVarPath = `/api/v1/git-repositories/{id}/index`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} [repositoryId] Filter by repository ID
+     * @param {GetRepoIndexesStatusEnum} [status] Filter by status
+     * @param {number} [limit] Maximum number of indexes to return
+     * @param {number} [offset] Number of indexes to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepoIndexes: async (
+      repositoryId?: string,
+      status?: GetRepoIndexesStatusEnum,
+      limit?: number,
+      offset?: number,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      const localVarPath = `/api/v1/git-repositories/indexes`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      if (repositoryId !== undefined) {
+        localVarQueryParameter['repositoryId'] = repositoryId;
+      }
+
+      if (status !== undefined) {
+        localVarQueryParameter['status'] = status;
+      }
+
+      if (limit !== undefined) {
+        localVarQueryParameter['limit'] = limit;
+      }
+
+      if (offset !== undefined) {
+        localVarQueryParameter['offset'] = offset;
+      }
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} [owner] Filter by repository owner
+     * @param {string} [repo] Filter by repository name
+     * @param {GetRepositoriesProviderEnum} [provider] Filter by host provider
+     * @param {number} [limit] Maximum number of repositories to return
+     * @param {number} [offset] Number of repositories to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepositories: async (
+      owner?: string,
+      repo?: string,
+      provider?: GetRepositoriesProviderEnum,
+      limit?: number,
+      offset?: number,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      const localVarPath = `/api/v1/git-repositories`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      if (owner !== undefined) {
+        localVarQueryParameter['owner'] = owner;
+      }
+
+      if (repo !== undefined) {
+        localVarQueryParameter['repo'] = repo;
+      }
+
+      if (provider !== undefined) {
+        localVarQueryParameter['provider'] = provider;
+      }
+
+      if (limit !== undefined) {
+        localVarQueryParameter['limit'] = limit;
+      }
+
+      if (offset !== undefined) {
+        localVarQueryParameter['offset'] = offset;
+      }
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepositoryById: async (
+      id: string,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('getRepositoryById', 'id', id);
+      const localVarPath = `/api/v1/git-repositories/{id}`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {TriggerReindexDto} triggerReindexDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    triggerReindex: async (
+      triggerReindexDto: TriggerReindexDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'triggerReindexDto' is not null or undefined
+      assertParamExists(
+        'triggerReindex',
+        'triggerReindexDto',
+        triggerReindexDto,
+      );
+      const localVarPath = `/api/v1/git-repositories/reindex`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        triggerReindexDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {UpdateRepositoryDto} updateRepositoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    updateRepository: async (
+      id: string,
+      updateRepositoryDto: UpdateRepositoryDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'id' is not null or undefined
+      assertParamExists('updateRepository', 'id', id);
+      // verify required parameter 'updateRepositoryDto' is not null or undefined
+      assertParamExists(
+        'updateRepository',
+        'updateRepositoryDto',
+        updateRepositoryDto,
+      );
+      const localVarPath = `/api/v1/git-repositories/{id}`.replace(
+        `{${'id'}}`,
+        encodeURIComponent(String(id)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'PATCH',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        updateRepositoryDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+  };
+};
+
+/**
+ * GitRepositoriesApi - functional programming interface
+ * @export
+ */
+export const GitRepositoriesApiFp = function (configuration?: Configuration) {
+  const localVarAxiosParamCreator =
+    GitRepositoriesApiAxiosParamCreator(configuration);
+  return {
+    /**
+     *
+     * @param {CreateRepositoryDto} createRepositoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async createRepository(
+      createRepositoryDto: CreateRepositoryDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<GitRepositoryDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.createRepository(
+          createRepositoryDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.createRepository']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async deleteRepository(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.deleteRepository(id, options);
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.deleteRepository']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getRepoIndexByRepositoryId(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.getRepoIndexByRepositoryId(id, options);
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.getRepoIndexByRepositoryId']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} [repositoryId] Filter by repository ID
+     * @param {GetRepoIndexesStatusEnum} [status] Filter by status
+     * @param {number} [limit] Maximum number of indexes to return
+     * @param {number} [offset] Number of indexes to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getRepoIndexes(
+      repositoryId?: string,
+      status?: GetRepoIndexesStatusEnum,
+      limit?: number,
+      offset?: number,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<RepoIndexDto>>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getRepoIndexes(
+        repositoryId,
+        status,
+        limit,
+        offset,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.getRepoIndexes']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} [owner] Filter by repository owner
+     * @param {string} [repo] Filter by repository name
+     * @param {GetRepositoriesProviderEnum} [provider] Filter by host provider
+     * @param {number} [limit] Maximum number of repositories to return
+     * @param {number} [offset] Number of repositories to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getRepositories(
+      owner?: string,
+      repo?: string,
+      provider?: GetRepositoriesProviderEnum,
+      limit?: number,
+      offset?: number,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<Array<GitRepositoryDto>>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getRepositories(
+        owner,
+        repo,
+        provider,
+        limit,
+        offset,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.getRepositories']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getRepositoryById(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<GitRepositoryDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.getRepositoryById(id, options);
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.getRepositoryById']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {TriggerReindexDto} triggerReindexDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async triggerReindex(
+      triggerReindexDto: TriggerReindexDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<TriggerReindexResponseDto>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.triggerReindex(
+        triggerReindexDto,
+        options,
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.triggerReindex']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {UpdateRepositoryDto} updateRepositoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async updateRepository(
+      id: string,
+      updateRepositoryDto: UpdateRepositoryDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string,
+      ) => AxiosPromise<GitRepositoryDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.updateRepository(
+          id,
+          updateRepositoryDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['GitRepositoriesApi.updateRepository']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+  };
+};
+
+/**
+ * GitRepositoriesApi - factory interface
+ * @export
+ */
+export const GitRepositoriesApiFactory = function (
+  configuration?: Configuration,
+  basePath?: string,
+  axios?: AxiosInstance,
+) {
+  const localVarFp = GitRepositoriesApiFp(configuration);
+  return {
+    /**
+     *
+     * @param {CreateRepositoryDto} createRepositoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    createRepository(
+      createRepositoryDto: CreateRepositoryDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<GitRepositoryDto> {
+      return localVarFp
+        .createRepository(createRepositoryDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    deleteRepository(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<void> {
+      return localVarFp
+        .deleteRepository(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepoIndexByRepositoryId(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<object> {
+      return localVarFp
+        .getRepoIndexByRepositoryId(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} [repositoryId] Filter by repository ID
+     * @param {GetRepoIndexesStatusEnum} [status] Filter by status
+     * @param {number} [limit] Maximum number of indexes to return
+     * @param {number} [offset] Number of indexes to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepoIndexes(
+      repositoryId?: string,
+      status?: GetRepoIndexesStatusEnum,
+      limit?: number,
+      offset?: number,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<Array<RepoIndexDto>> {
+      return localVarFp
+        .getRepoIndexes(repositoryId, status, limit, offset, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} [owner] Filter by repository owner
+     * @param {string} [repo] Filter by repository name
+     * @param {GetRepositoriesProviderEnum} [provider] Filter by host provider
+     * @param {number} [limit] Maximum number of repositories to return
+     * @param {number} [offset] Number of repositories to skip
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepositories(
+      owner?: string,
+      repo?: string,
+      provider?: GetRepositoriesProviderEnum,
+      limit?: number,
+      offset?: number,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<Array<GitRepositoryDto>> {
+      return localVarFp
+        .getRepositories(owner, repo, provider, limit, offset, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getRepositoryById(
+      id: string,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<GitRepositoryDto> {
+      return localVarFp
+        .getRepositoryById(id, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {TriggerReindexDto} triggerReindexDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    triggerReindex(
+      triggerReindexDto: TriggerReindexDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<TriggerReindexResponseDto> {
+      return localVarFp
+        .triggerReindex(triggerReindexDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} id
+     * @param {UpdateRepositoryDto} updateRepositoryDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    updateRepository(
+      id: string,
+      updateRepositoryDto: UpdateRepositoryDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<GitRepositoryDto> {
+      return localVarFp
+        .updateRepository(id, updateRepositoryDto, options)
+        .then((request) => request(axios, basePath));
+    },
+  };
+};
+
+/**
+ * GitRepositoriesApi - object-oriented interface
+ * @export
+ * @class GitRepositoriesApi
+ * @extends {BaseAPI}
+ */
+export class GitRepositoriesApi extends BaseAPI {
+  /**
+   *
+   * @param {CreateRepositoryDto} createRepositoryDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public createRepository(
+    createRepositoryDto: CreateRepositoryDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GitRepositoriesApiFp(this.configuration)
+      .createRepository(createRepositoryDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public deleteRepository(id: string, options?: RawAxiosRequestConfig) {
+    return GitRepositoriesApiFp(this.configuration)
+      .deleteRepository(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public getRepoIndexByRepositoryId(
+    id: string,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GitRepositoriesApiFp(this.configuration)
+      .getRepoIndexByRepositoryId(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} [repositoryId] Filter by repository ID
+   * @param {GetRepoIndexesStatusEnum} [status] Filter by status
+   * @param {number} [limit] Maximum number of indexes to return
+   * @param {number} [offset] Number of indexes to skip
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public getRepoIndexes(
+    repositoryId?: string,
+    status?: GetRepoIndexesStatusEnum,
+    limit?: number,
+    offset?: number,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GitRepositoriesApiFp(this.configuration)
+      .getRepoIndexes(repositoryId, status, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} [owner] Filter by repository owner
+   * @param {string} [repo] Filter by repository name
+   * @param {GetRepositoriesProviderEnum} [provider] Filter by host provider
+   * @param {number} [limit] Maximum number of repositories to return
+   * @param {number} [offset] Number of repositories to skip
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public getRepositories(
+    owner?: string,
+    repo?: string,
+    provider?: GetRepositoriesProviderEnum,
+    limit?: number,
+    offset?: number,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GitRepositoriesApiFp(this.configuration)
+      .getRepositories(owner, repo, provider, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public getRepositoryById(id: string, options?: RawAxiosRequestConfig) {
+    return GitRepositoriesApiFp(this.configuration)
+      .getRepositoryById(id, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {TriggerReindexDto} triggerReindexDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public triggerReindex(
+    triggerReindexDto: TriggerReindexDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GitRepositoriesApiFp(this.configuration)
+      .triggerReindex(triggerReindexDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} id
+   * @param {UpdateRepositoryDto} updateRepositoryDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof GitRepositoriesApi
+   */
+  public updateRepository(
+    id: string,
+    updateRepositoryDto: UpdateRepositoryDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return GitRepositoriesApiFp(this.configuration)
+      .updateRepository(id, updateRepositoryDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+}
+
+/**
+ * @export
+ */
+export const GetRepoIndexesStatusEnum = {
+  Pending: 'pending',
+  InProgress: 'in_progress',
+  Completed: 'completed',
+  Failed: 'failed',
+} as const;
+export type GetRepoIndexesStatusEnum =
+  (typeof GetRepoIndexesStatusEnum)[keyof typeof GetRepoIndexesStatusEnum];
+/**
+ * @export
+ */
+export const GetRepositoriesProviderEnum = {
+  Github: 'GITHUB',
+} as const;
+export type GetRepositoriesProviderEnum =
+  (typeof GetRepositoriesProviderEnum)[keyof typeof GetRepositoriesProviderEnum];
 
 /**
  * GraphRevisionsApi - axios parameter creator
@@ -4446,19 +5909,19 @@ export const KnowledgeApiAxiosParamCreator = function (
     },
     /**
      *
-     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {KnowledgeDocCreateDto} knowledgeDocCreateDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     createDoc: async (
-      knowledgeDocInputDto: KnowledgeDocInputDto,
+      knowledgeDocCreateDto: KnowledgeDocCreateDto,
       options: RawAxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
-      // verify required parameter 'knowledgeDocInputDto' is not null or undefined
+      // verify required parameter 'knowledgeDocCreateDto' is not null or undefined
       assertParamExists(
         'createDoc',
-        'knowledgeDocInputDto',
-        knowledgeDocInputDto,
+        'knowledgeDocCreateDto',
+        knowledgeDocCreateDto,
       );
       const localVarPath = `/api/v1/knowledge-docs`;
       // use dummy base URL string because the URL constructor only accepts absolute URLs.
@@ -4491,7 +5954,7 @@ export const KnowledgeApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        knowledgeDocInputDto,
+        knowledgeDocCreateDto,
         localVarRequestOptions,
         configuration,
       );
@@ -4858,22 +6321,22 @@ export const KnowledgeApiAxiosParamCreator = function (
     /**
      *
      * @param {string} id
-     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {KnowledgeDocUpdateDto} knowledgeDocUpdateDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     updateDoc: async (
       id: string,
-      knowledgeDocInputDto: KnowledgeDocInputDto,
+      knowledgeDocUpdateDto: KnowledgeDocUpdateDto,
       options: RawAxiosRequestConfig = {},
     ): Promise<RequestArgs> => {
       // verify required parameter 'id' is not null or undefined
       assertParamExists('updateDoc', 'id', id);
-      // verify required parameter 'knowledgeDocInputDto' is not null or undefined
+      // verify required parameter 'knowledgeDocUpdateDto' is not null or undefined
       assertParamExists(
         'updateDoc',
-        'knowledgeDocInputDto',
-        knowledgeDocInputDto,
+        'knowledgeDocUpdateDto',
+        knowledgeDocUpdateDto,
       );
       const localVarPath = `/api/v1/knowledge-docs/{id}`.replace(
         `{${'id'}}`,
@@ -4909,7 +6372,7 @@ export const KnowledgeApiAxiosParamCreator = function (
         ...options.headers,
       };
       localVarRequestOptions.data = serializeDataIfNeeded(
-        knowledgeDocInputDto,
+        knowledgeDocUpdateDto,
         localVarRequestOptions,
         configuration,
       );
@@ -4967,12 +6430,12 @@ export const KnowledgeApiFp = function (configuration?: Configuration) {
     },
     /**
      *
-     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {KnowledgeDocCreateDto} knowledgeDocCreateDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async createDoc(
-      knowledgeDocInputDto: KnowledgeDocInputDto,
+      knowledgeDocCreateDto: KnowledgeDocCreateDto,
       options?: RawAxiosRequestConfig,
     ): Promise<
       (
@@ -4981,7 +6444,7 @@ export const KnowledgeApiFp = function (configuration?: Configuration) {
       ) => AxiosPromise<KnowledgeDocDto>
     > {
       const localVarAxiosArgs = await localVarAxiosParamCreator.createDoc(
-        knowledgeDocInputDto,
+        knowledgeDocCreateDto,
         options,
       );
       const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
@@ -5210,13 +6673,13 @@ export const KnowledgeApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} id
-     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {KnowledgeDocUpdateDto} knowledgeDocUpdateDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     async updateDoc(
       id: string,
-      knowledgeDocInputDto: KnowledgeDocInputDto,
+      knowledgeDocUpdateDto: KnowledgeDocUpdateDto,
       options?: RawAxiosRequestConfig,
     ): Promise<
       (
@@ -5226,7 +6689,7 @@ export const KnowledgeApiFp = function (configuration?: Configuration) {
     > {
       const localVarAxiosArgs = await localVarAxiosParamCreator.updateDoc(
         id,
-        knowledgeDocInputDto,
+        knowledgeDocUpdateDto,
         options,
       );
       const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
@@ -5274,16 +6737,16 @@ export const KnowledgeApiFactory = function (
     },
     /**
      *
-     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {KnowledgeDocCreateDto} knowledgeDocCreateDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     createDoc(
-      knowledgeDocInputDto: KnowledgeDocInputDto,
+      knowledgeDocCreateDto: KnowledgeDocCreateDto,
       options?: RawAxiosRequestConfig,
     ): AxiosPromise<KnowledgeDocDto> {
       return localVarFp
-        .createDoc(knowledgeDocInputDto, options)
+        .createDoc(knowledgeDocCreateDto, options)
         .then((request) => request(axios, basePath));
     },
     /**
@@ -5387,17 +6850,17 @@ export const KnowledgeApiFactory = function (
     /**
      *
      * @param {string} id
-     * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+     * @param {KnowledgeDocUpdateDto} knowledgeDocUpdateDto
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
     updateDoc(
       id: string,
-      knowledgeDocInputDto: KnowledgeDocInputDto,
+      knowledgeDocUpdateDto: KnowledgeDocUpdateDto,
       options?: RawAxiosRequestConfig,
     ): AxiosPromise<KnowledgeDocDto> {
       return localVarFp
-        .updateDoc(id, knowledgeDocInputDto, options)
+        .updateDoc(id, knowledgeDocUpdateDto, options)
         .then((request) => request(axios, basePath));
     },
   };
@@ -5430,17 +6893,17 @@ export class KnowledgeApi extends BaseAPI {
 
   /**
    *
-   * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+   * @param {KnowledgeDocCreateDto} knowledgeDocCreateDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof KnowledgeApi
    */
   public createDoc(
-    knowledgeDocInputDto: KnowledgeDocInputDto,
+    knowledgeDocCreateDto: KnowledgeDocCreateDto,
     options?: RawAxiosRequestConfig,
   ) {
     return KnowledgeApiFp(this.configuration)
-      .createDoc(knowledgeDocInputDto, options)
+      .createDoc(knowledgeDocCreateDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 
@@ -5554,18 +7017,18 @@ export class KnowledgeApi extends BaseAPI {
   /**
    *
    * @param {string} id
-   * @param {KnowledgeDocInputDto} knowledgeDocInputDto
+   * @param {KnowledgeDocUpdateDto} knowledgeDocUpdateDto
    * @param {*} [options] Override http request option.
    * @throws {RequiredError}
    * @memberof KnowledgeApi
    */
   public updateDoc(
     id: string,
-    knowledgeDocInputDto: KnowledgeDocInputDto,
+    knowledgeDocUpdateDto: KnowledgeDocUpdateDto,
     options?: RawAxiosRequestConfig,
   ) {
     return KnowledgeApiFp(this.configuration)
-      .updateDoc(id, knowledgeDocInputDto, options)
+      .updateDoc(id, knowledgeDocUpdateDto, options)
       .then((request) => request(this.axios, this.basePath));
   }
 }

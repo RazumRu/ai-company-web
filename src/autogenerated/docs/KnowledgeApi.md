@@ -65,26 +65,26 @@ const { status, data } = await apiInstance.analyzeThread(
 
 # **createDoc**
 
-> KnowledgeDocDto createDoc(knowledgeDocInputDto)
+> KnowledgeDocDto createDoc(knowledgeDocCreateDto)
 
 ### Example
 
 ```typescript
-import { KnowledgeApi, Configuration, KnowledgeDocInputDto } from './api';
+import { KnowledgeApi, Configuration, KnowledgeDocCreateDto } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new KnowledgeApi(configuration);
 
-let knowledgeDocInputDto: KnowledgeDocInputDto; //
+let knowledgeDocCreateDto: KnowledgeDocCreateDto; //
 
-const { status, data } = await apiInstance.createDoc(knowledgeDocInputDto);
+const { status, data } = await apiInstance.createDoc(knowledgeDocCreateDto);
 ```
 
 ### Parameters
 
-| Name                     | Type                     | Description | Notes |
-| ------------------------ | ------------------------ | ----------- | ----- |
-| **knowledgeDocInputDto** | **KnowledgeDocInputDto** |             |       |
+| Name                      | Type                      | Description | Notes |
+| ------------------------- | ------------------------- | ----------- | ----- |
+| **knowledgeDocCreateDto** | **KnowledgeDocCreateDto** |             |       |
 
 ### Return type
 
@@ -147,7 +147,7 @@ void (empty response body)
 
 | Status code | Description | Response headers |
 | ----------- | ----------- | ---------------- |
-| **200**     |             | -                |
+| **204**     |             | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
@@ -411,28 +411,28 @@ const { status, data } = await apiInstance.suggestKnowledgeContent(
 
 # **updateDoc**
 
-> KnowledgeDocDto updateDoc(knowledgeDocInputDto)
+> KnowledgeDocDto updateDoc(knowledgeDocUpdateDto)
 
 ### Example
 
 ```typescript
-import { KnowledgeApi, Configuration, KnowledgeDocInputDto } from './api';
+import { KnowledgeApi, Configuration, KnowledgeDocUpdateDto } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new KnowledgeApi(configuration);
 
 let id: string; // (default to undefined)
-let knowledgeDocInputDto: KnowledgeDocInputDto; //
+let knowledgeDocUpdateDto: KnowledgeDocUpdateDto; //
 
-const { status, data } = await apiInstance.updateDoc(id, knowledgeDocInputDto);
+const { status, data } = await apiInstance.updateDoc(id, knowledgeDocUpdateDto);
 ```
 
 ### Parameters
 
-| Name                     | Type                     | Description | Notes                 |
-| ------------------------ | ------------------------ | ----------- | --------------------- |
-| **knowledgeDocInputDto** | **KnowledgeDocInputDto** |             |                       |
-| **id**                   | [**string**]             |             | defaults to undefined |
+| Name                      | Type                      | Description | Notes                 |
+| ------------------------- | ------------------------- | ----------- | --------------------- |
+| **knowledgeDocUpdateDto** | **KnowledgeDocUpdateDto** |             |                       |
+| **id**                    | [**string**]              |             | defaults to undefined |
 
 ### Return type
 

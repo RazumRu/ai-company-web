@@ -2,6 +2,7 @@ import '@refinedev/antd/dist/reset.css';
 
 import {
   BookOutlined,
+  FolderOutlined,
   HomeOutlined,
   MessageOutlined,
   NodeIndexOutlined,
@@ -33,6 +34,7 @@ import { GraphPage } from './pages/graphs/details';
 import { GraphsListPage } from './pages/graphs/list';
 import { KnowledgeListPage } from './pages/knowledge/list';
 import { MainPage } from './pages/main/page';
+import { RepositoriesListPage } from './pages/repositories/list';
 
 // Login page component that redirects to Keycloak
 const LoginPage = ({ authProvider }: { authProvider: AuthProvider }) => {
@@ -101,6 +103,14 @@ function App() {
               },
             },
             {
+              name: 'Repositories',
+              list: '/repositories',
+              meta: {
+                label: 'Repositories',
+                icon: <FolderOutlined />,
+              },
+            },
+            {
               name: 'Knowledge',
               list: '/knowledge',
               meta: {
@@ -154,6 +164,7 @@ function App() {
               <Route path="/graphs" element={<GraphsListPage />} />
               <Route path="/graphs/:id" element={<GraphPage />} />
               <Route path="/chats" element={<ChatsPage />} />
+              <Route path="/repositories" element={<RepositoriesListPage />} />
               <Route path="/knowledge" element={<KnowledgeListPage />} />
               <Route path="*" element={<ErrorComponent />} />
             </Route>

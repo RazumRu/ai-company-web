@@ -10,8 +10,11 @@ docs/CreateGraphDtoMetadataNodesInner.md
 docs/CreateGraphDtoSchema.md
 docs/CreateGraphDtoSchemaEdgesInner.md
 docs/CreateGraphDtoSchemaNodesInner.md
+docs/CreateRepositoryDto.md
 docs/ExecuteTriggerDto.md
 docs/ExecuteTriggerResponseDto.md
+docs/GitRepositoriesApi.md
+docs/GitRepositoryDto.md
 docs/GraphDto.md
 docs/GraphNodeWithStatusDto.md
 docs/GraphNodeWithStatusDtoMetadata.md
@@ -21,10 +24,12 @@ docs/GraphsApi.md
 docs/KnowledgeApi.md
 docs/KnowledgeContentSuggestionRequestDto.md
 docs/KnowledgeContentSuggestionResponseDto.md
+docs/KnowledgeDocCreateDto.md
 docs/KnowledgeDocDto.md
-docs/KnowledgeDocInputDto.md
+docs/KnowledgeDocUpdateDto.md
 docs/LiteLlmModelDto.md
 docs/LitellmApi.md
+docs/RepoIndexDto.md
 docs/SuggestAgentInstructionsDto.md
 docs/SuggestAgentInstructionsResponseDto.md
 docs/SuggestGraphInstructionsDto.md
@@ -54,6 +59,9 @@ docs/ThreadUsageStatisticsDtoMessagesAggregate.md
 docs/ThreadUsageStatisticsDtoToolsAggregate.md
 docs/ThreadUsageStatisticsDtoTotal.md
 docs/ThreadsApi.md
+docs/TriggerReindexDto.md
+docs/TriggerReindexResponseDto.md
+docs/TriggerReindexResponseDtoRepoIndex.md
 docs/UpdateGraphDto.md
 docs/UpdateGraphDtoDescription.md
 docs/UpdateGraphDtoMetadata.md
@@ -74,5 +82,6 @@ docs/UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf3.md
 docs/UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf4.md
 docs/UpdateGraphResponseDtoRevisionConfigDiffInnerOneOf5.md
 docs/UpdateGraphResponseDtoRevisionNewConfig.md
+docs/UpdateRepositoryDto.md
 git_push.sh
 index.ts
