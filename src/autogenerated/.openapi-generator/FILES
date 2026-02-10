@@ -13,6 +13,7 @@ docs/CreateGraphDtoSchemaNodesInner.md
 docs/CreateRepositoryDto.md
 docs/ExecuteTriggerDto.md
 docs/ExecuteTriggerResponseDto.md
+docs/GetRepoIndexesBranchesParameter.md
 docs/GitRepositoriesApi.md
 docs/GitRepositoryDto.md
 docs/GraphDto.md

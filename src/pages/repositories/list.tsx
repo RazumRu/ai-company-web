@@ -34,14 +34,12 @@ export const RepositoriesListPage = () => {
       const repos = reposRes.data || [];
       const indexes = indexesRes.data || [];
 
-      const indexMap = new Map<string, RepoIndexDto>();
-      indexes.forEach((index) => {
-        indexMap.set(index.repositoryId, index);
-      });
-
       const reposWithIndexes: RepoWithIndex[] = repos.map((repo) => ({
         ...repo,
-        index: indexMap.get(repo.id),
+        index: indexes.find(
+          (idx) =>
+            idx.repositoryId === repo.id && idx.branch === repo.defaultBranch,
+        ),
       }));
 
       setRepositories(reposWithIndexes);

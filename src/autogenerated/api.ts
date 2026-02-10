@@ -240,6 +240,12 @@ export interface CreateRepositoryDto {
    */
   'provider'?: CreateRepositoryDtoProviderEnum;
   /**
+   * Default branch of the repository (defaults to main)
+   * @type {string}
+   * @memberof CreateRepositoryDto
+   */
+  'defaultBranch'?: string;
+  /**
    * GitHub personal access token (encrypted at rest, write-only)
    * @type {string}
    * @memberof CreateRepositoryDto
@@ -301,6 +307,12 @@ export interface ExecuteTriggerResponseDto {
 /**
  *
  * @export
+ * @interface GetRepoIndexesBranchesParameter
+ */
+export interface GetRepoIndexesBranchesParameter {}
+/**
+ *
+ * @export
  * @interface GitRepositoryDto
  */
 export interface GitRepositoryDto {
@@ -334,6 +346,12 @@ export interface GitRepositoryDto {
    * @memberof GitRepositoryDto
    */
   'provider': GitRepositoryDtoProviderEnum;
+  /**
+   * Default branch of the repository (e.g. main, master)
+   * @type {string}
+   * @memberof GitRepositoryDto
+   */
+  'defaultBranch': string;
   /**
    * User ID who cloned the repository
    * @type {string}
@@ -891,6 +909,12 @@ export interface RepoIndexDto {
    */
   'repoUrl': string;
   /**
+   * Git branch name this index covers
+   * @type {string}
+   * @memberof RepoIndexDto
+   */
+  'branch': string;
+  /**
    * Indexing status
    * @type {string}
    * @memberof RepoIndexDto
@@ -927,17 +951,17 @@ export interface RepoIndexDto {
    */
   'chunkingSignatureHash': string | null;
   /**
-   *
+   * Estimated token count
    * @type {number}
    * @memberof RepoIndexDto
    */
-  'estimatedTokens': number | null;
+  'estimatedTokens': number;
   /**
-   *
+   * Actual indexed tokens
    * @type {number}
    * @memberof RepoIndexDto
    */
-  'indexedTokens': number | null;
+  'indexedTokens': number;
   /**
    *
    * @type {string}
@@ -2033,6 +2057,12 @@ export interface TriggerReindexDto {
    * @memberof TriggerReindexDto
    */
   'repositoryId': string;
+  /**
+   * Branch to reindex. Defaults to the repository default branch (main).
+   * @type {string}
+   * @memberof TriggerReindexDto
+   */
+  'branch'?: string;
 }
 /**
  *
@@ -2078,6 +2108,12 @@ export interface TriggerReindexResponseDtoRepoIndex {
    */
   'repoUrl': string;
   /**
+   * Git branch name this index covers
+   * @type {string}
+   * @memberof TriggerReindexResponseDtoRepoIndex
+   */
+  'branch': string;
+  /**
    * Indexing status
    * @type {string}
    * @memberof TriggerReindexResponseDtoRepoIndex
@@ -2114,17 +2150,17 @@ export interface TriggerReindexResponseDtoRepoIndex {
    */
   'chunkingSignatureHash': string | null;
   /**
-   *
+   * Estimated token count
    * @type {number}
    * @memberof TriggerReindexResponseDtoRepoIndex
    */
-  'estimatedTokens': number | null;
+  'estimatedTokens': number;
   /**
-   *
+   * Actual indexed tokens
    * @type {number}
    * @memberof TriggerReindexResponseDtoRepoIndex
    */
-  'indexedTokens': number | null;
+  'indexedTokens': number;
   /**
    *
    * @type {string}
@@ -2818,6 +2854,12 @@ export interface UpdateRepositoryDto {
    */
   'url'?: string;
   /**
+   * Default branch of the repository
+   * @type {string}
+   * @memberof UpdateRepositoryDto
+   */
+  'defaultBranch'?: string;
+  /**
    * GitHub personal access token (encrypted at rest, write-only)
    * @type {string}
    * @memberof UpdateRepositoryDto
@@ -2991,6 +3033,8 @@ export const GitRepositoriesApiAxiosParamCreator = function (
     /**
      *
      * @param {string} [repositoryId] Filter by repository ID
+     * @param {string} [branch] Filter by single branch name
+     * @param {GetRepoIndexesBranchesParameter} [branches] Filter by multiple branch names (comma-separated or repeated query param)
      * @param {GetRepoIndexesStatusEnum} [status] Filter by status
      * @param {number} [limit] Maximum number of indexes to return
      * @param {number} [offset] Number of indexes to skip
@@ -2999,6 +3043,8 @@ export const GitRepositoriesApiAxiosParamCreator = function (
      */
     getRepoIndexes: async (
       repositoryId?: string,
+      branch?: string,
+      branches?: GetRepoIndexesBranchesParameter,
       status?: GetRepoIndexesStatusEnum,
       limit?: number,
       offset?: number,
@@ -3026,6 +3072,16 @@ export const GitRepositoriesApiAxiosParamCreator = function (
 
       if (repositoryId !== undefined) {
         localVarQueryParameter['repositoryId'] = repositoryId;
+      }
+
+      if (branch !== undefined) {
+        localVarQueryParameter['branch'] = branch;
+      }
+
+      if (branches !== undefined) {
+        for (const [key, value] of Object.entries(branches)) {
+          localVarQueryParameter[key] = value;
+        }
       }
 
       if (status !== undefined) {
@@ -3397,6 +3453,8 @@ export const GitRepositoriesApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} [repositoryId] Filter by repository ID
+     * @param {string} [branch] Filter by single branch name
+     * @param {GetRepoIndexesBranchesParameter} [branches] Filter by multiple branch names (comma-separated or repeated query param)
      * @param {GetRepoIndexesStatusEnum} [status] Filter by status
      * @param {number} [limit] Maximum number of indexes to return
      * @param {number} [offset] Number of indexes to skip
@@ -3405,6 +3463,8 @@ export const GitRepositoriesApiFp = function (configuration?: Configuration) {
      */
     async getRepoIndexes(
       repositoryId?: string,
+      branch?: string,
+      branches?: GetRepoIndexesBranchesParameter,
       status?: GetRepoIndexesStatusEnum,
       limit?: number,
       offset?: number,
@@ -3417,6 +3477,8 @@ export const GitRepositoriesApiFp = function (configuration?: Configuration) {
     > {
       const localVarAxiosArgs = await localVarAxiosParamCreator.getRepoIndexes(
         repositoryId,
+        branch,
+        branches,
         status,
         limit,
         offset,
@@ -3636,6 +3698,8 @@ export const GitRepositoriesApiFactory = function (
     /**
      *
      * @param {string} [repositoryId] Filter by repository ID
+     * @param {string} [branch] Filter by single branch name
+     * @param {GetRepoIndexesBranchesParameter} [branches] Filter by multiple branch names (comma-separated or repeated query param)
      * @param {GetRepoIndexesStatusEnum} [status] Filter by status
      * @param {number} [limit] Maximum number of indexes to return
      * @param {number} [offset] Number of indexes to skip
@@ -3644,13 +3708,23 @@ export const GitRepositoriesApiFactory = function (
      */
     getRepoIndexes(
       repositoryId?: string,
+      branch?: string,
+      branches?: GetRepoIndexesBranchesParameter,
       status?: GetRepoIndexesStatusEnum,
       limit?: number,
       offset?: number,
       options?: RawAxiosRequestConfig,
     ): AxiosPromise<Array<RepoIndexDto>> {
       return localVarFp
-        .getRepoIndexes(repositoryId, status, limit, offset, options)
+        .getRepoIndexes(
+          repositoryId,
+          branch,
+          branches,
+          status,
+          limit,
+          offset,
+          options,
+        )
         .then((request) => request(axios, basePath));
     },
     /**
@@ -3777,6 +3851,8 @@ export class GitRepositoriesApi extends BaseAPI {
   /**
    *
    * @param {string} [repositoryId] Filter by repository ID
+   * @param {string} [branch] Filter by single branch name
+   * @param {GetRepoIndexesBranchesParameter} [branches] Filter by multiple branch names (comma-separated or repeated query param)
    * @param {GetRepoIndexesStatusEnum} [status] Filter by status
    * @param {number} [limit] Maximum number of indexes to return
    * @param {number} [offset] Number of indexes to skip
@@ -3786,13 +3862,23 @@ export class GitRepositoriesApi extends BaseAPI {
    */
   public getRepoIndexes(
     repositoryId?: string,
+    branch?: string,
+    branches?: GetRepoIndexesBranchesParameter,
     status?: GetRepoIndexesStatusEnum,
     limit?: number,
     offset?: number,
     options?: RawAxiosRequestConfig,
   ) {
     return GitRepositoriesApiFp(this.configuration)
-      .getRepoIndexes(repositoryId, status, limit, offset, options)
+      .getRepoIndexes(
+        repositoryId,
+        branch,
+        branches,
+        status,
+        limit,
+        offset,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 

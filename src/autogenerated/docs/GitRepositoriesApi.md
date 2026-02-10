@@ -153,18 +153,26 @@ const { status, data } = await apiInstance.getRepoIndexByRepositoryId(id);
 ### Example
 
 ```typescript
-import { GitRepositoriesApi, Configuration } from './api';
+import {
+  GitRepositoriesApi,
+  Configuration,
+  GetRepoIndexesBranchesParameter,
+} from './api';
 
 const configuration = new Configuration();
 const apiInstance = new GitRepositoriesApi(configuration);
 
 let repositoryId: string; //Filter by repository ID (optional) (default to undefined)
+let branch: string; //Filter by single branch name (optional) (default to undefined)
+let branches: GetRepoIndexesBranchesParameter; //Filter by multiple branch names (comma-separated or repeated query param) (optional) (default to undefined)
 let status: 'pending' | 'in_progress' | 'completed' | 'failed'; //Filter by status (optional) (default to undefined)
 let limit: number; //Maximum number of indexes to return (optional) (default to 50)
 let offset: number; //Number of indexes to skip (optional) (default to 0)
 
 const { status, data } = await apiInstance.getRepoIndexes(
   repositoryId,
+  branch,
+  branches,
   status,
   limit,
   offset,
@@ -173,12 +181,14 @@ const { status, data } = await apiInstance.getRepoIndexes(
 
 ### Parameters
 
-| Name             | Type                   | Description                         | Notes                            |
-| ---------------- | ---------------------- | ----------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------- |
-| **repositoryId** | [**string**]           | Filter by repository ID             | (optional) defaults to undefined |
-| **status**       | [\*\*&#39;pending&#39; | &#39;in_progress&#39;               | &#39;completed&#39;              | &#39;failed&#39;**]**Array<&#39;pending&#39; &#124; &#39;in_progress&#39; &#124; &#39;completed&#39; &#124; &#39;failed&#39;>\*\* | Filter by status | (optional) defaults to undefined |
-| **limit**        | [**number**]           | Maximum number of indexes to return | (optional) defaults to 50        |
-| **offset**       | [**number**]           | Number of indexes to skip           | (optional) defaults to 0         |
+| Name             | Type                                | Description                                                               | Notes                            |
+| ---------------- | ----------------------------------- | ------------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------- |
+| **repositoryId** | [**string**]                        | Filter by repository ID                                                   | (optional) defaults to undefined |
+| **branch**       | [**string**]                        | Filter by single branch name                                              | (optional) defaults to undefined |
+| **branches**     | **GetRepoIndexesBranchesParameter** | Filter by multiple branch names (comma-separated or repeated query param) | (optional) defaults to undefined |
+| **status**       | [\*\*&#39;pending&#39;              | &#39;in_progress&#39;                                                     | &#39;completed&#39;              | &#39;failed&#39;**]**Array<&#39;pending&#39; &#124; &#39;in_progress&#39; &#124; &#39;completed&#39; &#124; &#39;failed&#39;>\*\* | Filter by status | (optional) defaults to undefined |
+| **limit**        | [**number**]                        | Maximum number of indexes to return                                       | (optional) defaults to 50        |
+| **offset**       | [**number**]                        | Number of indexes to skip                                                 | (optional) defaults to 0         |
 
 ### Return type
 

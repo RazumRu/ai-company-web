@@ -2,13 +2,14 @@
 
 ## Properties
 
-| Name         | Type       | Description                                                  | Notes                                       |
-| ------------ | ---------- | ------------------------------------------------------------ | ------------------------------------------- |
-| **owner**    | **string** | Repository owner                                             | [default to undefined]                      |
-| **repo**     | **string** | Repository name                                              | [default to undefined]                      |
-| **url**      | **string** | HTTPS URL of the repository                                  | [default to undefined]                      |
-| **provider** | **string** | Git repository host provider                                 | [optional] [default to ProviderEnum_Github] |
-| **token**    | **string** | GitHub personal access token (encrypted at rest, write-only) | [optional] [default to undefined]           |
+| Name              | Type       | Description                                                  | Notes                                       |
+| ----------------- | ---------- | ------------------------------------------------------------ | ------------------------------------------- |
+| **owner**         | **string** | Repository owner                                             | [default to undefined]                      |
+| **repo**          | **string** | Repository name                                              | [default to undefined]                      |
+| **url**           | **string** | HTTPS URL of the repository                                  | [default to undefined]                      |
+| **provider**      | **string** | Git repository host provider                                 | [optional] [default to ProviderEnum_Github] |
+| **defaultBranch** | **string** | Default branch of the repository (defaults to main)          | [optional] [default to 'main']              |
+| **token**         | **string** | GitHub personal access token (encrypted at rest, write-only) | [optional] [default to undefined]           |
 
 ## Example
 
@@ -20,6 +21,7 @@ const instance: CreateRepositoryDto = {
   repo,
   url,
   provider,
+  defaultBranch,
   token,
 };
 ```

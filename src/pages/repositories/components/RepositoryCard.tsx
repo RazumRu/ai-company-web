@@ -1,9 +1,10 @@
 import {
+  BranchesOutlined,
   DeleteOutlined,
   GithubOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { Button, Card, message, Modal, Progress, Typography } from 'antd';
+import { Button, Card, message, Modal, Progress, Tag, Typography } from 'antd';
 import { formatDistanceToNow } from 'date-fns';
 
 import { gitRepositoriesApi } from '../../../api';
@@ -191,6 +192,16 @@ export const RepositoryCard = ({
               }}>
               {repo.provider}
             </span>
+            {repo.defaultBranch && (
+              <Tag
+                icon={<BranchesOutlined />}
+                style={{
+                  fontSize: 11,
+                  margin: 0,
+                }}>
+                {repo.defaultBranch}
+              </Tag>
+            )}
           </div>
         </div>
         <Button
