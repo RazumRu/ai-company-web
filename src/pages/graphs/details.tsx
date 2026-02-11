@@ -322,9 +322,6 @@ export const GraphPage = () => {
     return GraphStorageService.loadViewport(id) ?? { x: 0, y: 0, zoom: 1 };
   });
   const viewportRef = useRef<Viewport>(viewport);
-  useEffect(() => {
-    viewportRef.current = viewport;
-  }, [viewport]);
 
   const [selectedThreadId, setSelectedThreadId] = useState<
     string | undefined
@@ -368,6 +365,7 @@ export const GraphPage = () => {
       setNodes(newState.nodes);
       setEdges(newState.edges);
       setViewport(newState.viewport);
+      viewportRef.current = newState.viewport;
       if (newState.selectedThreadId !== selectedThreadIdRef.current) {
         setSelectedThreadId(newState.selectedThreadId);
       }
@@ -641,19 +639,13 @@ export const GraphPage = () => {
   const hasStructuralChanges = draftState.hasStructuralChanges;
   const handleViewportPersistChange = useCallback(
     (nextViewport: Viewport) => {
-      setViewport(nextViewport);
+      // Only update the ref — avoid setState to prevent parent re-renders
+      // (which cascade into GraphCanvas / MiniMap and cause flickering).
+      viewportRef.current = nextViewport;
 
       if (!id) return;
       if (loading) return;
       if (isSyncingFromDraftRef.current) return;
-
-      // Avoid syncing draft->ReactFlow for viewport-only changes.
-      // This prevents stale draft nodes (missing dimensions) from overwriting
-      // the live ReactFlow nodes, which can hide nodes in the minimap.
-      nextDraftChangeOriginRef.current = 'reactflow';
-
-      // Update draft state immediately so it stays in sync
-      draftStateRef.current.updateViewport(nextViewport);
 
       pendingViewportSaveRef.current = nextViewport;
 
@@ -669,7 +661,7 @@ export const GraphPage = () => {
         GraphStorageService.saveViewport(id, vp);
       });
     },
-    [id, loading, setViewport],
+    [id, loading],
   );
   const selectedNodeUnsavedFromServer = useMemo(() => {
     if (!selectedNode?.id) return false;
@@ -2768,9 +2760,9 @@ export const GraphPage = () => {
       const metadata: GraphMetadata = {
         ...((graph.metadata as GraphMetadata) || {}),
         nodes: nodeMetadata,
-        x: viewport.x,
-        y: viewport.y,
-        zoom: viewport.zoom,
+        x: viewportRef.current.x,
+        y: viewportRef.current.y,
+        zoom: viewportRef.current.zoom,
       };
 
       const response = await graphsApi.updateGraph(id, {
@@ -2821,7 +2813,7 @@ export const GraphPage = () => {
           GraphStorageService.savePendingRevision(id, {
             nodes,
             edges,
-            viewport,
+            viewport: viewportRef.current,
             selectedThreadId,
             graphName: updatedGraph.name,
             baseVersion: pendingToVersion,
@@ -2837,7 +2829,7 @@ export const GraphPage = () => {
         const currentState: GraphDiffState = {
           nodes,
           edges,
-          viewport,
+          viewport: viewportRef.current,
           selectedThreadId,
           graphName: updatedGraph.name,
           baseVersion: updatedGraph.version,
@@ -2885,7 +2877,6 @@ export const GraphPage = () => {
     setGraph,
     templates,
     upsertRevision,
-    viewport,
   ]);
 
   const handleTriggerNode = useCallback(

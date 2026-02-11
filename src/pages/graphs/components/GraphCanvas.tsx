@@ -363,6 +363,28 @@ const GraphCanvasInner = ({
     [onViewportChange],
   );
 
+  const miniMapNodeColor = useCallback(
+    (node: Node) => {
+      if (node.type === 'custom') {
+        const nodeData = node.data as unknown as GraphNodeData;
+        const templateKind =
+          nodeData?.templateKind ??
+          templates.find((t) => t.id === nodeData?.template)?.kind;
+        return getTemplateKindColor(templateKind);
+      }
+      return '#eee';
+    },
+    [templates],
+  );
+
+  const miniMapStyle = useMemo(
+    () => ({
+      width: 140,
+      height: 100,
+    }),
+    [],
+  );
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -421,22 +443,7 @@ const GraphCanvasInner = ({
         panOnScrollMode={PanOnScrollMode.Free}
         zoomOnScroll={false}>
         <Controls />
-        <MiniMap
-          style={{
-            width: 140,
-            height: 100,
-          }}
-          nodeColor={(node) => {
-            if (node.type === 'custom') {
-              const nodeData = node.data as unknown as GraphNodeData;
-              const templateKind =
-                nodeData?.templateKind ??
-                templates.find((t) => t.id === nodeData?.template)?.kind;
-              return getTemplateKindColor(templateKind);
-            }
-            return '#eee';
-          }}
-        />
+        <MiniMap style={miniMapStyle} nodeColor={miniMapNodeColor} />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
       </ReactFlow>
     </div>

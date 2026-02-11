@@ -2832,6 +2832,12 @@ export const ChatsPage = () => {
             </div>
             <Text type="secondary" style={{ fontSize: 10, margin: 0 }}>
               v{graph.version}
+              {graph.createdAt && (
+                <>
+                  {' \u00b7 '}
+                  {new Date(graph.createdAt).toLocaleDateString()}
+                </>
+              )}
             </Text>
           </Button>
         ))}

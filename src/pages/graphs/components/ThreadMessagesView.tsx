@@ -2062,9 +2062,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         const item = preparedMessages[i];
 
         // Generate border color if inter-agent communication
+        // Use the message's own nodeId so each agent gets a unique color
         const borderColor =
-          item.inCommunicationExec && item.sourceAgentNodeId
-            ? generateColorFromNodeId(item.sourceAgentNodeId)
+          item.inCommunicationExec && item.nodeId
+            ? generateColorFromNodeId(item.nodeId)
             : undefined;
 
         if (item.type === 'system') {
@@ -2084,14 +2085,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessages[j]);
               j++;
             }
-            const groupSourceNodeId = group.find(
-              (g) => g.sourceAgentNodeId,
-            )?.sourceAgentNodeId;
             const hasCommExec =
               group.length > 0 && group.some((g) => g.inCommunicationExec);
+            const groupNodeId = group.find((g) => g.nodeId)?.nodeId;
             const groupBorderColor =
-              hasCommExec && groupSourceNodeId
-                ? generateColorFromNodeId(groupSourceNodeId)
+              hasCommExec && groupNodeId
+                ? generateColorFromNodeId(groupNodeId)
                 : undefined;
             pushRow(
               `working-${item.id}`,
@@ -2132,14 +2131,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessages[j]);
               j++;
             }
-            const groupSourceNodeId = group.find(
-              (g) => g.sourceAgentNodeId,
-            )?.sourceAgentNodeId;
             const hasCommExec =
               group.length > 0 && group.some((g) => g.inCommunicationExec);
+            const groupNodeId = group.find((g) => g.nodeId)?.nodeId;
             const groupBorderColor =
-              hasCommExec && groupSourceNodeId
-                ? generateColorFromNodeId(groupSourceNodeId)
+              hasCommExec && groupNodeId
+                ? generateColorFromNodeId(groupNodeId)
                 : undefined;
             pushRow(
               `working-${item.id}`,
