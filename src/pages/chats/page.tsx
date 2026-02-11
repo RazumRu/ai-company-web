@@ -2711,13 +2711,11 @@ export const ChatsPage = () => {
                           <Text
                             type="secondary"
                             style={{
+                              display: 'block',
                               fontSize: 12,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 1,
-                              WebkitBoxOrient: 'vertical',
+                              whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
                             }}>
                             {agent.description || ''}
                           </Text>
