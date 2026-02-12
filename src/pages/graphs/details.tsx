@@ -86,7 +86,7 @@ export const GraphPage = () => {
   const [selectedThreadId, setSelectedThreadId] = useState<
     string | undefined
   >();
-  const selectedThreadIdRef = useRef<string | undefined>();
+  const selectedThreadIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     selectedThreadIdRef.current = selectedThreadId;
   }, [selectedThreadId]);
@@ -322,7 +322,7 @@ export const GraphPage = () => {
       draftStateRef.current.updateSelectedThread(newThreadId);
       void fetchCompiledNodesRef.current({ threadId: newThreadId });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [],
   );
 
@@ -451,7 +451,7 @@ export const GraphPage = () => {
       }
     },
     // threadsRef is read via ref — not included as a dependency
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [graph?.status, id, selectedThreadId],
   );
 

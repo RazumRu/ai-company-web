@@ -1,5 +1,5 @@
 import { message as antdMessage } from 'antd';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { threadsApi } from '../../../api';
 import { useThreadMessageStore } from '../../../hooks/useThreadMessageStore';
@@ -26,9 +26,13 @@ export const useChatsMessages = () => {
     {},
   );
   const messageMetaRef = useRef(messageMeta);
-  messageMetaRef.current = messageMeta;
+  useEffect(() => {
+    messageMetaRef.current = messageMeta;
+  }, [messageMeta]);
   const externalThreadIdsRef = useRef(externalThreadIds);
-  externalThreadIdsRef.current = externalThreadIds;
+  useEffect(() => {
+    externalThreadIdsRef.current = externalThreadIds;
+  }, [externalThreadIds]);
 
   const getMessageMeta = useCallback((threadId?: string): MessageMeta => {
     if (!threadId) return DEFAULT_MESSAGE_META;

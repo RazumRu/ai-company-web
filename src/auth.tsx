@@ -45,7 +45,7 @@ export const createAuthProvider = (keycloak: Keycloak): AuthProvider => {
           success: true,
           redirectTo: '/login',
         };
-      } catch (error) {
+      } catch (_error) {
         return {
           success: false,
           error: new Error('Logout failed'),

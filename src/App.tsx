@@ -10,8 +10,8 @@ import {
 import { useKeycloak } from '@react-keycloak/web';
 import {
   ErrorComponent,
-  ThemedLayoutV2,
-  ThemedTitleV2,
+  ThemedLayout,
+  ThemedTitle,
   useNotificationProvider,
 } from '@refinedev/antd';
 import { Authenticated, AuthProvider, Refine } from '@refinedev/core';
@@ -122,7 +122,6 @@ function App() {
           options={{
             syncWithLocation: true,
             warnWhenUnsavedChanges: true,
-            useNewQueryKeys: true,
             projectId: PROJECT_ID,
           }}>
           <Routes>
@@ -131,10 +130,10 @@ function App() {
                 <Authenticated
                   key="authenticated-inner"
                   fallback={<CatchAllNavigate to="/login" />}>
-                  <ThemedLayoutV2
+                  <ThemedLayout
                     Header={Header}
-                    Title={({ collapsed }) => (
-                      <ThemedTitleV2
+                    Title={({ collapsed }: { collapsed: boolean }) => (
+                      <ThemedTitle
                         collapsed={collapsed}
                         wrapperStyles={{
                           height: '32px',
@@ -157,7 +156,7 @@ function App() {
                     )}
                     Sider={CustomSider}>
                     <Outlet />
-                  </ThemedLayoutV2>
+                  </ThemedLayout>
                 </Authenticated>
               }>
               <Route index element={<MainPage />} />

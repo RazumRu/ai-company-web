@@ -258,7 +258,7 @@ export const useGraphMessages = ({
       }
     },
     // externalThreadIdsRef is read via ref — not included as a dependency
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [getMessageMeta, updateMessageMeta, updateMessages, setExternalThreadIds],
   );
 

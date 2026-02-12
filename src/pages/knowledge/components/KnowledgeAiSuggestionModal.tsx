@@ -56,20 +56,22 @@ export const KnowledgeAiSuggestionModal = ({
   onSuggestedTitleChange,
   onSuggestedTagsChange,
 }: KnowledgeAiSuggestionModalProps) => {
+  const currentContent = state?.currentContent;
+  const suggestedContent = state?.suggestedContent;
   const suggestionDiffMarkdown = useMemo(() => {
-    if (!state?.suggestedContent) return null;
+    if (!suggestedContent) return null;
     const diffString = createTwoFilesPatch(
       'Current',
       'Suggested',
-      state.currentContent ?? '',
-      state.suggestedContent ?? '',
+      currentContent ?? '',
+      suggestedContent ?? '',
       '',
       '',
       { context: Number.MAX_SAFE_INTEGER },
     );
     const trimmed = diffString.trimEnd();
     return `\`\`\`diff\n${trimmed}\n\`\`\``;
-  }, [state?.currentContent, state?.suggestedContent]);
+  }, [currentContent, suggestedContent]);
 
   const hasAiSuggestion =
     Boolean(state?.suggestedTitle) ||

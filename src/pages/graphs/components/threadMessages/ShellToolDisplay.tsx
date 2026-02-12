@@ -765,7 +765,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                   try {
                     await navigator.clipboard.writeText(outputTextForCopy);
                     message.success('Copied to clipboard');
-                  } catch (err) {
+                  } catch (_err) {
                     message.error('Failed to copy to clipboard');
                   }
                 }}

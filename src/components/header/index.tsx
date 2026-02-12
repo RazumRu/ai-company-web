@@ -1,5 +1,5 @@
 import { LeftOutlined } from '@ant-design/icons';
-import type { RefineThemedLayoutV2HeaderProps } from '@refinedev/antd';
+import type { RefineThemedLayoutHeaderProps } from '@refinedev/antd';
 import { useBreadcrumb, useGetIdentity, useLogout } from '@refinedev/core';
 import type { MenuProps } from 'antd';
 import {
@@ -30,7 +30,7 @@ const getInitials = (value: string) => {
   return initials.toUpperCase() || value.charAt(0).toUpperCase() || 'U';
 };
 
-export const Header: React.FC<RefineThemedLayoutV2HeaderProps> = ({
+export const Header: React.FC<RefineThemedLayoutHeaderProps> = ({
   sticky = true,
 }) => {
   const { token } = useToken();

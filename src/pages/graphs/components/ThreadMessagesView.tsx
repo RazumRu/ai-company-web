@@ -722,7 +722,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       const additional = getAdditionalKwargs(message.message);
       const isAgentInstruction = Boolean(
         additional?.__isAgentInstructionMessage ??
-          additional?.isAgentInstructionMessage,
+        additional?.isAgentInstructionMessage,
       );
       const isReportingMessage = Boolean(
         additional?.__isReportingMessage ?? additional?.isReportingMessage,

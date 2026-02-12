@@ -186,11 +186,12 @@ export function useGraphDraftState({
   serverState,
   onStateChange,
 }: UseGraphDraftStateOptions): UseGraphDraftStateReturn {
-  // Store normalized server baseline
+  // Store normalized server baseline as state so it can be read during render
   const serverBaselineRef = useRef<GraphDraftState>(
     normalizeState(serverState),
   );
-  const [, setBaselineVersion] = useState(0);
+  const [normalizedServerBaseline, setNormalizedServerBaseline] =
+    useState<GraphDraftState>(() => normalizeState(serverState));
 
   // Use ref for onStateChange to avoid dependency issues
   const onStateChangeRef = useRef(onStateChange);
@@ -215,8 +216,9 @@ export function useGraphDraftState({
   // Update server baseline when server state changes
   const updateServerBaseline = useCallback(
     (newServerState: GraphDraftState) => {
-      serverBaselineRef.current = normalizeState(newServerState);
-      setBaselineVersion((v) => v + 1);
+      const normalized = normalizeState(newServerState);
+      serverBaselineRef.current = normalized;
+      setNormalizedServerBaseline(normalized);
 
       // If we have no local changes, sync draft to server
       const currentDraft = GraphStorageService.loadDraft(graphId);
@@ -336,7 +338,7 @@ export function useGraphDraftState({
     [draftState],
   );
 
-  const normalizedServer = serverBaselineRef.current;
+  const normalizedServer = normalizedServerBaseline;
 
   const hasUnsavedChanges = useMemo(() => {
     // Compare without viewport - viewport changes (pan/zoom) are not "unsaved changes"

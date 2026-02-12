@@ -534,9 +534,9 @@ export const CustomNode = React.memo(
               const id = makeHandleId('target', t);
               const miss = Boolean(
                 t.required &&
-                  !allEdges.some(
-                    (e) => e.target === nodeId && e.targetHandle === id,
-                  ),
+                !allEdges.some(
+                  (e) => e.target === nodeId && e.targetHandle === id,
+                ),
               );
               const c = color('target', t.required, miss);
               const highlight = getHandleHighlight('target', t);
@@ -606,9 +606,9 @@ export const CustomNode = React.memo(
               const id = makeHandleId('source', outRule);
               const miss = Boolean(
                 output.required &&
-                  !allEdges.some(
-                    (e) => e.source === nodeId && e.sourceHandle === id,
-                  ),
+                !allEdges.some(
+                  (e) => e.source === nodeId && e.sourceHandle === id,
+                ),
               );
               const c = color('source', output.required || false, miss);
               const highlight = getHandleHighlight('source', outRule);

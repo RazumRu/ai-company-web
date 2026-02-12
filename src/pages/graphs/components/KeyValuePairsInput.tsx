@@ -1,6 +1,6 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Space } from 'antd';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import type { KeyValuePair } from '../types';
 
@@ -13,24 +13,19 @@ export const KeyValuePairsInput: React.FC<KeyValuePairsInputProps> = ({
   value,
   onChange,
 }) => {
-  const [pairs, setPairs] = useState<KeyValuePair[]>(value || []);
-
-  useEffect(() => {
-    if (value) {
-      setPairs(value);
-    }
-  }, [value]);
-
-  const addPair = () => {
-    const newPairs = [...pairs, { key: '', value: '' }];
-    setPairs(newPairs);
+  const [localPairs, setLocalPairs] = useState<KeyValuePair[]>(value || []);
+  const pairs = value ?? localPairs;
+  const updatePairs = (newPairs: KeyValuePair[]) => {
+    setLocalPairs(newPairs);
     onChange?.(newPairs);
   };
 
+  const addPair = () => {
+    updatePairs([...pairs, { key: '', value: '' }]);
+  };
+
   const removePair = (index: number) => {
-    const newPairs = pairs.filter((_, i) => i !== index);
-    setPairs(newPairs);
-    onChange?.(newPairs);
+    updatePairs(pairs.filter((_, i) => i !== index));
   };
 
   const updatePair = (
@@ -38,11 +33,11 @@ export const KeyValuePairsInput: React.FC<KeyValuePairsInputProps> = ({
     field: 'key' | 'value',
     newValue: string,
   ) => {
-    const newPairs = pairs.map((pair, i) =>
-      i === index ? { ...pair, [field]: newValue } : pair,
+    updatePairs(
+      pairs.map((pair, i) =>
+        i === index ? { ...pair, [field]: newValue } : pair,
+      ),
     );
-    setPairs(newPairs);
-    onChange?.(newPairs);
   };
 
   return (

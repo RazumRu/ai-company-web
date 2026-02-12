@@ -43,15 +43,14 @@ export const TriggerModal = ({
         setShowLongRunningHint(true);
       }, 10000);
     } else {
-      // Reset when not loading or modal hidden
       if (timerRef.current) {
         window.clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      setShowLongRunningHint(false);
     }
 
     return () => {
+      setShowLongRunningHint(false);
       if (timerRef.current) {
         window.clearTimeout(timerRef.current);
         timerRef.current = null;

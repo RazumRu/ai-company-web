@@ -1,6 +1,6 @@
 import {
-  type RefineThemedLayoutV2SiderProps,
-  ThemedSiderV2,
+  type RefineThemedLayoutSiderProps,
+  ThemedSider,
 } from '@refinedev/antd';
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
@@ -53,15 +53,14 @@ const SiderBorderOverlay = ({ collapsed }: { collapsed?: boolean }) => {
   return createPortal(<div style={borderStyle} />, document.body);
 };
 
-export const CustomSider = (props: RefineThemedLayoutV2SiderProps) => {
+export const CustomSider = (props: RefineThemedLayoutSiderProps) => {
   return (
-    <ThemedSiderV2
+    <ThemedSider
       {...props}
       fixed
-      render={({ dashboard, items, collapsed }) => (
+      render={({ items, collapsed }) => (
         <>
           <SiderBorderOverlay collapsed={collapsed} />
-          {dashboard}
           {items}
         </>
       )}

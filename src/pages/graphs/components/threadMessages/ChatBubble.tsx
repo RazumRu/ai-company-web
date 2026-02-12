@@ -33,7 +33,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
     try {
       await navigator.clipboard.writeText(copyContent);
       message.success('Message copied to clipboard');
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to copy message');
     }
   };

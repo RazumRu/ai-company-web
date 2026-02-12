@@ -55,17 +55,17 @@ A visual workspace for authoring and operating AI agent automations. Teams can s
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | React 18, Vite, TypeScript |
-| App Shell | [Refine](https://refine.dev/) (routing, data fetching, CRUD) |
-| UI | [Ant Design 5](https://ant.design/) |
-| Graph Editor | [@xyflow/react](https://xyflow.com/) |
-| Forms | [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) (JSON Schema driven) |
-| Real-time | Socket.io |
-| Auth | Keycloak via `@react-keycloak/web` |
-| API Client | Auto-generated from OpenAPI spec |
-| Markdown | `@uiw/react-md-editor`, `react-markdown` |
+| Layer        | Technology                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| Framework    | React 18, Vite, TypeScript                                                                       |
+| App Shell    | [Refine](https://refine.dev/) (routing, data fetching, CRUD)                                     |
+| UI           | [Ant Design 5](https://ant.design/)                                                              |
+| Graph Editor | [@xyflow/react](https://xyflow.com/)                                                             |
+| Forms        | [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) (JSON Schema driven) |
+| Real-time    | Socket.io                                                                                        |
+| Auth         | Keycloak via `@react-keycloak/web`                                                               |
+| API Client   | Auto-generated from OpenAPI spec                                                                 |
+| Markdown     | `@uiw/react-md-editor`, `react-markdown`                                                         |
 
 ## Getting Started
 
@@ -95,13 +95,13 @@ The app will be available at `http://localhost:5174`.
 
 App configuration is code-driven and lives in `src/config/`. The active file is selected by `import.meta.env.MODE`:
 
-| Key | Description | Dev Default |
-|-----|-------------|-------------|
-| `API_URL` | REST + WebSocket base URL | `http://localhost:5000` |
-| `KEYCLOAK_URL` | SSO endpoint | `http://localhost:8082` |
-| `KEYCLOAK_REALM` | Keycloak realm name | `ai-company` |
-| `KEYCLOAK_CLIENT_ID` | OAuth client ID | `ai-company` |
-| `WEBSITE_URL` | Client base URL | `http://localhost:3004` |
+| Key                  | Description               | Dev Default             |
+| -------------------- | ------------------------- | ----------------------- |
+| `API_URL`            | REST + WebSocket base URL | `http://localhost:5000` |
+| `KEYCLOAK_URL`       | SSO endpoint              | `http://localhost:8082` |
+| `KEYCLOAK_REALM`     | Keycloak realm name       | `ai-company`            |
+| `KEYCLOAK_CLIENT_ID` | OAuth client ID           | `ai-company`            |
+| `WEBSITE_URL`        | Client base URL           | `http://localhost:3004` |
 
 Edit `src/config/development.ts` for local work or `src/config/production.ts` for production. You can also inject Vite environment variables at build time:
 
@@ -145,15 +145,15 @@ src/
 
 ## Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start the dev server with hot reload (port 5174) |
-| `pnpm build` | Type-check + compile the Vite bundle to `dist/` |
-| `pnpm start` | Serve the built assets for preview |
-| `pnpm full-check` | Build + lint (run before committing) |
-| `pnpm lint:fix` | Prettier + ESLint auto-fix |
+| Command             | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| `pnpm dev`          | Start the dev server with hot reload (port 5174)    |
+| `pnpm build`        | Type-check + compile the Vite bundle to `dist/`     |
+| `pnpm start`        | Serve the built assets for preview                  |
+| `pnpm full-check`   | Build + lint (run before committing)                |
+| `pnpm lint:fix`     | Prettier + ESLint auto-fix                          |
 | `pnpm generate:api` | Regenerate the API client from backend Swagger spec |
-| `pnpm up-versions` | Upgrade dependencies via helper script |
+| `pnpm up-versions`  | Upgrade dependencies via helper script              |
 
 ### Regenerating the API Client
 
@@ -180,14 +180,14 @@ Keycloak SSO via `@react-keycloak/web`. Tokens propagate to both Axios REST call
 
 Socket.io-based `WebSocketService` multiplexes these event streams:
 
-| Event | Purpose |
-|-------|---------|
-| `graphUpdate` | Graph status changes (Running / Stopped / Error) |
-| `graphCompile` | Compilation progress |
-| `revisionUpdate` | Revision lifecycle (pending / applying / applied / failed) |
-| `nodeStateUpdate` | Node execution state |
-| `threadMessage` | Agent messages including streaming tokens |
-| `threadUpdate` | Thread metadata changes |
+| Event             | Purpose                                                    |
+| ----------------- | ---------------------------------------------------------- |
+| `graphUpdate`     | Graph status changes (Running / Stopped / Error)           |
+| `graphCompile`    | Compilation progress                                       |
+| `revisionUpdate`  | Revision lifecycle (pending / applying / applied / failed) |
+| `nodeStateUpdate` | Node execution state                                       |
+| `threadMessage`   | Agent messages including streaming tokens                  |
+| `threadUpdate`    | Thread metadata changes                                    |
 
 Subscribe via hooks: `useWebSocket`, `useGraphWebSocket`, `useThreadWebSocket`.
 

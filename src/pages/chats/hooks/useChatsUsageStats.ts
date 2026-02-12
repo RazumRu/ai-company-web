@@ -364,11 +364,11 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
     : selectedThread?.id;
   const hasUsageStatsForSelected = Boolean(
     selectedThreadIdForUsageStats &&
-      threadUsageStats[selectedThreadIdForUsageStats],
+    threadUsageStats[selectedThreadIdForUsageStats],
   );
   const isLoadingUsageStatsForSelected = Boolean(
     selectedThreadIdForUsageStats &&
-      threadUsageStatsLoading[selectedThreadIdForUsageStats],
+    threadUsageStatsLoading[selectedThreadIdForUsageStats],
   );
 
   useEffect(() => {
