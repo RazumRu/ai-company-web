@@ -284,6 +284,12 @@ export interface ExecuteTriggerDto {
    * @memberof ExecuteTriggerDto
    */
   'async'?: boolean;
+  /**
+   * Optional metadata to attach to the thread created by this execution.
+   * @type {{ [key: string]: any; }}
+   * @memberof ExecuteTriggerDto
+   */
+  'metadata'?: { [key: string]: any };
 }
 /**
  *
@@ -992,6 +998,19 @@ export const RepoIndexDtoStatusEnum = {
 export type RepoIndexDtoStatusEnum =
   (typeof RepoIndexDtoStatusEnum)[keyof typeof RepoIndexDtoStatusEnum];
 
+/**
+ *
+ * @export
+ * @interface SetThreadMetadataDto
+ */
+export interface SetThreadMetadataDto {
+  /**
+   * Thread metadata to set (replaces existing metadata)
+   * @type {{ [key: string]: any; }}
+   * @memberof SetThreadMetadataDto
+   */
+  'metadata': { [key: string]: any };
+}
 /**
  *
  * @export
@@ -7804,6 +7823,139 @@ export const ThreadsApiAxiosParamCreator = function (
     /**
      *
      * @param {string} threadId
+     * @param {SetThreadMetadataDto} setThreadMetadataDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    setThreadMetadata: async (
+      threadId: string,
+      setThreadMetadataDto: SetThreadMetadataDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'threadId' is not null or undefined
+      assertParamExists('setThreadMetadata', 'threadId', threadId);
+      // verify required parameter 'setThreadMetadataDto' is not null or undefined
+      assertParamExists(
+        'setThreadMetadata',
+        'setThreadMetadataDto',
+        setThreadMetadataDto,
+      );
+      const localVarPath = `/api/v1/threads/{threadId}/metadata`.replace(
+        `{${'threadId'}}`,
+        encodeURIComponent(String(threadId)),
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'PUT',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        setThreadMetadataDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} externalThreadId
+     * @param {SetThreadMetadataDto} setThreadMetadataDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    setThreadMetadataByExternalId: async (
+      externalThreadId: string,
+      setThreadMetadataDto: SetThreadMetadataDto,
+      options: RawAxiosRequestConfig = {},
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'externalThreadId' is not null or undefined
+      assertParamExists(
+        'setThreadMetadataByExternalId',
+        'externalThreadId',
+        externalThreadId,
+      );
+      // verify required parameter 'setThreadMetadataDto' is not null or undefined
+      assertParamExists(
+        'setThreadMetadataByExternalId',
+        'setThreadMetadataDto',
+        setThreadMetadataDto,
+      );
+      const localVarPath =
+        `/api/v1/threads/external/{externalThreadId}/metadata`.replace(
+          `{${'externalThreadId'}}`,
+          encodeURIComponent(String(externalThreadId)),
+        );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'PUT',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication bearer required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        setThreadMetadataDto,
+        localVarRequestOptions,
+        configuration,
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {string} threadId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -8346,6 +8498,72 @@ export const ThreadsApiFp = function (configuration?: Configuration) {
     /**
      *
      * @param {string} threadId
+     * @param {SetThreadMetadataDto} setThreadMetadataDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async setThreadMetadata(
+      threadId: string,
+      setThreadMetadataDto: SetThreadMetadataDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<ThreadDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.setThreadMetadata(
+          threadId,
+          setThreadMetadataDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.setThreadMetadata']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} externalThreadId
+     * @param {SetThreadMetadataDto} setThreadMetadataDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async setThreadMetadataByExternalId(
+      externalThreadId: string,
+      setThreadMetadataDto: SetThreadMetadataDto,
+      options?: RawAxiosRequestConfig,
+    ): Promise<
+      (axios?: AxiosInstance, basePath?: string) => AxiosPromise<ThreadDto>
+    > {
+      const localVarAxiosArgs =
+        await localVarAxiosParamCreator.setThreadMetadataByExternalId(
+          externalThreadId,
+          setThreadMetadataDto,
+          options,
+        );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['ThreadsApi.setThreadMetadataByExternalId']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration,
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {string} threadId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -8639,6 +8857,42 @@ export const ThreadsApiFactory = function (
     /**
      *
      * @param {string} threadId
+     * @param {SetThreadMetadataDto} setThreadMetadataDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    setThreadMetadata(
+      threadId: string,
+      setThreadMetadataDto: SetThreadMetadataDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadDto> {
+      return localVarFp
+        .setThreadMetadata(threadId, setThreadMetadataDto, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} externalThreadId
+     * @param {SetThreadMetadataDto} setThreadMetadataDto
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    setThreadMetadataByExternalId(
+      externalThreadId: string,
+      setThreadMetadataDto: SetThreadMetadataDto,
+      options?: RawAxiosRequestConfig,
+    ): AxiosPromise<ThreadDto> {
+      return localVarFp
+        .setThreadMetadataByExternalId(
+          externalThreadId,
+          setThreadMetadataDto,
+          options,
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {string} threadId
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
@@ -8844,6 +9098,46 @@ export class ThreadsApi extends BaseAPI {
   ) {
     return ThreadsApiFp(this.configuration)
       .getThreads(graphId, statuses, limit, offset, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} threadId
+   * @param {SetThreadMetadataDto} setThreadMetadataDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public setThreadMetadata(
+    threadId: string,
+    setThreadMetadataDto: SetThreadMetadataDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .setThreadMetadata(threadId, setThreadMetadataDto, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {string} externalThreadId
+   * @param {SetThreadMetadataDto} setThreadMetadataDto
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof ThreadsApi
+   */
+  public setThreadMetadataByExternalId(
+    externalThreadId: string,
+    setThreadMetadataDto: SetThreadMetadataDto,
+    options?: RawAxiosRequestConfig,
+  ) {
+    return ThreadsApiFp(this.configuration)
+      .setThreadMetadataByExternalId(
+        externalThreadId,
+        setThreadMetadataDto,
+        options,
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 

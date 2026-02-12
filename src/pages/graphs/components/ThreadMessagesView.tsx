@@ -1,6 +1,5 @@
 // ThreadMessagesView.tsx
 import {
-  BarChartOutlined,
   CaretDownOutlined,
   CaretRightOutlined,
   ToolOutlined,
@@ -31,173 +30,32 @@ import {
   formatMessageContent,
   isBlankContent,
 } from './threadMessages/messageUtils';
+import { prepareReadyMessages } from './threadMessages/prepareMessages';
 import { ReasoningMessage } from './threadMessages/ReasoningMessage';
+import { renderFooterLineWithUsage } from './threadMessages/renderFooterLineWithUsage';
 import { ShellToolDisplay } from './threadMessages/ShellToolDisplay';
-
-interface ToolCallFunction {
-  name?: string;
-  arguments?: string | Record<string, unknown>;
-  title?: string;
-  __title?: string;
-}
-
-interface ToolCall {
-  id?: string;
-  name?: string;
-  function?: ToolCallFunction;
-  args?: string | Record<string, unknown>;
-  title?: string;
-  __title?: string;
-}
-
-interface ShellResult {
-  command?: string;
-  exitCode?: number;
-  output?: string;
-  stdout?: string;
-  stderr?: string;
-  [key: string]: unknown;
-}
+import type {
+  PreparedMessage,
+  ToolRenderStatus,
+} from './threadMessages/threadMessagesTypes';
+import {
+  centeredStateStyle,
+  ensureReasoningAnimationStyles,
+  ensureThinkingIndicatorStyles,
+  extractToolErrorText,
+  fullHeightColumnStyle,
+  generateColorFromNodeId,
+  getAdditionalKwargs,
+  getMessageString,
+  getMessageTitle,
+  isToolLikeRole,
+  messageBlockStyle,
+  parseJsonSafe,
+  scrollContainerStyle,
+} from './threadMessages/threadMessagesViewUtils';
+import { TokenUsagePopoverIcon } from './threadMessages/TokenUsagePopoverIcon';
 
 const { Text } = Typography;
-
-// NOTE: request cost formatting lives in `formatRequestUsdShort`.
-
-const formatTokenCount = (value: number): string => {
-  if (!Number.isFinite(value)) return '—';
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
-    value,
-  );
-};
-
-const formatRequestTokenCount = (value: number): string => {
-  if (!Number.isFinite(value)) return '—';
-
-  const formatTruncatedDecimal = (raw: number): string => {
-    const truncated = Math.floor(raw * 10) / 10;
-    // `String(9.5)` -> "9.5" → "9,5"
-    const normalized = String(truncated).replace('.', ',');
-    return normalized.endsWith(',0') ? normalized.slice(0, -2) : normalized;
-  };
-
-  if (value < 1000) {
-    return formatTokenCount(value);
-  }
-
-  if (value < 1_000_000) {
-    return `${formatTruncatedDecimal(value / 1000)}k`;
-  }
-
-  return `${formatTruncatedDecimal(value / 1_000_000)}m`;
-};
-
-const formatRequestUsdShort = (amount?: number | null): string => {
-  if (typeof amount !== 'number' || !Number.isFinite(amount)) return '$—';
-  // Truncate (not round) to 3 decimals: 0.002592 -> 0.002
-  const truncated = Math.floor(amount * 1000) / 1000;
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  }).format(truncated);
-};
-
-const TokenUsagePopoverIcon: React.FC<{
-  requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null;
-  requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
-  requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
-}> = ({ requestTokenUsage, requestTokenUsageIn, requestTokenUsageOut }) => {
-  // Use the new props if available, fallback to old prop for backwards compatibility
-  const effectiveRequestTokenUsageIn = requestTokenUsageIn || requestTokenUsage;
-  const effectiveRequestTokenUsageOut = requestTokenUsageOut;
-
-  if (!effectiveRequestTokenUsageIn && !effectiveRequestTokenUsageOut) {
-    return null;
-  }
-
-  const renderRequestTokenUsageSection = (
-    usage: ThreadMessageDtoRequestTokenUsage,
-    label: string,
-  ) => (
-    <>
-      <Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>
-        {label}
-      </Text>
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        Total: {formatRequestTokenCount(usage.totalTokens)} (
-        {formatRequestUsdShort(usage.totalPrice)})
-      </Text>
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        Input tokens: {formatTokenCount(usage.inputTokens)}
-      </Text>
-      {typeof usage.cachedInputTokens === 'number' && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Cached input tokens: {formatTokenCount(usage.cachedInputTokens)}
-        </Text>
-      )}
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        Output tokens: {formatTokenCount(usage.outputTokens)}
-      </Text>
-      {typeof usage.reasoningTokens === 'number' && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Reasoning tokens: {formatTokenCount(usage.reasoningTokens)}
-        </Text>
-      )}
-      {typeof usage.currentContext === 'number' && (
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          Current context: {formatTokenCount(usage.currentContext)}
-        </Text>
-      )}
-    </>
-  );
-
-  const popoverContent = (
-    <Space direction="vertical" size={4} style={{ maxWidth: 340 }}>
-      {effectiveRequestTokenUsageIn &&
-        renderRequestTokenUsageSection(
-          effectiveRequestTokenUsageIn,
-          'Request Token Usage (Input):',
-        )}
-
-      {effectiveRequestTokenUsageOut &&
-        renderRequestTokenUsageSection(
-          effectiveRequestTokenUsageOut,
-          'Request Token Usage (Output):',
-        )}
-    </Space>
-  );
-
-  return (
-    <Popover
-      content={popoverContent}
-      trigger={['hover']}
-      placement="bottomLeft">
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          cursor: 'help',
-        }}
-        aria-label="View token usage details"
-        title="View token usage details">
-        <BarChartOutlined style={{ fontSize: 12 }} />
-      </span>
-    </Popover>
-  );
-};
-
-const renderFooterLineWithUsage = (
-  text: string,
-  requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null,
-): React.ReactNode => {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <span>{text}</span>
-      <TokenUsagePopoverIcon requestTokenUsage={requestTokenUsage} />
-    </span>
-  );
-};
 
 export interface ThreadMessagesViewProps {
   messages: ThreadMessageDto[];
@@ -225,191 +83,6 @@ export interface ThreadMessagesViewProps {
   pendingMessages?: PendingMessage[];
   newMessageMode?: 'inject_after_tool_call' | 'wait_for_completion';
 }
-
-const ensureThinkingIndicatorStyles = (() => {
-  let injected = false;
-  return () => {
-    if (injected || typeof document === 'undefined') return;
-    if (document.getElementById('messages-tab-thinking-style')) {
-      injected = true;
-      return;
-    }
-    const style = document.createElement('style');
-    style.id = 'messages-tab-thinking-style';
-    style.textContent = `
-      @keyframes messages-tab-thinking-pulse {
-        0% { opacity: 0.7; }
-        50% { opacity: 1; }
-        100% { opacity: 0.7; }
-      }
-    `;
-    document.head.appendChild(style);
-    injected = true;
-  };
-})();
-
-const ensureReasoningAnimationStyles = (() => {
-  let injected = false;
-  return () => {
-    if (injected || typeof document === 'undefined') return;
-    if (document.getElementById('messages-tab-reasoning-style')) {
-      injected = true;
-      return;
-    }
-    const style = document.createElement('style');
-    style.id = 'messages-tab-reasoning-style';
-    style.textContent = `
-      @keyframes messages-tab-reasoning-appear {
-        0% {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @keyframes messages-tab-reasoning-streaming {
-        0% {
-          color: rgba(0, 0, 0, 0.4);
-        }
-        50% {
-          color: rgba(0, 0, 0, 0.75);
-        }
-        100% {
-          color: rgba(0, 0, 0, 0.4);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-    injected = true;
-  };
-})();
-
-type MessagePayload = ThreadMessageDto['message'];
-
-const getMessageRecord = (
-  payload?: MessagePayload,
-): Record<string, unknown> | undefined => {
-  if (!payload || typeof payload !== 'object') {
-    return undefined;
-  }
-  return payload as unknown as Record<string, unknown>;
-};
-
-const getMessageValue = <T = unknown,>(
-  payload: MessagePayload | undefined,
-  key: string,
-): T | undefined => {
-  const record = getMessageRecord(payload);
-  if (!record) return undefined;
-  return record[key] as T | undefined;
-};
-
-const getMessageString = (
-  payload: MessagePayload | undefined,
-  key: string,
-): string | undefined => {
-  const value = getMessageValue(payload, key);
-  return typeof value === 'string' ? value : undefined;
-};
-
-const getMessageTitle = (payload?: MessagePayload): string | undefined => {
-  const title = getMessageString(payload, 'title');
-  if (title && title.trim().length > 0) {
-    return title;
-  }
-
-  const legacy = getMessageString(payload, '__title');
-  if (legacy && legacy.trim().length > 0) {
-    return legacy;
-  }
-
-  return undefined;
-};
-
-const extractToolErrorText = (resultContent: unknown): string | undefined => {
-  if (!isPlainObject(resultContent)) return undefined;
-  const record = resultContent as Record<string, unknown>;
-  const errorValue = record.error;
-
-  if (typeof errorValue === 'string') {
-    const trimmed = errorValue.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-
-  if (errorValue === null || errorValue === undefined) {
-    return undefined;
-  }
-
-  try {
-    const serialized = JSON.stringify(errorValue, null, 2);
-    const trimmed = serialized.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  } catch {
-    const asString = String(errorValue);
-    const trimmed = asString.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-};
-
-const getMessageRunId = (payload?: MessagePayload): string | undefined => {
-  const record = getMessageRecord(payload);
-  if (!record) return undefined;
-
-  // Prefer the normalized field coming from the API response.
-  const direct = (record.runId as unknown) ?? (record.run_id as unknown);
-  if (typeof direct === 'string' && direct.length > 0) {
-    return direct;
-  }
-
-  const additional =
-    (record.additionalKwargs as Record<string, unknown> | undefined) ??
-    (record.additional_kwargs as Record<string, unknown> | undefined);
-
-  const normalizedAdditional = isPlainObject(additional)
-    ? (additional as Record<string, unknown>)
-    : undefined;
-
-  const fromAdditional =
-    normalizedAdditional &&
-    ((normalizedAdditional.__runId as unknown) ??
-      (normalizedAdditional.run_id as unknown) ??
-      (normalizedAdditional.runId as unknown));
-
-  if (typeof fromAdditional === 'string' && fromAdditional.length > 0) {
-    return fromAdditional;
-  }
-  return undefined;
-};
-
-const fullHeightColumnStyle: React.CSSProperties = {
-  height: '100%',
-  display: 'flex',
-  flexDirection: 'column',
-  minHeight: 0,
-};
-
-const centeredStateStyle: React.CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
-
-const scrollContainerStyle: React.CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflowY: 'auto',
-  overflowX: 'hidden',
-  padding: '12px 16px',
-};
-
-const messageBlockStyle: React.CSSProperties = {
-  marginBottom: '15px',
-};
 
 const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
   ({
@@ -516,16 +189,12 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
     useEffect(() => {
       if (!pendingMessages || pendingMessages.length === 0) return;
-      pendingAutoScrollRef.current = true;
       const el = scrollContainerRef.current;
       if (!el) return;
-      const shouldAutoScroll =
-        pendingAutoScrollRef.current || !autoScrollDisabledRef.current;
-      if (shouldAutoScroll) {
+      if (!autoScrollDisabledRef.current) {
         el.scrollTop = el.scrollHeight;
-        pendingAutoScrollRef.current = false;
       }
-    }, [pendingMessages, pendingMessages?.length]);
+    }, [pendingMessages]);
 
     useEffect(() => {
       const styleId = 'shell-scrollbar-styles';
@@ -578,83 +247,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       autoScrollDisabledRef.current = !nearBottom;
     }, [hasMoreMessages, loadingMore, onLoadMoreMessages]);
 
-    const parseJsonSafe = (value: string): JsonValue | null => {
-      try {
-        return JSON.parse(value) as JsonValue;
-      } catch {
-        return null;
-      }
-    };
-
-    const isToolLikeRole = (role?: string): boolean => {
-      if (!role) return false;
-      return role === 'tool';
-    };
-
-    const buildToolCallResultIndex = useCallback(
-      (allMessages: ThreadMessageDto[]): Record<string, ThreadMessageDto[]> => {
-        return allMessages.reduce<Record<string, ThreadMessageDto[]>>(
-          (acc, msg) => {
-            if (!isToolLikeRole(msg.message?.role as string)) {
-              return acc;
-            }
-            const toolCallId = getMessageString(msg.message, 'toolCallId');
-            if (!toolCallId) {
-              return acc;
-            }
-            if (!acc[toolCallId]) {
-              acc[toolCallId] = [];
-            }
-            acc[toolCallId].push(msg);
-            return acc;
-          },
-          {},
-        );
-      },
-      [],
-    );
-
-    const getToolMessageKey = (msg?: ThreadMessageDto): string | undefined => {
-      if (!msg) return undefined;
-      if (msg.id) return msg.id;
-      const messageLevelId = getMessageString(msg.message, 'id');
-      if (messageLevelId) return messageLevelId;
-      if (msg.createdAt) return `created-${msg.createdAt}`;
-      const toolCallId = getMessageString(msg.message, 'toolCallId');
-      if (toolCallId) return `toolCall-${toolCallId}`;
-      return undefined;
-    };
-
-    const argsToObject = useCallback(
-      (
-        args?: string | Record<string, unknown>,
-      ): Record<string, JsonValue> | null => {
-        if (!args) return null;
-        if (typeof args === 'string') {
-          const parsed = parseJsonSafe(args);
-          return isPlainObject(parsed)
-            ? (parsed as Record<string, JsonValue>)
-            : null;
-        }
-        if (isPlainObject(args)) {
-          return args as Record<string, JsonValue>;
-        }
-        return null;
-      },
-      [],
-    );
-
-    const extractShellCommandFromArgs = useCallback(
-      (args?: string | Record<string, unknown>): string | undefined => {
-        const obj = argsToObject(args);
-        if (!obj) return undefined;
-        if (typeof obj.command === 'string') return obj.command;
-        if (typeof obj.cmd === 'string') return obj.cmd;
-        return undefined;
-      },
-      [argsToObject],
-    );
-
     const renderToolPopoverContent = (
       value: unknown,
       toolOptions?: Record<string, JsonValue>,
@@ -664,7 +256,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     ): React.ReactNode => {
       let parsed: JsonValue | null = null;
       if (typeof value === 'string') {
-        parsed = parseJsonSafe(value);
+        parsed = parseJsonSafe(value) as JsonValue | null;
       } else if (
         value !== null &&
         (typeof value === 'object' ||
@@ -760,432 +352,22 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
-    type ToolRenderStatus = 'calling' | 'executed' | 'stopped';
-
-    type PreparedMessage =
-      | {
-          type: 'system';
-          message: ThreadMessageDto;
-          id: string;
-          nodeId?: string;
-          createdAt?: string;
-          inCommunicationExec?: boolean;
-          sourceAgentNodeId?: string;
-        }
-      | {
-          type: 'reasoning';
-          message: ThreadMessageDto;
-          id: string;
-          nodeId?: string;
-          createdAt?: string;
-          inCommunicationExec?: boolean;
-          sourceAgentNodeId?: string;
-        }
-      | {
-          type: 'chat';
-          message: ThreadMessageDto;
-          id: string;
-          nodeId?: string;
-          createdAt?: string;
-          inCommunicationExec?: boolean;
-          sourceAgentNodeId?: string;
-        }
-      | {
-          type: 'tool';
-          name: string;
-          status: ToolRenderStatus;
-          result?: unknown;
-          id: string;
-          toolKind?: 'generic' | 'shell';
-          shellCommand?: string;
-          toolOptions?: Record<string, JsonValue>;
-          requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null;
-          requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
-          requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
-          nodeId?: string;
-          createdAt?: string;
-          roleLabel?: string;
-          title?: string;
-          inCommunicationExec?: boolean;
-          sourceAgentNodeId?: string;
-        };
-
-    // Generate a consistent color from a string (node ID)
-    const generateColorFromNodeId = useCallback((nodeId: string): string => {
-      // Simple hash function to generate a number from string
-      let hash = 0;
-      for (let i = 0; i < nodeId.length; i++) {
-        hash = nodeId.charCodeAt(i) + ((hash << 5) - hash);
-        hash = hash & hash; // Convert to 32-bit integer
-      }
-
-      // Generate HSL color with fixed saturation and lightness for better visibility
-      const hue = Math.abs(hash % 360);
-      const saturation = 70; // Good saturation for distinct colors
-      const lightness = 50; // Medium lightness for good visibility
-
-      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    }, []);
-
-    const prepareReadyMessages = useCallback(
-      (msgs: ThreadMessageDto[]): PreparedMessage[] => {
-        const allowCallingIndicators = isNodeRunning && !isThreadStopped;
-        const isLatestRun = (runId?: string): boolean => {
-          if (!currentThreadLastRunId) return true;
-          if (!runId) return false;
-          return runId === currentThreadLastRunId;
-        };
-        const toolCallResultsById = buildToolCallResultIndex(msgs);
-        const consumedToolCallIds = new Set<string>();
-        const consumedToolMessageKeys = new Set<string>();
-
-        const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
-          const key = getToolMessageKey(msg);
-          if (key) {
-            consumedToolMessageKeys.add(key);
-          }
-        };
-
-        const markToolCallConsumed = (toolCallId?: string) => {
-          if (toolCallId) {
-            consumedToolCallIds.add(toolCallId);
-          }
-        };
-
-        const consumeToolResultById = (
-          toolCallId?: string,
-        ): ThreadMessageDto | undefined => {
-          if (!toolCallId) return undefined;
-          const queue = toolCallResultsById[toolCallId];
-          if (!queue || queue.length === 0) {
-            return undefined;
-          }
-          const next = queue.shift();
-          markToolCallConsumed(toolCallId);
-          markToolMessageConsumed(next);
-          return next;
-        };
-
-        // Helper to check if a message is part of inter-agent communication
-        const isInterAgentCommunication = (msg: ThreadMessageDto): boolean => {
-          const record = getMessageRecord(msg.message);
-          if (!record) return false;
-
-          const additional =
-            (record.additionalKwargs as Record<string, unknown> | undefined) ??
-            (record.additional_kwargs as Record<string, unknown> | undefined);
-
-          const normalizedAdditional = isPlainObject(additional)
-            ? (additional as Record<string, unknown>)
-            : undefined;
-
-          return Boolean(normalizedAdditional?.__interAgentCommunication);
-        };
-
-        // Helper to extract source agent node ID from message metadata
-        const getSourceAgentNodeId = (
-          msg: ThreadMessageDto,
-        ): string | undefined => {
-          const record = getMessageRecord(msg.message);
-          if (!record) return undefined;
-
-          const additional =
-            (record.additionalKwargs as Record<string, unknown> | undefined) ??
-            (record.additional_kwargs as Record<string, unknown> | undefined);
-
-          const normalizedAdditional = isPlainObject(additional)
-            ? (additional as Record<string, unknown>)
-            : undefined;
-
-          return typeof normalizedAdditional?.__sourceAgentNodeId === 'string'
-            ? normalizedAdditional.__sourceAgentNodeId
-            : undefined;
-        };
-
-        // Build a set of all tool call IDs that exist in current messages
-        const existingToolCallIds = new Set<string>();
-        msgs.forEach((m) => {
-          const role = (m.message?.role as string) || '';
-          if (role === 'ai') {
-            const messageToolCalls = getMessageValue<ToolCall[]>(
-              m.message,
-              'toolCalls',
-            );
-            if (messageToolCalls && messageToolCalls.length > 0) {
-              messageToolCalls.forEach((tc) => {
-                if (tc.id) {
-                  existingToolCallIds.add(tc.id);
-                }
-              });
-            }
-          }
-        });
-
-        // First pass: identify all tool calls from AI messages and mark their results as consumed
-        // This prevents tool results from being rendered as standalone before we process the AI message
-        msgs.forEach((m) => {
-          const role = (m.message?.role as string) || '';
-          if (role === 'ai') {
-            const messageToolCalls = getMessageValue<ToolCall[]>(
-              m.message,
-              'toolCalls',
-            );
-            if (messageToolCalls && messageToolCalls.length > 0) {
-              messageToolCalls.forEach((tc) => {
-                if (tc.id) {
-                  // Check if result exists for this tool call
-                  const queue = toolCallResultsById[tc.id];
-                  if (queue && queue.length > 0) {
-                    // Mark as consumed so it won't be rendered as standalone
-                    markToolCallConsumed(tc.id);
-                    markToolMessageConsumed(queue[0]);
-                  }
-                }
-              });
-            }
-          }
-        });
-
-        const prepared: PreparedMessage[] = [];
-        let i = 0;
-
-        while (i < msgs.length) {
-          const m = msgs[i];
-          const role = (m.message?.role as string) || '';
-          const isInterAgent = isInterAgentCommunication(m);
-          const sourceAgentNodeId = getSourceAgentNodeId(m);
-
-          if (role === 'reasoning') {
-            if (!isBlankContent(m.message?.content)) {
-              prepared.push({
-                type: 'reasoning',
-                message: m,
-                id: `reasoning-${m.id || m.createdAt}`,
-                nodeId: m.nodeId,
-                createdAt: m.createdAt,
-                inCommunicationExec: isInterAgent,
-                sourceAgentNodeId,
-              });
-            }
-            i++;
-            continue;
-          }
-
-          if (role === 'system') {
-            prepared.push({
-              type: 'system',
-              message: m,
-              id: `system-${m.id || m.createdAt}`,
-              nodeId: m.nodeId,
-              createdAt: m.createdAt,
-              inCommunicationExec: isInterAgent,
-              sourceAgentNodeId,
-            });
-            i++;
-            continue;
-          }
-
-          const messageToolCalls = getMessageValue<ToolCall[]>(
-            m.message,
-            'toolCalls',
-          );
-          if (
-            role === 'ai' &&
-            messageToolCalls &&
-            messageToolCalls.length > 0
-          ) {
-            const hasNonBlankContent = !isBlankContent(m.message?.content);
-
-            if (hasNonBlankContent) {
-              prepared.push({
-                type: 'chat',
-                message: m,
-                id: `chat-${m.id || m.createdAt}`,
-                nodeId: m.nodeId,
-                createdAt: m.createdAt,
-                inCommunicationExec: isInterAgent,
-                sourceAgentNodeId,
-              });
-            }
-
-            const followingTools: ThreadMessageDto[] = [];
-            let j = i + 1;
-            while (
-              j < msgs.length &&
-              isToolLikeRole(msgs[j].message?.role as string)
-            ) {
-              followingTools.push(msgs[j]);
-              j++;
-            }
-
-            const toolCalls = messageToolCalls;
-            for (let idx = 0; idx < toolCalls.length; idx++) {
-              const tc = toolCalls[idx];
-              const name = tc.name || tc.function?.name || 'tool';
-              const callTitle =
-                (tc.title && tc.title.trim().length > 0
-                  ? tc.title
-                  : undefined) ??
-                (tc.__title && tc.__title.trim().length > 0
-                  ? tc.__title
-                  : undefined) ??
-                (tc.function?.title && tc.function.title.trim().length > 0
-                  ? tc.function.title
-                  : undefined) ??
-                (tc.function?.__title && tc.function.__title.trim().length > 0
-                  ? tc.function.__title
-                  : undefined);
-              let matched = consumeToolResultById(tc.id);
-              if (!matched) {
-                matched = followingTools.find(
-                  (tm) => getMessageString(tm.message, 'toolCallId') === tc.id,
-                );
-                if (matched) {
-                  markToolCallConsumed(
-                    tc.id || getMessageString(matched.message, 'toolCallId'),
-                  );
-                  markToolMessageConsumed(matched);
-                }
-              }
-              const resultContent = matched?.message?.content;
-              const toolArgs = tc.function?.arguments ?? tc.args;
-              const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
-              const resultObj = isPlainObject(resultContent)
-                ? (resultContent as ShellResult)
-                : null;
-              const shellCommand = shellCmdFromArgs || resultObj?.command;
-              const isShell = (name || '').toLowerCase() === 'shell';
-              const toolOptions = argsToObject(toolArgs);
-              const matchedTitle = getMessageTitle(matched?.message);
-              const effectiveTitle = matchedTitle || callTitle;
-              const toolCallRunId =
-                getMessageRunId(m.message) ?? getMessageRunId(matched?.message);
-
-              // Only show colored border if the INPUT (AI) message has __interAgentCommunication, not the tool result
-              const toolIsInterAgent = isInterAgent;
-              const toolSourceAgentNodeId = sourceAgentNodeId;
-
-              prepared.push({
-                type: 'tool',
-                name: name || 'tool',
-                status: matched
-                  ? 'executed'
-                  : allowCallingIndicators && isLatestRun(toolCallRunId)
-                    ? 'calling'
-                    : 'stopped',
-                result: resultContent,
-                id: `tool-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
-                toolKind: isShell ? 'shell' : 'generic',
-                shellCommand,
-                toolOptions: toolOptions || undefined,
-                requestTokenUsage: m.requestTokenUsage,
-                requestTokenUsageIn: m.requestTokenUsage,
-                requestTokenUsageOut: matched?.requestTokenUsage,
-                nodeId: matched?.nodeId ?? m.nodeId,
-                createdAt: matched?.createdAt ?? m.createdAt,
-                roleLabel: effectiveTitle || name || 'tool',
-                title: effectiveTitle,
-                inCommunicationExec: toolIsInterAgent,
-                sourceAgentNodeId: toolSourceAgentNodeId,
-              });
-            }
-
-            i = i + 1 + followingTools.length;
-            continue;
-          }
-
-          if (isToolLikeRole(role)) {
-            const toolCallId = getMessageString(m.message, 'toolCallId');
-            const messageKey = getToolMessageKey(m);
-            if (
-              (toolCallId && consumedToolCallIds.has(toolCallId)) ||
-              (messageKey && consumedToolMessageKeys.has(messageKey))
-            ) {
-              i++;
-              continue;
-            }
-
-            const name = getMessageString(m.message, 'name') || 'tool';
-
-            // Skip communication_exec outputs that don't have their input in the current message set
-            // This happens when messages are paginated and the tool call is in an unloaded chunk
-            if (
-              name === 'communication_exec' &&
-              toolCallId &&
-              !existingToolCallIds.has(toolCallId)
-            ) {
-              i++;
-              continue;
-            }
-
-            const title = getMessageTitle(m.message);
-            const resultContent = m.message?.content;
-            const resultObj = isPlainObject(resultContent)
-              ? (resultContent as ShellResult)
-              : null;
-            const shellCommand = resultObj?.command;
-            const isShell = (name || '').toLowerCase() === 'shell';
-            const toolOptions = undefined;
-
-            prepared.push({
-              type: 'tool',
-              name,
-              status: 'executed',
-              result: resultContent,
-              id: `tool-standalone-${m.id || m.createdAt}`,
-              toolKind: isShell ? 'shell' : 'generic',
-              shellCommand,
-              toolOptions,
-              requestTokenUsage: m.requestTokenUsage,
-              requestTokenUsageOut: m.requestTokenUsage,
-              nodeId: m.nodeId,
-              createdAt: m.createdAt,
-              roleLabel: title || name || 'tool',
-              title,
-              inCommunicationExec: isInterAgent,
-              sourceAgentNodeId,
-            });
-            i++;
-            continue;
-          }
-
-          if (!isBlankContent(m.message?.content)) {
-            prepared.push({
-              type: 'chat',
-              message: m,
-              id: `chat-${m.id || m.createdAt}`,
-              nodeId: m.nodeId,
-              createdAt: m.createdAt,
-              inCommunicationExec: isInterAgent,
-              sourceAgentNodeId,
-            });
-          }
-          i++;
-        }
-
-        return prepared;
-      },
-      [
-        argsToObject,
-        buildToolCallResultIndex,
-        extractShellCommandFromArgs,
+    const preparedMessagesResult = useMemo(() => {
+      return prepareReadyMessages(messages, {
         isNodeRunning,
         isThreadStopped,
         currentThreadLastRunId,
-      ],
-    );
+      });
+    }, [messages, isNodeRunning, isThreadStopped, currentThreadLastRunId]);
 
-    const preparedMessages = useMemo(() => {
-      return prepareReadyMessages(messages);
-    }, [messages, prepareReadyMessages]);
     const isThinkingVisible = isNodeRunning && isAgentNode && !isThreadStopped;
 
     // Auto-expand new working groups by default
     useEffect(() => {
       const workingGroupIds = new Set<string>();
 
-      for (let i = 0; i < preparedMessages.length; i++) {
-        const item = preparedMessages[i];
+      for (let i = 0; i < preparedMessagesResult.length; i++) {
+        const item = preparedMessagesResult[i];
 
         // Check if this is the start of a working group
         if (isWorkGroupItem(item)) {
@@ -1195,8 +377,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           // Skip to the end of this working group
           let j = i + 1;
           while (
-            j < preparedMessages.length &&
-            isWorkGroupItem(preparedMessages[j])
+            j < preparedMessagesResult.length &&
+            isWorkGroupItem(preparedMessagesResult[j])
           ) {
             j++;
           }
@@ -1205,29 +387,33 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       }
 
       // Add any new working group IDs to the expanded set
+      let didAddNew = false;
       setExpandedWorkingIds((prev) => {
         const newIds = Array.from(workingGroupIds).filter(
           (id) => !prev.has(id),
         );
-        if (newIds.length > 0) {
-          // Schedule scroll after state update and DOM re-render
-          setTimeout(() => {
-            const el = scrollContainerRef.current;
-            if (!el || messagesLoading) return;
-
-            const shouldAutoScroll =
-              pendingAutoScrollRef.current || !autoScrollDisabledRef.current;
-
-            if (shouldAutoScroll) {
-              el.scrollTop = el.scrollHeight;
-            }
-          }, 0);
-
-          return new Set([...prev, ...newIds]);
-        }
-        return prev;
+        if (newIds.length === 0) return prev;
+        didAddNew = true;
+        return new Set([...prev, ...newIds]);
       });
-    }, [preparedMessages, isWorkGroupItem, messagesLoading]);
+
+      // Schedule scroll after state update and DOM re-render.
+      // Note: didAddNew is safe to read here because setExpandedWorkingIds
+      // runs the updater synchronously even though the re-render is batched.
+      if (didAddNew) {
+        setTimeout(() => {
+          const el = scrollContainerRef.current;
+          if (!el || messagesLoading) return;
+
+          const shouldAutoScroll =
+            pendingAutoScrollRef.current || !autoScrollDisabledRef.current;
+
+          if (shouldAutoScroll) {
+            el.scrollTop = el.scrollHeight;
+          }
+        }, 0);
+      }
+    }, [preparedMessagesResult, isWorkGroupItem, messagesLoading]);
 
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
@@ -1533,20 +719,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       if (isBlankContent(message.message?.content)) return null;
 
       // Check if this is an agent instruction message
-      const record = getMessageRecord(message.message);
-      const additional =
-        (record?.additionalKwargs as Record<string, unknown> | undefined) ??
-        (record?.additional_kwargs as Record<string, unknown> | undefined);
-      const normalizedAdditional = isPlainObject(additional)
-        ? (additional as Record<string, unknown>)
-        : undefined;
+      const additional = getAdditionalKwargs(message.message);
       const isAgentInstruction = Boolean(
-        normalizedAdditional?.__isAgentInstructionMessage ??
-          normalizedAdditional?.isAgentInstructionMessage,
+        additional?.__isAgentInstructionMessage ??
+          additional?.isAgentInstructionMessage,
       );
       const isReportingMessage = Boolean(
-        normalizedAdditional?.__isReportingMessage ??
-          normalizedAdditional?.isReportingMessage,
+        additional?.__isReportingMessage ?? additional?.isReportingMessage,
       );
 
       const isHuman = role === 'human';
@@ -2058,8 +1237,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         );
       };
 
-      while (i < preparedMessages.length) {
-        const item = preparedMessages[i];
+      while (i < preparedMessagesResult.length) {
+        const item = preparedMessagesResult[i];
 
         // Generate border color if inter-agent communication
         // Use the message's own nodeId so each agent gets a unique color
@@ -2079,10 +1258,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             const group: PreparedMessage[] = [item];
             let j = i + 1;
             while (
-              j < preparedMessages.length &&
-              isWorkGroupItem(preparedMessages[j])
+              j < preparedMessagesResult.length &&
+              isWorkGroupItem(preparedMessagesResult[j])
             ) {
-              group.push(preparedMessages[j]);
+              group.push(preparedMessagesResult[j]);
               j++;
             }
             const hasCommExec =
@@ -2125,10 +1304,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             const group: PreparedMessage[] = [item];
             let j = i + 1;
             while (
-              j < preparedMessages.length &&
-              isWorkGroupItem(preparedMessages[j])
+              j < preparedMessagesResult.length &&
+              isWorkGroupItem(preparedMessagesResult[j])
             ) {
-              group.push(preparedMessages[j]);
+              group.push(preparedMessagesResult[j]);
               j++;
             }
             const hasCommExec =
@@ -2327,7 +1506,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       prevProps.messages === nextProps.messages ||
       (prevProps.messages.length === nextProps.messages.length &&
         prevProps.messages.every(
-          (msg, idx) => msg.id === nextProps.messages[idx]?.id,
+          (msg, idx) =>
+            msg.id === nextProps.messages[idx]?.id &&
+            msg.message === nextProps.messages[idx]?.message,
         ));
 
     const pendingMessagesEqual =
@@ -2346,7 +1527,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       prevProps.messagesLoading === nextProps.messagesLoading &&
       prevProps.selectedThreadId === nextProps.selectedThreadId &&
       prevProps.nodeId === nextProps.nodeId &&
+      prevProps.nodeDisplayNames === nextProps.nodeDisplayNames &&
+      prevProps.showNodeHeadings === nextProps.showNodeHeadings &&
       prevProps.isAgentNode === nextProps.isAgentNode &&
+      prevProps.nodeTemplateKind === nextProps.nodeTemplateKind &&
       prevProps.hasMoreMessages === nextProps.hasMoreMessages &&
       prevProps.loadingMore === nextProps.loadingMore &&
       prevProps.isNodeRunning === nextProps.isNodeRunning &&
@@ -2358,5 +1542,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     );
   },
 );
+
+ThreadMessagesView.displayName = 'ThreadMessagesView';
 
 export default ThreadMessagesView;

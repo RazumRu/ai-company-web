@@ -759,3 +759,5 @@ export const CustomNode = React.memo(
     );
   },
 );
+
+CustomNode.displayName = 'CustomNode';
