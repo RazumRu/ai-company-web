@@ -18,7 +18,16 @@ import {
   useReactFlow,
   Viewport,
 } from '@xyflow/react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   GraphDtoStatusEnum,
@@ -35,6 +44,27 @@ import {
   makeHandleId,
 } from '../utils/graphCanvasUtils';
 import { CustomNode } from './CustomNode';
+
+// Context for frequently-changing data that CustomNode needs, so nodeTypes
+// doesn't have to be recreated (which causes ReactFlow to remount all nodes).
+interface NodeDynamicContext {
+  compiledNodes?: Record<string, GraphNodeWithStatusDto>;
+  compiledNodesLoading?: boolean;
+  connectionPreview: ConnectionPreview | null;
+  onNodeEdit: (node: GraphNode) => void;
+  onNodeDelete: (nodeId: string) => void;
+}
+
+const noop = () => {};
+export const NodeDynamicCtx = createContext<NodeDynamicContext>({
+  compiledNodes: undefined,
+  compiledNodesLoading: false,
+  connectionPreview: null,
+  onNodeEdit: noop as (node: GraphNode) => void,
+  onNodeDelete: noop as (nodeId: string) => void,
+});
+
+export const useNodeDynamicCtx = () => useContext(NodeDynamicCtx);
 
 interface GraphCanvasProps {
   nodes: GraphNode[];
@@ -96,8 +126,8 @@ const GraphCanvasInner = ({
     setReactFlowViewport(initialViewport);
   }, [initialViewport, getViewport, setReactFlowViewport]);
 
-  // Memoize nodeTypes to prevent recreation on every render
-  // Only recreate when templates, graphStatus, or compiledNodesLoading change
+  // nodeTypes is now stable — compiledNodes and connectionPreview are
+  // delivered via NodeDynamicCtx so changes don't cause node remounts.
   const nodeTypes = useMemo<NodeTypes>(
     () => ({
       custom: (p) => (
@@ -106,34 +136,46 @@ const GraphCanvasInner = ({
           templates={templates}
           graphStatus={graphStatus}
           onTriggerClick={onTriggerClick}
-          compiledNode={compiledNodes?.[p.id]}
-          compiledNodesLoading={compiledNodesLoading}
-          connectionPreview={connectionPreview}
         />
       ),
     }),
-    [
-      templates,
-      graphStatus,
-      compiledNodes,
-      compiledNodesLoading,
-      onTriggerClick,
-      connectionPreview,
-    ],
+    [templates, graphStatus, onTriggerClick],
   );
 
-  // Memoize enhancedNodes to prevent recreation on every render
-  // Only recreate when nodes array or callbacks change
-  const enhancedNodes = useMemo(() => {
-    return nodes.map((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        onEdit: () => onNodeEdit(node),
-        onDelete: () => onNodeDelete(node.id),
-      },
-    }));
-  }, [nodes, onNodeEdit, onNodeDelete]);
+  // Store stable refs so the context value doesn't change on every render.
+  const onNodeEditRef = useRef(onNodeEdit);
+  onNodeEditRef.current = onNodeEdit;
+  const onNodeDeleteRef = useRef(onNodeDelete);
+  onNodeDeleteRef.current = onNodeDelete;
+
+  // Stable callbacks that read from refs — identity never changes.
+  const stableOnNodeEdit = useCallback(
+    (node: GraphNode) => onNodeEditRef.current(node),
+    [],
+  );
+  const stableOnNodeDelete = useCallback(
+    (nodeId: string) => onNodeDeleteRef.current(nodeId),
+    [],
+  );
+
+  // Context value for dynamic per-frame data (compiled status, connection preview)
+  // and stable edit/delete callbacks.
+  const dynamicCtx = useMemo<NodeDynamicContext>(
+    () => ({
+      compiledNodes,
+      compiledNodesLoading,
+      connectionPreview,
+      onNodeEdit: stableOnNodeEdit,
+      onNodeDelete: stableOnNodeDelete,
+    }),
+    [
+      compiledNodes,
+      compiledNodesLoading,
+      connectionPreview,
+      stableOnNodeEdit,
+      stableOnNodeDelete,
+    ],
+  );
 
   const normalizeRule = useCallback(
     (rule: {
@@ -246,35 +288,6 @@ const GraphCanvasInner = ({
               .join('; ');
             onValidationError?.(errorMessage);
             return;
-          }
-
-          const sourceTemplate = templates.find(
-            (t) => t.id === sourceNode.data.template,
-          );
-          const targetTemplate = templates.find(
-            (t) => t.id === targetNode.data.template,
-          );
-
-          if (sourceTemplate && targetTemplate) {
-            const sourceRequiredConnections =
-              sourceTemplate.inputs?.filter((rule) => rule.required) || [];
-            const satisfiesRequired = sourceRequiredConnections.some((rule) => {
-              if (rule.type === 'kind' && targetTemplate.kind === rule.value) {
-                return true;
-              } else if (
-                rule.type === 'template' &&
-                targetTemplate.id === rule.value
-              ) {
-                return true;
-              }
-              return false;
-            });
-
-            if (satisfiesRequired) {
-              console.log(
-                `Required connection satisfied: ${sourceNode.data.label} -> ${targetNode.data.label}`,
-              );
-            }
           }
         }
       }
@@ -411,42 +424,44 @@ const GraphCanvasInner = ({
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        overscrollBehavior: 'none',
-        overscrollBehaviorX: 'none',
-      }}>
-      <ReactFlow
-        nodes={enhancedNodes as Node[]}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onConnectStart={handleConnectStart}
-        onConnectEnd={clearConnectionPreview}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onNodeClick={handleNodeClick}
-        onNodeDoubleClick={handleNodeDoubleClick}
-        onPaneClick={handlePaneClick}
-        onViewportChange={handleViewportChange}
-        nodeTypes={nodeTypes}
-        fitView={!initialViewport}
-        deleteKeyCode={['Delete', 'Backspace']}
-        defaultViewport={initialViewport}
-        minZoom={0.1}
-        maxZoom={4}
-        panOnScroll
-        panOnScrollMode={PanOnScrollMode.Free}
-        zoomOnScroll={false}>
-        <Controls />
-        <MiniMap style={miniMapStyle} nodeColor={miniMapNodeColor} />
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-      </ReactFlow>
-    </div>
+    <NodeDynamicCtx.Provider value={dynamicCtx}>
+      <div
+        ref={containerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          overscrollBehavior: 'none',
+          overscrollBehaviorX: 'none',
+        }}>
+        <ReactFlow
+          nodes={nodes as Node[]}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onConnectStart={handleConnectStart}
+          onConnectEnd={clearConnectionPreview}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onNodeClick={handleNodeClick}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          onPaneClick={handlePaneClick}
+          onViewportChange={handleViewportChange}
+          nodeTypes={nodeTypes}
+          fitView={!initialViewport}
+          deleteKeyCode={['Delete', 'Backspace']}
+          defaultViewport={initialViewport}
+          minZoom={0.1}
+          maxZoom={4}
+          panOnScroll
+          panOnScrollMode={PanOnScrollMode.Free}
+          zoomOnScroll={false}>
+          <Controls />
+          <MiniMap style={miniMapStyle} nodeColor={miniMapNodeColor} />
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        </ReactFlow>
+      </div>
+    </NodeDynamicCtx.Provider>
   );
 };
 
@@ -454,8 +469,6 @@ const GraphCanvasInner = ({
 const MemoizedGraphCanvasInner = memo(
   GraphCanvasInner,
   (prevProps, nextProps) => {
-    // Only rerender if these specific props change
-    // compiledNodes is intentionally omitted - it's accessed dynamically by node ID
     return (
       prevProps.nodes === nextProps.nodes &&
       prevProps.edges === nextProps.edges &&
@@ -473,8 +486,8 @@ const MemoizedGraphCanvasInner = memo(
       prevProps.graphStatus === nextProps.graphStatus &&
       prevProps.onTriggerClick === nextProps.onTriggerClick &&
       prevProps.onValidationError === nextProps.onValidationError &&
+      prevProps.compiledNodes === nextProps.compiledNodes &&
       prevProps.compiledNodesLoading === nextProps.compiledNodesLoading
-      // compiledNodes prop is intentionally skipped in comparison
     );
   },
 );

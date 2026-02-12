@@ -120,12 +120,7 @@ const stripNodeDataCallbacks = (data: unknown): Record<string, unknown> => {
   if (!data || typeof data !== 'object') {
     return {};
   }
-  const {
-    onEdit: _onEdit,
-    onDelete: _onDelete,
-    ...rest
-  } = data as Record<string, unknown>;
-  return rest;
+  return data as Record<string, unknown>;
 };
 
 export const normalizeGraphDiffSnapshot = (state: GraphDiffState) => {

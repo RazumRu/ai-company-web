@@ -1,6 +1,13 @@
 import type { Viewport } from '@xyflow/react';
 import { isEqual } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import type { GraphEdge, GraphNode } from '../pages/graphs/types';
 import { GraphStorageService } from '../services/GraphStorageService';
@@ -29,6 +36,9 @@ export interface UseGraphDraftStateOptions {
   graphId: string;
   serverState: GraphDraftState;
   onStateChange?: (state: GraphDraftState) => void;
+  /** Ref holding the latest ReactFlow viewport (updated on every pan/zoom).
+   *  Used by persistDraft so saved drafts always contain the real viewport. */
+  viewportRef?: RefObject<Viewport>;
 }
 
 export interface UseGraphDraftStateReturn {
@@ -38,7 +48,6 @@ export interface UseGraphDraftStateReturn {
   // Update functions
   updateNodes: (nodes: GraphNode[]) => void;
   updateEdges: (edges: GraphEdge[]) => void;
-  updateViewport: (viewport: Viewport) => void;
   updateSelectedThread: (threadId?: string) => void;
   updateGraphName: (name: string) => void;
   updateNodeConfig: (
@@ -84,16 +93,6 @@ function deepSortKeys(obj: unknown): unknown {
  * Strips callbacks and React Flow internal properties, sorts arrays deterministically.
  */
 function normalizeState(state: GraphDraftState): GraphDraftState {
-  const stripCallbacks = (data: unknown): unknown => {
-    if (!data || typeof data !== 'object') return data;
-    const {
-      onEdit: _onEdit,
-      onDelete: _onDelete,
-      ...rest
-    } = data as Record<string, unknown>;
-    return rest;
-  };
-
   return {
     nodes: state.nodes
       .map((node) => {
@@ -108,8 +107,7 @@ function normalizeState(state: GraphDraftState): GraphDraftState {
           height: _height,
           ...coreNode
         } = node;
-        const strippedData = stripCallbacks(node.data);
-        const strippedDataRecord = strippedData as Record<string, unknown>;
+        const strippedDataRecord = node.data as Record<string, unknown>;
         const normalizedData = {
           label: strippedDataRecord.label,
           template: strippedDataRecord.template,
@@ -143,18 +141,14 @@ function normalizeState(state: GraphDraftState): GraphDraftState {
 }
 
 /**
- * Normalizes state but EXCLUDES viewport and baseVersion for "unsaved changes" comparison.
+ * Strips viewport and baseVersion from an already-normalized state for comparison.
  * Viewport changes (pan/zoom) and version metadata should not be considered "unsaved changes".
+ * NOTE: Expects pre-normalized input — call normalizeState() first if needed.
  */
-function normalizeStateWithoutViewport(
+function stripViewportAndVersion(
   state: GraphDraftState,
 ): Omit<GraphDraftState, 'viewport' | 'baseVersion'> {
-  const normalized = normalizeState(state);
-  const {
-    viewport: _viewport,
-    baseVersion: _baseVersion,
-    ...rest
-  } = normalized;
+  const { viewport: _viewport, baseVersion: _baseVersion, ...rest } = state;
   return rest;
 }
 
@@ -185,6 +179,7 @@ export function useGraphDraftState({
   graphId,
   serverState,
   onStateChange,
+  viewportRef: externalViewportRef,
 }: UseGraphDraftStateOptions): UseGraphDraftStateReturn {
   // Store normalized server baseline as state so it can be read during render
   const serverBaselineRef = useRef<GraphDraftState>(
@@ -204,8 +199,18 @@ export function useGraphDraftState({
     // On mount, apply any stored local changes to server state
     const stored = GraphStorageService.loadDraft(graphId);
     if (!stored) return serverState;
+
+    // Always prefer the separately-saved viewport (written on every pan/zoom)
+    // over the viewport inside the structural draft (only written when
+    // nodes/edges change via persistDraft, so it can be stale).
+    const freshViewport = GraphStorageService.loadViewport(graphId);
+
     // Merge to ensure newly added fields (e.g. graphName) default to server baseline
-    return { ...serverState, ...stored };
+    return {
+      ...serverState,
+      ...stored,
+      viewport: freshViewport ?? stored.viewport,
+    };
   });
 
   // Notify parent whenever draft state changes
@@ -221,10 +226,10 @@ export function useGraphDraftState({
       setNormalizedServerBaseline(normalized);
 
       // If we have no local changes, sync draft to server
+      // If we have no local changes, sync draft to server
       const currentDraft = GraphStorageService.loadDraft(graphId);
       if (!currentDraft) {
         setDraftState(newServerState);
-        // The useEffect will handle calling onStateChange
       } else {
         // Keep local draft changes, but backfill any newly added fields from server baseline
         // (e.g. graphName introduced after an API/schema update).
@@ -240,69 +245,78 @@ export function useGraphDraftState({
       const normalized = normalizeState(state);
       const baseline = serverBaselineRef.current;
 
-      // Compare without viewport - we only persist meaningful changes
-      const normalizedWithoutViewport =
-        normalizeStateWithoutViewport(normalized);
-      const baselineWithoutViewport = normalizeStateWithoutViewport(baseline);
+      // Always use the latest ReactFlow viewport (from the ref) when persisting,
+      // because the viewport inside draftState can be stale — ReactFlow viewport
+      // changes are saved directly via GraphStorageService.saveViewport and don't
+      // go through applyDraft.
+      const latestViewport =
+        externalViewportRef?.current ?? normalized.viewport;
 
-      // If draft matches server (excluding viewport), clear local storage
+      // Compare without viewport - we only persist meaningful changes
+      const normalizedWithoutViewport = stripViewportAndVersion(normalized);
+      const baselineWithoutViewport = stripViewportAndVersion(baseline);
+
+      // Always persist the latest viewport so pan/zoom is restored on reload.
+      GraphStorageService.saveViewport(graphId, latestViewport);
+
+      // If draft matches server (excluding viewport), clear the structural draft.
       if (
         JSON.stringify(normalizedWithoutViewport) ===
         JSON.stringify(baselineWithoutViewport)
       ) {
         GraphStorageService.clearDraft(graphId);
       } else {
-        // Save with viewport included (so viewport is restored on reload)
-        GraphStorageService.saveDraft(graphId, normalized);
+        // Save structural draft with latest viewport included
+        GraphStorageService.saveDraft(graphId, {
+          ...normalized,
+          viewport: latestViewport,
+        });
       }
     },
-    [graphId],
+    [graphId, externalViewportRef],
   );
 
-  // Update draft state helper
-  const updateDraft = useCallback(
-    (newState: GraphDraftState) => {
-      setDraftState(newState);
-      persistDraft(newState);
-      onStateChange?.(newState);
+  // Update draft state helper — uses functional setState to avoid stale closures.
+  // Only the useEffect on draftState (line 212) calls onStateChange, so we don't
+  // call it here to avoid double-firing.
+  const applyDraft = useCallback(
+    (updater: (prev: GraphDraftState) => GraphDraftState) => {
+      setDraftState((prev) => {
+        const next = updater(prev);
+        persistDraft(next);
+        return next;
+      });
     },
-    [persistDraft, onStateChange],
+    [persistDraft],
   );
 
-  // Update functions
+  // Update functions — all use functional updates so they never capture stale draftState
   const updateNodes = useCallback(
     (nodes: GraphNode[]) => {
-      updateDraft({ ...draftState, nodes });
+      applyDraft((prev) => ({ ...prev, nodes }));
     },
-    [draftState, updateDraft],
+    [applyDraft],
   );
 
   const updateEdges = useCallback(
     (edges: GraphEdge[]) => {
-      updateDraft({ ...draftState, edges });
+      applyDraft((prev) => ({ ...prev, edges }));
     },
-    [draftState, updateDraft],
-  );
-
-  const updateViewport = useCallback(
-    (viewport: Viewport) => {
-      updateDraft({ ...draftState, viewport });
-    },
-    [draftState, updateDraft],
+    [applyDraft],
   );
 
   const updateSelectedThread = useCallback(
     (threadId?: string) => {
-      updateDraft({ ...draftState, selectedThreadId: threadId });
+      applyDraft((prev) => ({ ...prev, selectedThreadId: threadId }));
     },
-    [draftState, updateDraft],
+    [applyDraft],
   );
 
   const updateGraphName = useCallback(
     (name: string) => {
-      updateDraft({ ...draftState, graphName: name });
+      applyDraft((prev) => ({ ...prev, graphName: name }));
     },
-    [draftState, updateDraft],
+    [applyDraft],
   );
 
   const updateNodeConfig = useCallback(
@@ -310,26 +324,28 @@ export function useGraphDraftState({
       nodeId: string,
       updates: { name?: string; config?: Record<string, unknown> },
     ) => {
-      const updatedNodes = draftState.nodes.map((node: GraphNode) => {
-        if (node.id !== nodeId) return node;
+      applyDraft((prev) => {
+        const updatedNodes = prev.nodes.map((node: GraphNode) => {
+          if (node.id !== nodeId) return node;
 
-        const currentData = node.data as Record<string, unknown>;
-        const newData = { ...currentData };
+          const currentData = node.data as Record<string, unknown>;
+          const newData = { ...currentData };
 
-        if (updates.name !== undefined) {
-          newData.label = updates.name;
-        }
+          if (updates.name !== undefined) {
+            newData.label = updates.name;
+          }
 
-        if (updates.config !== undefined) {
-          newData.config = updates.config;
-        }
+          if (updates.config !== undefined) {
+            newData.config = updates.config;
+          }
 
-        return { ...node, data: newData };
+          return { ...node, data: newData };
+        });
+
+        return { ...prev, nodes: updatedNodes };
       });
-
-      updateDraft({ ...draftState, nodes: updatedNodes });
     },
-    [draftState, updateDraft],
+    [applyDraft],
   );
 
   // Diff computation
@@ -342,9 +358,8 @@ export function useGraphDraftState({
 
   const hasUnsavedChanges = useMemo(() => {
     // Compare without viewport - viewport changes (pan/zoom) are not "unsaved changes"
-    const draftWithoutViewport = normalizeStateWithoutViewport(normalizedDraft);
-    const serverWithoutViewport =
-      normalizeStateWithoutViewport(normalizedServer);
+    const draftWithoutViewport = stripViewportAndVersion(normalizedDraft);
+    const serverWithoutViewport = stripViewportAndVersion(normalizedServer);
     const hasChanges =
       JSON.stringify(draftWithoutViewport) !==
       JSON.stringify(serverWithoutViewport);
@@ -428,20 +443,19 @@ export function useGraphDraftState({
 
   // Operations
   const resetToServer = useCallback(() => {
-    updateDraft(serverBaselineRef.current);
-  }, [updateDraft]);
+    applyDraft(() => serverBaselineRef.current);
+  }, [applyDraft]);
 
   const clearAllChanges = useCallback(() => {
     GraphStorageService.clearDraft(graphId);
     setDraftState(serverBaselineRef.current);
-    onStateChange?.(serverBaselineRef.current);
-  }, [graphId, onStateChange]);
+    // The useEffect on draftState will call onStateChange
+  }, [graphId]);
 
   return {
     draftState,
     updateNodes,
     updateEdges,
-    updateViewport,
     updateSelectedThread,
     updateGraphName,
     updateNodeConfig,

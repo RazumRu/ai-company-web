@@ -4,7 +4,6 @@ import {
   type MutableRefObject,
   type SetStateAction,
   useEffect,
-  useRef,
 } from 'react';
 import { type NavigateFunction } from 'react-router';
 
@@ -46,9 +45,6 @@ export const useGraphLoader = ({
   setEdges,
   setServerGraphState,
 }: UseGraphLoaderOptions) => {
-  // Track whether the initial load has completed
-  const loadedRef = useRef(false);
-
   useEffect(() => {
     if (!graphId) return;
 
@@ -87,10 +83,10 @@ export const useGraphLoader = ({
         const reactFlowNodes = builtState.nodes;
         const reactFlowEdges = builtState.edges;
 
-        // Prioritize localStorage viewport over server metadata
-        const storedViewport = !GraphStorageService.hasDraft(graphId)
-          ? GraphStorageService.loadViewport(graphId)
-          : null;
+        // Always prefer the dedicated viewport key (written on every pan/zoom)
+        // over server metadata.  Previously this was skipped when a structural
+        // draft existed, but the draft's viewport can be stale.
+        const storedViewport = GraphStorageService.loadViewport(graphId);
 
         const serverState: GraphDiffState = {
           ...builtState,
@@ -172,10 +168,6 @@ export const useGraphLoader = ({
             );
           } else {
             // Only viewport/metadata changes - keep the draft but update baseVersion
-            console.log(
-              `Keeping draft (viewport-only changes): updating baseVersion from ${storedDraft.baseVersion} to ${graphData.version}`,
-            );
-            // Update the draft's baseVersion to match current server version
             GraphStorageService.saveDraft(graphId, {
               ...storedDraft,
               baseVersion: graphData.version,
@@ -186,7 +178,6 @@ export const useGraphLoader = ({
         // Update server baseline - the hook will automatically apply any stored local changes
         setServerGraphState(serverState);
         draftStateRef.current.updateServerBaseline(serverState);
-        loadedRef.current = true;
       } catch (e) {
         console.error('Error fetching graph:', e);
         const errorMessage = extractApiErrorMessage(e, 'Failed to load graph');

@@ -78,7 +78,9 @@ export const GraphPage = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<GraphEdge>([]);
   const [viewport, setViewport] = useState<Viewport>(() => {
     if (!id) return { x: 0, y: 0, zoom: 1 };
-    if (GraphStorageService.hasDraft(id)) return { x: 0, y: 0, zoom: 1 };
+    // Always load viewport from the dedicated viewport key — it's written on
+    // every pan/zoom and is always the most recent.  The structural draft's
+    // viewport can be stale (only updated when nodes/edges change).
     return GraphStorageService.loadViewport(id) ?? { x: 0, y: 0, zoom: 1 };
   });
   const viewportRef = useRef<Viewport>(viewport);
@@ -97,17 +99,11 @@ export const GraphPage = () => {
   // (e.g. edges update arriving before nodes update) can resurrect deleted nodes.
   const nextDraftChangeOriginRef = useRef<'draft' | 'reactflow'>('draft');
 
-  const pendingViewportSaveRef = useRef<Viewport | null>(null);
-  const viewportSaveRafRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (viewportSaveRafRef.current != null) {
-        cancelAnimationFrame(viewportSaveRafRef.current);
-        viewportSaveRafRef.current = null;
-      }
-    };
-  }, []);
+  // Track whether the graph has been loaded at least once.  Before that,
+  // draft state still holds the empty initial serverGraphState whose viewport
+  // is {0,0,1}.  We must not let that overwrite the viewport we loaded from
+  // localStorage on mount.
+  const graphLoadedRef = useRef(false);
 
   // Callback to sync draft state changes to React Flow
   const handleDraftStateChange = useCallback(
@@ -124,8 +120,18 @@ export const GraphPage = () => {
 
       setNodes(newState.nodes);
       setEdges(newState.edges);
-      setViewport(newState.viewport);
-      viewportRef.current = newState.viewport;
+
+      // Only sync viewport once the graph has loaded.  Before that the draft
+      // contains the empty initial state {0,0,1} which would overwrite the
+      // viewport we correctly restored from localStorage on mount.
+      // We detect "loaded" by checking if the draft has nodes — the initial
+      // empty serverGraphState has zero nodes.
+      if (graphLoadedRef.current || newState.nodes.length > 0) {
+        graphLoadedRef.current = true;
+        setViewport(newState.viewport);
+        viewportRef.current = newState.viewport;
+      }
+
       if (newState.selectedThreadId !== selectedThreadIdRef.current) {
         setSelectedThreadId(newState.selectedThreadId);
       }
@@ -142,6 +148,7 @@ export const GraphPage = () => {
     graphId: id || '',
     serverState: serverGraphState,
     onStateChange: handleDraftStateChange,
+    viewportRef,
   });
 
   // Ref for draft state to use in callbacks without recreating them
@@ -153,8 +160,6 @@ export const GraphPage = () => {
   const isHydratingRef = useRef(true);
   const userInteractedRef = useRef(false);
   const isSyncingFromDraftRef = useRef(false);
-  const nodeChangeQueueRef = useRef<NodeChange[]>([]);
-  const nodeChangeRafRef = useRef<number | null>(null);
 
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateDto | null>(
     null,
@@ -246,19 +251,9 @@ export const GraphPage = () => {
       if (loading) return;
       if (isSyncingFromDraftRef.current) return;
 
-      pendingViewportSaveRef.current = nextViewport;
-
-      if (viewportSaveRafRef.current != null) {
-        return;
-      }
-
-      viewportSaveRafRef.current = requestAnimationFrame(() => {
-        viewportSaveRafRef.current = null;
-        const vp = pendingViewportSaveRef.current;
-        if (!vp) return;
-
-        GraphStorageService.saveViewport(id, vp);
-      });
+      // Save synchronously so the viewport is never lost on reload.
+      // localStorage.setItem is fast enough to call on every viewport change.
+      GraphStorageService.saveViewport(id, nextViewport);
     },
     [id, loading],
   );
@@ -527,16 +522,6 @@ export const GraphPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, selectedNodeId]);
 
-  useEffect(
-    () => () => {
-      if (nodeChangeRafRef.current !== null) {
-        cancelAnimationFrame(nodeChangeRafRef.current);
-      }
-      nodeChangeQueueRef.current = [];
-    },
-    [],
-  );
-
   const handleValidationError = useCallback((error: string) => {
     message.error(`Connection validation failed: ${error}`);
   }, []);
@@ -750,6 +735,10 @@ export const GraphPage = () => {
     [triggerNodeId, id, threads, hasUnsavedChanges, handleSave],
   );
 
+  // Track whether a drag is in progress so we can skip parent state updates
+  // (which trigger full re-render cascades) until the drag ends.
+  const isDraggingRef = useRef(false);
+
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       // If nodes are being removed, also prune any incident edges immediately
@@ -793,66 +782,37 @@ export const GraphPage = () => {
         }
       }
 
+      // Detect drag state from position changes.
       const isDragging = changes.some(
         (change) =>
           change.type === 'position' &&
           (change as Extract<NodeChange, { type: 'position' }>).dragging,
       );
+      const wasDragging = isDraggingRef.current;
+      isDraggingRef.current = isDragging;
 
-      const enqueueChanges = () => {
-        nodeChangeQueueRef.current = [
-          ...nodeChangeQueueRef.current,
-          ...changes,
-        ];
-        if (nodeChangeRafRef.current === null) {
-          nodeChangeRafRef.current = requestAnimationFrame(() => {
-            const queue = nodeChangeQueueRef.current;
-            nodeChangeQueueRef.current = [];
-            nodeChangeRafRef.current = null;
-
-            if (queue.length === 0) return;
-
-            const mergedMap = new Map<string, NodeChange>();
-            const getChangeKey = (change: NodeChange) => {
-              const normalizedId =
-                'id' in change && typeof change.id === 'string'
-                  ? change.id
-                  : 'na';
-              if (change.type === 'dimensions') {
-                const dimensionsChange = change as Extract<
-                  NodeChange,
-                  { type: 'dimensions' }
-                >;
-                return `${change.type}-${normalizedId}-${dimensionsChange.resizing ?? ''}`;
-              }
-              return `${change.type}-${normalizedId}`;
-            };
-            queue.forEach((change) => {
-              const key = getChangeKey(change);
-              mergedMap.set(key, change);
-            });
-            baseOnNodesChange(Array.from(mergedMap.values()));
-          });
-        }
-      };
-
-      enqueueChanges();
+      // Always apply ALL changes to ReactFlow state so nodes move visually.
+      baseOnNodesChange(changes);
 
       if (isHydratingRef.current) return;
       if (!userInteractedRef.current) return;
-      if (isDragging) return;
-      if (isSyncingFromDraftRef.current) return; // Don't update draft if we're syncing FROM draft
+      if (isSyncingFromDraftRef.current) return;
+      if (removedNodeIds.length > 0) return;
 
-      // Update draft state with the new nodes after changes are applied.
-      // Use requestAnimationFrame so the read of nodesRef.current happens after
-      // ReactFlow has processed all pending changes for this frame.
-      requestAnimationFrame(() => {
+      // While dragging, skip draft persistence entirely — it triggers
+      // normalizeState + JSON.stringify + localStorage which is expensive.
+      // We'll persist once when the drag ends.
+      if (isDragging) return;
+
+      // Persist to draft after drag ends or after non-drag changes.
+      const persistToDraft = () => {
         if (isSyncingFromDraftRef.current) return;
-        // For remove events we already persisted the correct snapshots above.
-        if (removedNodeIds.length > 0) return;
         nextDraftChangeOriginRef.current = 'reactflow';
         draftStateRef.current.updateNodes(nodesRef.current);
-      });
+      };
+
+      // Wait one frame for React to commit the state update before reading nodesRef.
+      requestAnimationFrame(persistToDraft);
     },
     [baseOnNodesChange, setEdges],
   );

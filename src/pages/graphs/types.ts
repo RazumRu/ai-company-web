@@ -11,8 +11,6 @@ export interface GraphNodeData {
   templateKind?: string;
   templateSchema?: TemplateSchema;
   config: Record<string, unknown>;
-  onEdit?: () => void;
-  onDelete?: () => void;
 }
 
 export type GraphNode = Node;
