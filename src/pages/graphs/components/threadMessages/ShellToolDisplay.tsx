@@ -2,7 +2,7 @@ import { BarChartOutlined, CopyOutlined } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
 import { AnsiUp } from 'ansi_up';
-import { message, Popover, Space, Typography } from 'antd';
+import { App, Popover, Space, Typography } from 'antd';
 import isPlainObject from 'lodash/isPlainObject';
 import React, { useMemo, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -320,6 +320,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   requestTokenUsageOut,
   borderColor,
 }) => {
+  const { message } = App.useApp();
   const [commandExpanded, setCommandExpanded] = useState(false);
   const [outputExpanded, setOutputExpanded] = useState(false);
 

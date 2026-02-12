@@ -1,4 +1,3 @@
-import { message as antdMessage } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -16,6 +15,7 @@ import {
   type TriggerNodeInfo,
 } from '../../../utils/graphThreads';
 import type {
+  AntdMessageApi,
   DraftThread,
   GraphCacheEntry,
   ThreadStatusTabKey,
@@ -27,7 +27,12 @@ import {
   THREADS_PAGE_SIZE,
 } from '../utils/chatsPageUtils';
 
-export const useChatsThreadList = () => {
+interface UseChatsThreadListDeps {
+  antdMessage: AntdMessageApi;
+}
+
+export const useChatsThreadList = (deps: UseChatsThreadListDeps) => {
+  const { antdMessage } = deps;
   const [threads, setThreads] = useState<ThreadDto[]>([]);
   const [threadsOffset, setThreadsOffset] = useState(0);
   const [threadsHasMore, setThreadsHasMore] = useState(true);
@@ -299,7 +304,7 @@ export const useChatsThreadList = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [antdMessage]);
 
   // --- Cleanup WS subscriptions ---
 
@@ -343,7 +348,7 @@ export const useChatsThreadList = () => {
     return () => {
       mounted = false;
     };
-  }, [graphPickerOpen]);
+  }, [antdMessage, graphPickerOpen]);
 
   // --- Graph cache management ---
 
@@ -393,7 +398,7 @@ export const useChatsThreadList = () => {
         antdMessage.error(errorMessage);
       }
     },
-    [subscribeToGraph],
+    [antdMessage, subscribeToGraph],
   );
 
   useEffect(() => {
@@ -539,6 +544,7 @@ export const useChatsThreadList = () => {
       }
     },
     [
+      antdMessage,
       ensureGraphsLoaded,
       sortThreadsByTimestampDesc,
       graphFilterId,
@@ -630,7 +636,7 @@ export const useChatsThreadList = () => {
         antdMessage.error(errorMessage);
       }
     },
-    [selectedThreadId],
+    [antdMessage, selectedThreadId],
   );
 
   const createDraftThreadForGraph = useCallback(

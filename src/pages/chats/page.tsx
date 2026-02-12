@@ -6,6 +6,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import {
+  App,
   Button,
   Empty,
   Popover,
@@ -39,6 +40,8 @@ import { isDraftThreadId } from './utils/chatsPageUtils';
 const { Title, Text } = Typography;
 
 export const ChatsPage = () => {
+  const { message: antdMessage } = App.useApp();
+
   // --- Messages hook ---
   const {
     messages,
@@ -47,15 +50,16 @@ export const ChatsPage = () => {
     updatePendingMessages,
     externalThreadIds,
     setExternalThreadIds,
+    messageMeta,
     setMessageMeta,
     getMessageMeta,
     updateMessageMeta,
     loadMessagesForThread,
     loadMoreMessagesForThread,
-  } = useChatsMessages();
+  } = useChatsMessages({ antdMessage });
 
   // --- Thread list hook ---
-  const threadList = useChatsThreadList();
+  const threadList = useChatsThreadList({ antdMessage });
   const {
     threads,
     setThreads,
@@ -122,6 +126,7 @@ export const ChatsPage = () => {
     threadUsageStats,
     threadUsageStatsLoading,
   } = useChatsUsageStats({
+    antdMessage,
     selectedThread,
     selectedThreadId,
     selectedThreadIsDraft,
@@ -163,6 +168,7 @@ export const ChatsPage = () => {
 
   // --- Analysis hook ---
   const analysis = useChatsAnalysis({
+    antdMessage,
     selectedThread,
     selectedThreadId,
     selectedThreadIsDraft,
@@ -668,6 +674,7 @@ export const ChatsPage = () => {
                       graphCache[selectedThread.graphId]?.nodeDisplayNames
                     }
                     graphLoaded={Boolean(graphCache[selectedThread.graphId])}
+                    graphIsRunning={graphIsRunning}
                     onRequestThreadSwitch={handleThreadChatSwitchRequest}
                     isDraft={draftThread?.id === selectedThreadId}
                     onDraftMessageSent={applyThreadCreate}
@@ -676,19 +683,19 @@ export const ChatsPage = () => {
                     }
                     messagesLoading={
                       selectedThreadId
-                        ? getMessageMeta(selectedThreadId).loading
+                        ? (messageMeta[selectedThreadId]?.loading ?? false)
                         : false
                     }
                     hasMoreMessages={
                       selectedThreadId
                         ? isDraftThreadId(selectedThreadId)
                           ? false
-                          : getMessageMeta(selectedThreadId).hasMore
+                          : (messageMeta[selectedThreadId]?.hasMore ?? true)
                         : false
                     }
                     loadingMoreMessages={
                       selectedThreadId
-                        ? getMessageMeta(selectedThreadId).loadingMore
+                        ? (messageMeta[selectedThreadId]?.loadingMore ?? false)
                         : false
                     }
                     pendingMessages={

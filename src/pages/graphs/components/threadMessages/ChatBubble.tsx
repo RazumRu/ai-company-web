@@ -1,5 +1,5 @@
 import { CopyOutlined } from '@ant-design/icons';
-import { Avatar, message, Tooltip } from 'antd';
+import { App, Avatar, Tooltip } from 'antd';
 import React from 'react';
 
 interface ChatBubbleProps {
@@ -27,6 +27,8 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   containerStyle,
   copyContent,
 }) => {
+  const { message } = App.useApp();
+
   const handleCopy = async () => {
     if (!copyContent) return;
 

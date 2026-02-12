@@ -1,18 +1,22 @@
-import { message as antdMessage } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { threadsApi } from '../../../api';
 import { useThreadMessageStore } from '../../../hooks/useThreadMessageStore';
 import { extractApiErrorMessage } from '../../../utils/errors';
 import { mergeMessagesReplacingStreaming } from '../../../utils/threadMessages';
-import type { MessageMeta } from '../types';
+import type { AntdMessageApi, MessageMeta } from '../types';
 import {
   DEFAULT_MESSAGE_META,
   isDraftThreadId,
   THREAD_MESSAGES_PAGE_SIZE,
 } from '../utils/chatsPageUtils';
 
-export const useChatsMessages = () => {
+interface UseChatsMessagesDeps {
+  antdMessage: AntdMessageApi;
+}
+
+export const useChatsMessages = (deps: UseChatsMessagesDeps) => {
+  const { antdMessage } = deps;
   const {
     messages,
     updateMessages,
@@ -124,7 +128,13 @@ export const useChatsMessages = () => {
         }));
       }
     },
-    [getMessageMeta, updateMessageMeta, updateMessages, setExternalThreadIds],
+    [
+      antdMessage,
+      getMessageMeta,
+      updateMessageMeta,
+      updateMessages,
+      setExternalThreadIds,
+    ],
   );
 
   const loadMoreMessagesForThread = useCallback(
@@ -185,7 +195,7 @@ export const useChatsMessages = () => {
         }));
       }
     },
-    [getMessageMeta, updateMessageMeta, updateMessages],
+    [antdMessage, getMessageMeta, updateMessageMeta, updateMessages],
   );
 
   return {

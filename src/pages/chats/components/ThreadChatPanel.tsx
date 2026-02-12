@@ -6,6 +6,7 @@ import {
   XFilled,
 } from '@ant-design/icons';
 import {
+  App,
   Button,
   Dropdown,
   Input,
@@ -14,7 +15,6 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { message as antdMessage } from 'antd';
 import React, {
   useCallback,
   useEffect,
@@ -46,6 +46,7 @@ interface ThreadChatPanelProps {
   nodeDisplayNames?: Record<string, string>;
   templatesLoading?: boolean;
   graphLoaded?: boolean;
+  graphIsRunning?: boolean;
   onRequestThreadSwitch?: (externalThreadId: string | null) => void;
   isDraft?: boolean;
   onDraftMessageSent?: (newThread: ThreadDto) => void;
@@ -77,6 +78,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   nodeDisplayNames,
   templatesLoading = false,
   graphLoaded = true,
+  graphIsRunning = true,
   onRequestThreadSwitch,
   isDraft = false,
   onDraftMessageSent,
@@ -92,6 +94,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
   onUpdatePendingMessages,
   newMessageMode = 'wait_for_completion',
 }) => {
+  const { message: antdMessage } = App.useApp();
   const [selectedTriggerId, setSelectedTriggerId] = useState<
     string | undefined
   >(() => triggerNodes[0]?.id);
@@ -461,6 +464,12 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
               }
             } catch (error) {
               console.error('Error fetching thread by external ID:', error);
+              antdMessage.error(
+                extractApiErrorMessage(
+                  error,
+                  'Failed to load thread after sending message',
+                ),
+              );
             }
           }
         }, 2000);
@@ -680,11 +689,17 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
                 gap: 8,
               }}>
               <Input.TextArea
-                placeholder="Type your message..."
+                placeholder={
+                  !graphIsRunning
+                    ? 'Graph is not running'
+                    : 'Type your message...'
+                }
                 value={messageInput}
                 onChange={handleInputChange}
                 onPressEnter={handleInputEnter}
-                disabled={sendingMessage || !selectedTriggerId}
+                disabled={
+                  sendingMessage || !selectedTriggerId || !graphIsRunning
+                }
                 autoSize={{ minRows: 1, maxRows: 5 }}
                 style={{ flex: 1, resize: 'none', outline: 'none' }}
               />
@@ -712,7 +727,8 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
                   !messageInput.trim() ||
                   !selectedTriggerId ||
                   templatesLoading ||
-                  sendingMessage
+                  sendingMessage ||
+                  !graphIsRunning
                 }
                 style={{ flexShrink: 0 }}>
                 Send
@@ -830,6 +846,7 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       isThreadRunning,
       stoppingThread,
       templatesLoading,
+      graphIsRunning,
       triggerHelperText,
       handleInputChange,
       handleInputEnter,
