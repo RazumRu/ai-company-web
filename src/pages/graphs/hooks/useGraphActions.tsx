@@ -249,6 +249,11 @@ export const useGraphActions = ({
         // Update visual state with the new graph data
         const refreshedState = rebuildStateFromGraph(updatedGraph);
 
+        // Preserve the current viewport — the server response contains the
+        // viewport we sent during save which may be stale if the user
+        // panned/zoomed while the request was in flight.
+        refreshedState.viewport = viewportRef.current;
+
         // Clear all local changes
         draftStateRef.current.clearAllChanges();
 

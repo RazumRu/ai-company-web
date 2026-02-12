@@ -68,6 +68,10 @@ const ajv = new Ajv({
   allowUnionTypes: true,
   strict: false,
   useDefaults: true,
+  // Backend schemas may use format keywords (e.g. "email") that AJV does not
+  // recognise without ajv-formats.  Silently ignore them — the backend
+  // handles format validation itself.
+  validateFormats: false,
   // Backend schemas (especially tool specs) often disallow unknown keys.
   // Strip any additional properties during validation so we don't send fields
   // that the backend rejects (e.g. "must NOT have additional properties").
@@ -160,6 +164,16 @@ export class GraphValidationService {
       }
 
       const config = cloneJson(nodeData.config as Record<string, unknown>);
+
+      // Strip null values from config before validation — the form sets
+      // cleared fields to null, but AJV will reject null if the schema
+      // type is "string" etc.  Removing them lets AJV apply defaults and
+      // treat absent keys as optional.
+      for (const key of Object.keys(config)) {
+        if (config[key] === null || config[key] === undefined) {
+          delete config[key];
+        }
+      }
 
       // Ensure const values are present in the config we validate/send
       const props = (schema as { properties?: unknown })?.properties;

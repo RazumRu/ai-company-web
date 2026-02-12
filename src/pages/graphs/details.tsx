@@ -626,6 +626,7 @@ export const GraphPage = () => {
       draftStateRef,
       triggerStartedRef,
       pendingThreadSelectionRef,
+      viewportRef,
     },
   });
 

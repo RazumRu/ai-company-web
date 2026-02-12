@@ -83,7 +83,11 @@ function deepSortKeys(obj: unknown): unknown {
   Object.keys(obj as Record<string, unknown>)
     .sort()
     .forEach((key) => {
-      sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
+      const val = (obj as Record<string, unknown>)[key];
+      // Skip null/undefined keys so that {key: null} and {} are equivalent.
+      // This prevents phantom diffs when the server strips null config values.
+      if (val === null || val === undefined) return;
+      sorted[key] = deepSortKeys(val);
     });
   return sorted;
 }
@@ -162,7 +166,7 @@ function extractStructure(state: GraphDraftState) {
     nodes: state.nodes.map((n) => ({
       id: n.id,
       type: n.type,
-      data: n.data,
+      data: deepSortKeys(n.data),
     })),
     edges: state.edges.map((e) => ({
       id: e.id,

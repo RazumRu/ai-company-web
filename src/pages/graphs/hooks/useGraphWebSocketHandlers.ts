@@ -1,3 +1,4 @@
+import type { Viewport } from '@xyflow/react';
 import { message } from 'antd';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 
@@ -99,6 +100,7 @@ interface Refs {
   draftStateRef: MutableRefObject<UseGraphDraftStateReturn>;
   triggerStartedRef: MutableRefObject<boolean>;
   pendingThreadSelectionRef: MutableRefObject<string | null>;
+  viewportRef: MutableRefObject<Viewport>;
 }
 
 export interface UseGraphWebSocketHandlersOptions {
@@ -150,7 +152,12 @@ export const useGraphWebSocketHandlers = ({
     fetchCompiledNodes,
   } = revisionActions;
 
-  const { draftStateRef, triggerStartedRef, pendingThreadSelectionRef } = refs;
+  const {
+    draftStateRef,
+    triggerStartedRef,
+    pendingThreadSelectionRef,
+    viewportRef,
+  } = refs;
 
   useWebSocket({
     autoConnect: true,
@@ -664,6 +671,11 @@ export const useGraphWebSocketHandlers = ({
           } else {
             // No local changes - safely update everything
             const refreshedState = rebuildStateFromGraph(updatedGraph);
+
+            // Preserve the current viewport — the server response contains a
+            // round-tripped viewport that may be stale relative to the user's
+            // current pan/zoom position.
+            refreshedState.viewport = viewportRef.current;
 
             // Clear any potential draft state
             draftStateRef.current.clearAllChanges();

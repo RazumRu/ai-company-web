@@ -754,12 +754,17 @@ export const NodeEditSidebar = React.memo(
           }
 
           const rawValue: unknown = effectiveFormData[key];
+          // Only fall back to the saved config when the key is entirely absent
+          // from the form data (i.e. the form doesn't manage this field).
+          // When the user clears a select, RJSF emits the key as undefined —
+          // falling back to the old value would silently discard the change.
           const effectiveValue: unknown =
-            rawValue === undefined ? currentConfig[key] : rawValue;
+            key in effectiveFormData ? rawValue : currentConfig[key];
 
           const typeName = getSchemaTypeName(prop);
 
           if (isTrulyEmptyValue(effectiveValue, typeName)) {
+            configValues[key] = null;
             continue;
           }
 
