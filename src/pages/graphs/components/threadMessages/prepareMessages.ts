@@ -5,6 +5,7 @@ import { isBlankContent } from './messageUtils';
 import type {
   PreparedMessage,
   ShellResult,
+  SubagentStatistics,
   ToolCall,
 } from './threadMessagesTypes';
 import {
@@ -24,6 +25,19 @@ interface PrepareReadyMessagesOptions {
   isThreadStopped: boolean;
   currentThreadLastRunId?: string | null;
 }
+
+/** Extracts the model name from the first inner message that has __model set. */
+const extractSubagentModel = (
+  innerMessages: ThreadMessageDto[],
+): string | undefined => {
+  for (const inner of innerMessages) {
+    const additional = getAdditionalKwargs(inner.message);
+    if (typeof additional?.__model === 'string') {
+      return additional.__model;
+    }
+  }
+  return undefined;
+};
 
 export const prepareReadyMessages = (
   msgs: ThreadMessageDto[],
@@ -63,6 +77,43 @@ export const prepareReadyMessages = (
   const toolCallResultsById = buildToolCallResultIndex(msgs);
   const consumedToolCallIds = new Set<string>();
   const consumedToolMessageKeys = new Set<string>();
+
+  // Collect all subagents_run_task tool call IDs so only those are treated as
+  // subagent parents.  Without this, the recursive call would re-scan inner
+  // messages (which also carry __toolCallId) and skip them all.
+  const subagentToolCallIds = new Set<string>();
+  for (const msg of msgs) {
+    if ((msg.message?.role as string) !== 'ai') continue;
+    const tcs = getMessageValue<ToolCall[]>(msg.message, 'toolCalls');
+    if (!tcs) continue;
+    for (const tc of tcs) {
+      const tcName = tc.name || tc.function?.name;
+      if (tcName === 'subagents_run_task' && tc.id) {
+        subagentToolCallIds.add(tc.id);
+      }
+    }
+  }
+
+  // Pre-scan: group subagent inner messages by parent tool call ID
+  const subagentInnerByToolCallId = new Map<string, ThreadMessageDto[]>();
+  const subagentInnerMsgIds = new Set<string>();
+
+  for (const msg of msgs) {
+    const additional = getAdditionalKwargs(msg.message);
+    const parentToolCallId =
+      typeof additional?.__toolCallId === 'string'
+        ? additional.__toolCallId
+        : undefined;
+    if (parentToolCallId && subagentToolCallIds.has(parentToolCallId)) {
+      if (!subagentInnerByToolCallId.has(parentToolCallId)) {
+        subagentInnerByToolCallId.set(parentToolCallId, []);
+      }
+      subagentInnerByToolCallId.get(parentToolCallId)!.push(msg);
+      if (msg.id) subagentInnerMsgIds.add(msg.id);
+      const key = getToolMessageKey(msg);
+      if (key) subagentInnerMsgIds.add(key);
+    }
+  }
 
   const markToolMessageConsumed = (msg?: ThreadMessageDto) => {
     const key = getToolMessageKey(msg);
@@ -149,6 +200,17 @@ export const prepareReadyMessages = (
 
   while (i < msgs.length) {
     const m = msgs[i];
+
+    // Skip subagent inner messages — they are consumed into subagent blocks
+    const mToolKey = getToolMessageKey(m);
+    if (
+      (m.id && subagentInnerMsgIds.has(m.id)) ||
+      (mToolKey && subagentInnerMsgIds.has(mToolKey))
+    ) {
+      i++;
+      continue;
+    }
+
     const role = (m.message?.role as string) || '';
     const isInterAgent = isInterAgentCommunication(m);
     const sourceAgentNodeId = getSourceAgentNodeId(m);
@@ -240,6 +302,71 @@ export const prepareReadyMessages = (
         }
         const resultContent = matched?.message?.content;
         const toolArgs = tc.function?.arguments ?? tc.args;
+        const toolCallRunId =
+          getMessageRunId(m.message) ?? getMessageRunId(matched?.message);
+
+        // Subagent tool call → emit a 'subagent' prepared message
+        const isSubagentTool =
+          name === 'subagents_run_task' &&
+          tc.id &&
+          subagentInnerByToolCallId.has(tc.id);
+        if (isSubagentTool) {
+          const innerRawMessages = subagentInnerByToolCallId.get(tc.id!) ?? [];
+          const innerPrepared = prepareReadyMessages(innerRawMessages, options);
+
+          const resultObj = isPlainObject(resultContent)
+            ? (resultContent as Record<string, unknown>)
+            : null;
+          const statistics =
+            (resultObj?.statistics as SubagentStatistics) ?? undefined;
+          const resultText =
+            typeof resultObj?.result === 'string'
+              ? resultObj.result
+              : undefined;
+
+          const parsedArgs = argsToObject(toolArgs);
+          const taskDescription =
+            typeof parsedArgs?.task === 'string'
+              ? parsedArgs.task
+              : typeof parsedArgs?.prompt === 'string'
+                ? (parsedArgs.prompt as string)
+                : undefined;
+          const purpose =
+            typeof parsedArgs?.purpose === 'string'
+              ? parsedArgs.purpose
+              : undefined;
+          const agentId =
+            typeof parsedArgs?.agentId === 'string'
+              ? parsedArgs.agentId
+              : undefined;
+
+          const model = extractSubagentModel(innerRawMessages);
+
+          prepared.push({
+            type: 'subagent',
+            toolCallId: tc.id!,
+            purpose,
+            taskDescription,
+            agentId,
+            innerMessages: innerPrepared,
+            statistics,
+            resultText,
+            model,
+            status: matched
+              ? 'executed'
+              : allowCallingIndicators && isLatestRun(toolCallRunId)
+                ? 'calling'
+                : 'stopped',
+            id: `subagent-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
+            nodeId: matched?.nodeId ?? m.nodeId,
+            createdAt: m.createdAt,
+            inCommunicationExec: isInterAgent,
+            sourceAgentNodeId,
+          });
+          continue;
+        }
+
+        // Regular tool call
         const shellCmdFromArgs = extractShellCommandFromArgs(toolArgs);
         const resultObj = isPlainObject(resultContent)
           ? (resultContent as ShellResult)
@@ -249,8 +376,6 @@ export const prepareReadyMessages = (
         const toolOptions = argsToObject(toolArgs) || undefined;
         const matchedTitle = getMessageTitle(matched?.message);
         const effectiveTitle = matchedTitle || callTitle;
-        const toolCallRunId =
-          getMessageRunId(m.message) ?? getMessageRunId(matched?.message);
 
         const toolIsInterAgent = isInterAgent;
         const toolSourceAgentNodeId = sourceAgentNodeId;

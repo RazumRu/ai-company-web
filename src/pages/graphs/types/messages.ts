@@ -15,6 +15,9 @@ export type MessageAdditionalKwargs = Record<string, unknown> & {
   __isReportingMessage?: boolean;
 
   __context?: unknown;
+
+  // Subagent inner messages link back to parent tool call
+  __toolCallId?: string;
 };
 
 export interface PendingMessage {

@@ -34,6 +34,19 @@ export type MessagePayload = ThreadMessageDto['message'];
 
 export type ToolRenderStatus = 'calling' | 'executed' | 'stopped';
 
+export interface SubagentStatistics {
+  usage?: {
+    inputTokens?: number;
+    totalTokens?: number;
+    outputTokens?: number;
+    currentContext?: number;
+    totalPrice?: number;
+  };
+  toolCallsMade?: number;
+  totalIterations?: number;
+  totalPrice?: number;
+}
+
 export type PreparedMessage =
   | {
       type: 'system';
@@ -78,6 +91,23 @@ export type PreparedMessage =
       createdAt?: string;
       roleLabel?: string;
       title?: string;
+      inCommunicationExec?: boolean;
+      sourceAgentNodeId?: string;
+    }
+  | {
+      type: 'subagent';
+      toolCallId: string;
+      purpose?: string;
+      taskDescription?: string;
+      agentId?: string;
+      innerMessages: PreparedMessage[];
+      statistics?: SubagentStatistics;
+      resultText?: string;
+      model?: string;
+      status: ToolRenderStatus;
+      id: string;
+      nodeId?: string;
+      createdAt?: string;
       inCommunicationExec?: boolean;
       sourceAgentNodeId?: string;
     };

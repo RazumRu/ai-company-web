@@ -34,6 +34,7 @@ import { prepareReadyMessages } from './threadMessages/prepareMessages';
 import { ReasoningMessage } from './threadMessages/ReasoningMessage';
 import { renderFooterLineWithUsage } from './threadMessages/renderFooterLineWithUsage';
 import { ShellToolDisplay } from './threadMessages/ShellToolDisplay';
+import { SubagentBlock } from './threadMessages/SubagentBlock';
 import type {
   PreparedMessage,
   ToolRenderStatus,
@@ -130,6 +131,21 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     );
     const toggleWorkingBlock = useCallback((id: string) => {
       setExpandedWorkingIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }, []);
+
+    const [expandedSubagentIds, setExpandedSubagentIds] = useState<Set<string>>(
+      () => new Set(),
+    );
+    const toggleSubagentBlock = useCallback((id: string) => {
+      setExpandedSubagentIds((prev) => {
         const next = new Set(prev);
         if (next.has(id)) {
           next.delete(id);
@@ -414,6 +430,22 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }, 0);
       }
     }, [preparedMessagesResult, isWorkGroupItem, messagesLoading]);
+
+    // Auto-expand new subagent blocks by default
+    useEffect(() => {
+      const subagentIds = new Set<string>();
+      for (const item of preparedMessagesResult) {
+        if (item.type === 'subagent') {
+          subagentIds.add(`subagent-${item.id}`);
+        }
+      }
+
+      setExpandedSubagentIds((prev) => {
+        const newIds = Array.from(subagentIds).filter((id) => !prev.has(id));
+        if (newIds.length === 0) return prev;
+        return new Set([...prev, ...newIds]);
+      });
+    }, [preparedMessagesResult]);
 
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
@@ -1026,6 +1058,110 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       return parts.join(' | ');
     };
 
+    // Shared item renderer for working blocks and subagent blocks.
+    // Not wrapped in useCallback — only called during render, so memoisation
+    // would add overhead without benefit, and listing all closure deps is impractical.
+    const renderWorkingItem = (
+      it: PreparedMessage,
+      idx: number,
+    ): React.ReactNode => {
+      if (it.type === 'reasoning') {
+        const reasoningId = getReasoningIdentifier(it.message) ?? it.message.id;
+        return (
+          <div key={`work-reasoning-${it.id}-${idx}`}>
+            <ReasoningMessage
+              message={it.message}
+              isExpanded={expandedReasoningIds.has(reasoningId)}
+              onToggle={toggleReasoningMessage}
+              align="left"
+            />
+          </div>
+        );
+      }
+
+      if (it.type === 'tool') {
+        if (it.toolKind === 'shell') {
+          return (
+            <div key={`work-shell-${it.id}-${idx}`}>
+              {renderShellStatusLine(
+                it.name,
+                it.status,
+                it.result,
+                it.shellCommand,
+                it.toolOptions,
+                {
+                  nodeId: it.nodeId,
+                  createdAt: it.createdAt,
+                  roleLabel: it.roleLabel ?? it.name,
+                },
+                it.title,
+                it.requestTokenUsageIn,
+                it.requestTokenUsageOut,
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div key={`work-tool-${it.id}-${idx}`}>
+            {renderToolStatusLine(
+              it.name,
+              it.status,
+              it.result,
+              it.toolOptions,
+              it.title,
+              'left',
+              it.requestTokenUsageIn,
+              it.requestTokenUsageOut,
+            )}
+          </div>
+        );
+      }
+
+      if (it.type === 'chat') {
+        const content = formatMessageContent(it.message.message?.content);
+        if (isBlankContent(it.message.message?.content)) return null;
+        return (
+          <div
+            key={`work-chat-${it.id}-${idx}`}
+            style={{
+              padding: '6px 10px',
+              backgroundColor: '#ffffff',
+              borderRadius: 6,
+              border: '1px solid #f0f0f0',
+            }}>
+            <MarkdownContent
+              content={content}
+              style={{ fontSize: '13px', lineHeight: '1.4', color: '#333' }}
+            />
+          </div>
+        );
+      }
+
+      if (it.type === 'subagent') {
+        const subId = `subagent-${it.id}`;
+        return (
+          <div key={`work-subagent-${it.id}-${idx}`}>
+            <SubagentBlock
+              purpose={it.purpose}
+              taskDescription={it.taskDescription}
+              agentId={it.agentId}
+              model={it.model}
+              status={it.status}
+              innerMessages={it.innerMessages}
+              statistics={it.statistics}
+              resultText={it.resultText}
+              isExpanded={expandedSubagentIds.has(subId)}
+              onToggle={() => toggleSubagentBlock(subId)}
+              renderItem={renderWorkingItem}
+            />
+          </div>
+        );
+      }
+
+      return null;
+    };
+
     const renderPreparedMessages = () => {
       const rows: React.ReactNode[] = [];
       let i = 0;
@@ -1097,64 +1233,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         if (borderColor) {
           bubbleStyle.borderLeft = `3px solid ${borderColor}`;
         }
-
-        const renderWorkingItem = (it: PreparedMessage, idx: number) => {
-          if (it.type === 'reasoning') {
-            const reasoningId =
-              getReasoningIdentifier(it.message) ?? it.message.id;
-            return (
-              <div key={`work-reasoning-${it.id}-${idx}`}>
-                <ReasoningMessage
-                  message={it.message}
-                  isExpanded={expandedReasoningIds.has(reasoningId)}
-                  onToggle={toggleReasoningMessage}
-                  align="left"
-                />
-              </div>
-            );
-          }
-
-          if (it.type === 'tool') {
-            if (it.toolKind === 'shell') {
-              return (
-                <div key={`work-shell-${it.id}-${idx}`}>
-                  {renderShellStatusLine(
-                    it.name,
-                    it.status,
-                    it.result,
-                    it.shellCommand,
-                    it.toolOptions,
-                    {
-                      nodeId: it.nodeId,
-                      createdAt: it.createdAt,
-                      roleLabel: it.roleLabel ?? it.name,
-                    },
-                    it.title,
-                    it.requestTokenUsageIn,
-                    it.requestTokenUsageOut,
-                  )}
-                </div>
-              );
-            }
-
-            return (
-              <div key={`work-tool-${it.id}-${idx}`}>
-                {renderToolStatusLine(
-                  it.name,
-                  it.status,
-                  it.result,
-                  it.toolOptions,
-                  it.title,
-                  'left',
-                  it.requestTokenUsageIn,
-                  it.requestTokenUsageOut,
-                )}
-              </div>
-            );
-          }
-
-          return null;
-        };
 
         const handleWorkingToggle = () => {
           if (!isCollapsible) return;
@@ -1295,6 +1373,59 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
         if (item.type === 'chat') {
           pushRow(item.id, renderMessage(item.message, borderColor));
+          i++;
+          continue;
+        }
+
+        if (item.type === 'subagent') {
+          const subId = `subagent-${item.id}`;
+          const avatarSeedNodeId = item.nodeId ?? nodeId ?? undefined;
+          const subAvatarLabel = getAvatarInitials(
+            formatNodeLabel(avatarSeedNodeId) ?? undefined,
+          );
+          const subAvatarSrc = avatarSeedNodeId
+            ? getAgentAvatarDataUri(avatarSeedNodeId)
+            : undefined;
+          const subAgentName =
+            (avatarSeedNodeId && nodeDisplayNames?.[avatarSeedNodeId]) ||
+            (avatarSeedNodeId ? `Node ${avatarSeedNodeId.slice(-6)}` : 'Agent');
+
+          const subBubbleStyle: React.CSSProperties = {
+            backgroundColor: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            padding: '10px 12px',
+            width: '100%',
+            ...(borderColor
+              ? { borderLeft: `3px solid ${borderColor}` }
+              : undefined),
+          };
+
+          pushRow(
+            item.id,
+            <ChatBubble
+              isHuman={false}
+              avatarLabel={subAvatarLabel}
+              avatarColor="#722ed1"
+              avatarSrc={subAvatarSrc}
+              avatarTooltip={subAgentName}
+              containerStyle={{ width: '100%' }}
+              bubbleStyle={subBubbleStyle}>
+              <SubagentBlock
+                purpose={item.purpose}
+                taskDescription={item.taskDescription}
+                agentId={item.agentId}
+                model={item.model}
+                status={item.status}
+                innerMessages={item.innerMessages}
+                statistics={item.statistics}
+                resultText={item.resultText}
+                isExpanded={expandedSubagentIds.has(subId)}
+                onToggle={() => toggleSubagentBlock(subId)}
+                renderItem={renderWorkingItem}
+              />
+            </ChatBubble>,
+          );
           i++;
           continue;
         }
