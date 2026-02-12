@@ -1,126 +1,212 @@
+<div align="center">
+
 # AI Agent Graph Platform
 
-An open-source platform to build, run, and manage AI agent graphs.
+**Build, run, and manage AI agent automations through a visual graph editor.**
 
-![img.png](assets/readme_1.png)
-![img.png](assets/readme_2.png)
+[![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-4-646cff.svg)](https://vitejs.dev/)
+[![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A510-f69220.svg)](https://pnpm.io/)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A522-339933.svg)](https://nodejs.org/)
 
-## Overview
+</div>
 
-Front-end workspace for authoring and operating complex AI agent automations. Product teams can stitch together reusable triggers, agent templates, tools, resources, and runtimes into directed graphs, deploy them to production, and collaborate with human operators through a threaded chat experience. The interface wraps the platform APIs (REST + WebSockets), handles authentication, and provides visibility into every graph execution.
+---
 
-## Business Capabilities
+![Graph Studio](assets/readme_1.png)
 
-- **Drag-and-drop orchestration** – Visually assemble agent graphs with guardrails that validate connections, template compatibility, and required inputs.
-- **Template marketplace** – Browse approved triggers, agents, tools, resources, and runtimes, preview their schema, and drop them directly into a graph.
-- **Controlled deployments** – Compile, version, run, stop, or destroy graphs with a single click while keeping metadata, layout, and runtime status in sync.
-- **Thread-based execution** – Track each execution thread, inspect live node output, resend triggers, and escalate to human operators from the same screen.
-- **Conversation hub** – A dedicated Chats area aggregates every thread across graphs, supports multi-graph filtering, and surfaces real-time agent responses.
-- **Operational visibility** – Revision timelines, diff viewers, node state inspectors, and toast notifications highlight what changed and who triggered it.
-- **Enterprise-ready access** – Keycloak-backed SSO, project scoping, and API tokens flow through both REST calls and WebSocket subscriptions.
+![Conversation Hub](assets/readme_2.png)
 
-## Screens & Workflows
+## Table of Contents
 
-### Graph Library
+- [About](#about)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Docker](#docker)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
+- [Architecture](#architecture)
+  - [Authentication](#authentication)
+  - [Data Layer](#data-layer)
+  - [Real-time Updates](#real-time-updates)
+- [Contributing](#contributing)
+- [License](#license)
 
-- View every agent graph with status chips (Running/Stopped/Compiling/Error/Draft), version tags, and node counts.
-- Create graphs from scratch, duplicate existing ones, or archive unused flows.
-- Inline search and health stats help ops teams prioritize which automations need attention.
+## About
 
-### Graph Studio
+A visual workspace for authoring and operating AI agent automations. Teams can stitch together reusable triggers, agent templates, tools, resources, and runtimes into directed graphs, deploy them to production, and collaborate through a threaded chat experience with human-in-the-loop support. The interface wraps the platform APIs (REST + WebSockets), handles authentication, and provides visibility into every graph execution.
 
-- Canvas powered by `@xyflow/react` with zoom/pan, snap-to-grid, and autosave of viewport + layout in the browser (via `GraphStorageService`).
-- Template sidebar shows connection requirements, compatible inputs, and drag handles for each building block.
-- Node editing sidebar renders JSON-schema driven forms, key/value helpers, live node metadata, and execution transcripts.
-- Built-in revision history summarizes every save, surfaces diff previews, and highlights pending/applied/failed revisions.
-- Runtime controls (Save, Run, Stop) automatically sync with graph status and compiled node telemetry pushed over WebSockets.
+## Features
 
-### Conversation Hub
+- **Visual Graph Editor** -- Drag-and-drop canvas powered by xyflow with zoom, pan, snap-to-grid, and autosave. Guardrails validate connections, template compatibility, and required inputs in real time.
+- **Template Marketplace** -- Browse approved triggers, agents, tools, resources, and runtimes. Preview schemas and drop building blocks directly onto the canvas.
+- **One-Click Deployments** -- Compile, version, run, stop, or destroy graphs while keeping metadata, layout, and runtime status in sync.
+- **Thread-Based Execution** -- Track each execution thread, inspect live node output, resend triggers, and escalate to human operators from the same screen.
+- **Conversation Hub** -- A dedicated chat area aggregates every thread across graphs with multi-graph filtering and real-time streaming responses.
+- **Revision History** -- Timeline of every save with diff previews showing added/removed nodes. Status tracking: pending, applying, applied, failed.
+- **AI Suggestions** -- Get AI-powered recommendations for graph improvements.
+- **Enterprise SSO** -- Keycloak-backed authentication with project-scoped access control flowing through both REST and WebSocket connections.
 
-- Chats page lists all execution threads with status badges, associated graph names, creation timestamps, and per-thread actions.
-- Selecting a thread opens a full message timeline (including streaming/partial tokens) plus a prompt composer tied to the graph’s trigger nodes.
-- Operators can route a message through any trigger, reuse historical thread IDs, and jump back to the graph designer with deep links.
+## Tech Stack
 
-### Notifications & Revision Tracking
-
-- Socket.io listeners stream graph updates, node state changes, agent messages, revision lifecycle events, and thread mutations.
-- Toast notifications summarize compile/apply progress, trigger results, and failures so operators never miss a critical change.
-- Version badges keep designers aware of the last applied revision before starting a new run.
-
-## Architecture Snapshot
-
-- **Framework**: React 18 + Vite, organized with Refine (`@refinedev`) and Ant Design for layout, routing, data fetching, and notifications.
-- **Authentication**: Keycloak via `@react-keycloak/web`, propagating tokens to Axios and WebSocket headers.
-- **Data layer**: Autogenerated API clients (OpenAPI) for graphs, templates, threads, and revisions. Scripts keep the client in sync with the backend schema.
-- **Realtime**: Socket.io-based `WebSocketService` multiplexes graph subscriptions, thread updates, and revision events.
-- **State helpers**: `GraphStorageService` persists local canvas edits; validation utilities enforce template wiring rules; thread utilities merge streaming messages.
-- **Toolchain**: TypeScript, pnpm, Vite dev server, Semantic Release, and a production-ready Dockerfile.
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 18, Vite, TypeScript |
+| App Shell | [Refine](https://refine.dev/) (routing, data fetching, CRUD) |
+| UI | [Ant Design 5](https://ant.design/) |
+| Graph Editor | [@xyflow/react](https://xyflow.com/) |
+| Forms | [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) (JSON Schema driven) |
+| Real-time | Socket.io |
+| Auth | Keycloak via `@react-keycloak/web` |
+| API Client | Auto-generated from OpenAPI spec |
+| Markdown | `@uiw/react-md-editor`, `react-markdown` |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js ≥ 22
-- pnpm ≥ 10 (repo enforces the version in `package.json`)
-- Running instances of the AI Company API and Keycloak realm (defaults assume `localhost:5000` and `localhost:8082`)
+- **Node.js** >= 22
+- **pnpm** >= 10 (the repo enforces the version via `package.json`)
+- Running instances of the **AI Company API** and **Keycloak** realm (defaults assume `localhost:5000` and `localhost:8082`)
 
-### Local Setup
+### Installation
 
-1. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-2. **Configure endpoints**  
-   Update `src/config/development.ts` (or inject Vite env vars) with the API base URL, Keycloak realm details, and project ID.
-3. **Run the workspace**
-   ```bash
-   pnpm dev
-   ```
-   Refine will start the Vite dev server and open the app at the configured `WEBSITE_URL`.
-4. **Build for production**
-   ```bash
-   pnpm build
-   pnpm start   # serves the compiled assets with Refine’s preview server
-   ```
-5. **Containerize (optional)**  
-   Use the included `Dockerfile` to create a production image that serves the static `dist/` bundle.
+```bash
+# Clone the repository
+git clone https://github.com/your-org/ai-company-web.git
+cd ai-company-web
 
-### Configuration Keys
+# Install dependencies
+pnpm install
 
-| Key                                                      | Description                                        | Development default                                 |
-| -------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------- |
-| `API_URL`                                                | REST + WebSocket base URL for the platform backend | `http://localhost:5000`                             |
-| `KEYCLOAK_URL` / `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` | SSO entrypoint and client info                     | `http://localhost:8082`, `ai-company`, `ai-company` |
-| `PROJECT_ID`                                             | Refine project identifier (for devtools)           | `oA2Grn-tb5EdO-q4j17C`                              |
-| `WEBSITE_URL`                                            | Base URL where the web client is hosted            | `http://localhost:3004`                             |
+# Start the development server (port 5174)
+pnpm dev
+```
 
-Adjust the production equivalents in `src/config/production.ts` or swap in runtime environment variables during your build pipeline.
+The app will be available at `http://localhost:5174`.
 
-### Useful Scripts
+### Configuration
 
-- `pnpm dev` – Launch the Refine dev server with hot reload.
-- `pnpm build` – Type-check then compile the Vite bundle to `dist/`.
-- `pnpm start` – Serve the built assets (useful for smoke tests).
-- `pnpm generate:api` – Regenerate the typed API client from the backend’s Swagger spec (`SWAGGER_URL` must point to the JSON definition).
-- `pnpm up-versions` – Run the helper script under `scripts/` to safely upgrade dependencies.
+App configuration is code-driven and lives in `src/config/`. The active file is selected by `import.meta.env.MODE`:
 
-## Directory Guide
+| Key | Description | Dev Default |
+|-----|-------------|-------------|
+| `API_URL` | REST + WebSocket base URL | `http://localhost:5000` |
+| `KEYCLOAK_URL` | SSO endpoint | `http://localhost:8082` |
+| `KEYCLOAK_REALM` | Keycloak realm name | `ai-company` |
+| `KEYCLOAK_CLIENT_ID` | OAuth client ID | `ai-company` |
+| `WEBSITE_URL` | Client base URL | `http://localhost:3004` |
 
-- `src/pages/graphs/` – Graph list, detail view, canvas, node editor, trigger modal, template sidebar, and revision UI.
-- `src/pages/chats/` – Thread directory and chat panel that powers the conversation hub.
-- `src/services/` – WebSocket service, graph storage (local persistence), and validation helpers.
-- `src/components/` – Shared layout pieces such as the header and custom sidebar.
-- `src/hooks/useWebSocket.ts` – React hook wrappers for the WebSocket service and event listeners.
-- `src/config/` – Environment-specific app configuration.
-- `src/autogenerated/` – OpenAPI-generated REST client (rebuild via `pnpm generate:api`).
-- `scripts/` – Utility shell scripts for API generation and dependency upgrades.
+Edit `src/config/development.ts` for local work or `src/config/production.ts` for production. You can also inject Vite environment variables at build time:
 
-## Contributing & Next Steps
+```bash
+VITE_API_URL=https://api.example.com pnpm build
+```
 
-This front-end is intentionally decoupled from vendor-specific models so new triggers, agent templates, or tool integrations can be added by extending the backend catalog and regenerating the API client. To contribute:
+### Docker
 
-- Open a discussion or issue describing the feature or workflow pain point.
-- Keep UI/UX contributions focused on improving graph authoring, release management, or operator collaboration (chat, notifications, audits).
-- When backend endpoints change, re-run `pnpm generate:api` to keep typings fresh and document any new capabilities here.
+```bash
+# Build the production image
+docker build -t ai-company-web .
 
-With this workspace in place, teams can collaborate on AI automations, promote graphs into production confidently, and keep humans in the loop whenever agent threads need attention.
+# Run on port 80
+docker run -p 80:4173 ai-company-web
+```
+
+The multi-stage Dockerfile uses Node 22-alpine, builds with Vite, and serves the static `dist/` bundle.
+
+## Project Structure
+
+```
+src/
+├── autogenerated/       # OpenAPI-generated REST client (DO NOT EDIT)
+├── components/          # Shared layout (Header, Sidebar, Markdown)
+├── config/              # Environment configs (development, production)
+├── hooks/               # Shared React hooks (WebSocket, state)
+├── pages/
+│   ├── graphs/          # Graph list, studio, canvas, node editor, revisions
+│   │   ├── components/  # 27 graph-specific components
+│   │   ├── hooks/       # 8 custom hooks (WS handlers, state mgmt)
+│   │   ├── utils/       # Validation, canvas utilities
+│   │   └── types/       # TypeScript type definitions
+│   ├── chats/           # Conversation hub, thread panel
+│   ├── repositories/    # Git repository management
+│   ├── knowledge/       # Knowledge base editor
+│   └── main/            # Dashboard
+├── services/            # WebSocketService, GraphStorage, Validation
+└── utils/               # Thread utilities, avatars, colors, errors
+```
+
+## Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start the dev server with hot reload (port 5174) |
+| `pnpm build` | Type-check + compile the Vite bundle to `dist/` |
+| `pnpm start` | Serve the built assets for preview |
+| `pnpm full-check` | Build + lint (run before committing) |
+| `pnpm lint:fix` | Prettier + ESLint auto-fix |
+| `pnpm generate:api` | Regenerate the API client from backend Swagger spec |
+| `pnpm up-versions` | Upgrade dependencies via helper script |
+
+### Regenerating the API Client
+
+When backend endpoints change, regenerate the typed client:
+
+```bash
+SWAGGER_URL=http://localhost:5000/swagger-api-json pnpm generate:api
+pnpm lint:fix
+```
+
+## Architecture
+
+### Authentication
+
+Keycloak SSO via `@react-keycloak/web`. Tokens propagate to both Axios REST calls and WebSocket connections. Project-scoped access control is enforced throughout.
+
+### Data Layer
+
+- **REST**: Auto-generated OpenAPI TypeScript client (`src/autogenerated/`)
+- **CRUD**: Refine's `useList`, `useOne`, `useCreate`, etc.
+- **Local Persistence**: `GraphStorageService` saves canvas viewport and layout to localStorage
+
+### Real-time Updates
+
+Socket.io-based `WebSocketService` multiplexes these event streams:
+
+| Event | Purpose |
+|-------|---------|
+| `graphUpdate` | Graph status changes (Running / Stopped / Error) |
+| `graphCompile` | Compilation progress |
+| `revisionUpdate` | Revision lifecycle (pending / applying / applied / failed) |
+| `nodeStateUpdate` | Node execution state |
+| `threadMessage` | Agent messages including streaming tokens |
+| `threadUpdate` | Thread metadata changes |
+
+Subscribe via hooks: `useWebSocket`, `useGraphWebSocket`, `useThreadWebSocket`.
+
+## Contributing
+
+Contributions are welcome! This front-end is intentionally decoupled from vendor-specific models, so new triggers, agent templates, or tool integrations can be added by extending the backend catalog and regenerating the API client.
+
+1. **Open an issue** describing the feature or bug
+2. **Fork the repo** and create a feature branch
+3. **Make your changes** -- keep UI contributions focused on graph authoring, execution monitoring, or operator collaboration
+4. **Run `pnpm full-check`** to ensure the build and linter pass
+5. **Submit a pull request** with a clear description of your changes
+
+When backend endpoints change, re-run `pnpm generate:api` to keep typings in sync.
+
+See [`docs/readme.md`](docs/readme.md) for detailed development guidelines, debugging tips, and advanced configuration.
+
+## License
+
+This project is licensed under the [MIT License + Commons Clause](LICENSE).
+
+Copyright (c) 2026 Sergei Razumovskii
