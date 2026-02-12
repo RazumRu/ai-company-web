@@ -162,6 +162,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       if (item.type === 'tool') {
         return (item.name || '').toLowerCase() !== 'finish';
       }
+      // AI text content that accompanies tool calls belongs in the working block.
+      if (item.type === 'chat' && item.isToolCallContent) return true;
       return false;
     }, []);
 

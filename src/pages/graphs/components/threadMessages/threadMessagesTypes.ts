@@ -74,6 +74,10 @@ export type PreparedMessage =
       createdAt?: string;
       inCommunicationExec?: boolean;
       sourceAgentNodeId?: string;
+      /** When true this chat message is the AI text content of a message that
+       *  also contains tool calls — it should be rendered inside the working
+       *  block rather than as a standalone bubble. */
+      isToolCallContent?: boolean;
     }
   | {
       type: 'tool';

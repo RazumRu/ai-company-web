@@ -261,6 +261,9 @@ export const prepareReadyMessages = (
           createdAt: m.createdAt,
           inCommunicationExec: isInterAgent,
           sourceAgentNodeId,
+          // Mark as tool-call content so it renders inside the working block
+          // rather than as a standalone chat bubble.
+          isToolCallContent: true,
         });
       }
 
