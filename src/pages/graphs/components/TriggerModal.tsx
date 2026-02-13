@@ -8,13 +8,10 @@ const { Text } = Typography;
 interface TriggerModalProps {
   visible: boolean;
   onCancel: () => void;
-  onTrigger: (message: string, threadSubId?: string) => Promise<void>;
+  onTrigger: (message: string) => Promise<void>;
   nodeId?: string;
   nodeName?: string;
   loading?: boolean;
-  selectedThreadId?: string;
-  selectedThreadName?: string | null;
-  selectedThreadSource?: string | null;
 }
 
 export const TriggerModal = ({
@@ -24,9 +21,6 @@ export const TriggerModal = ({
   nodeId,
   nodeName,
   loading = false,
-  selectedThreadId,
-  selectedThreadName,
-  selectedThreadSource,
 }: TriggerModalProps) => {
   const [triggerMessage, setTriggerMessage] = useState('');
   const [showLongRunningHint, setShowLongRunningHint] = useState(false);
@@ -60,7 +54,7 @@ export const TriggerModal = ({
 
   const handleTrigger = async () => {
     if (triggerMessage.trim()) {
-      await onTrigger(triggerMessage, selectedThreadId);
+      await onTrigger(triggerMessage);
       setTriggerMessage('');
     }
   };
@@ -96,29 +90,6 @@ export const TriggerModal = ({
       ]}>
       <div style={{ marginBottom: 16 }}>
         <Text strong>Node: {nodeName || nodeId}</Text>
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <Text strong>Thread:</Text>
-        <div style={{ marginTop: 4 }}>
-          {!selectedThreadId ? (
-            <Text type="secondary">
-              No thread selected. A new thread will be created automatically on
-              first execution.
-            </Text>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <Text type="success">
-                Using selected thread: {selectedThreadName || selectedThreadId}
-              </Text>
-              {selectedThreadSource ? (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  Source: {selectedThreadSource}
-                </Text>
-              ) : null}
-            </div>
-          )}
-        </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>

@@ -21,7 +21,6 @@ import { buildGraphDiffState } from '../utils/graphPageUtils';
 interface UseGraphLoaderOptions {
   graphId: string | undefined;
   navigate: NavigateFunction;
-  selectedThreadIdRef: MutableRefObject<string | undefined>;
   draftStateRef: MutableRefObject<UseGraphDraftStateReturn>;
   setGraph: Dispatch<SetStateAction<GraphDto | null>>;
   setEditingName: Dispatch<SetStateAction<string>>;
@@ -35,7 +34,6 @@ interface UseGraphLoaderOptions {
 export const useGraphLoader = ({
   graphId,
   navigate,
-  selectedThreadIdRef,
   draftStateRef,
   setGraph,
   setEditingName,
@@ -49,7 +47,6 @@ export const useGraphLoader = ({
     if (!graphId) return;
 
     let mounted = true;
-    const currentSelectedThreadId = selectedThreadIdRef.current;
     (async () => {
       try {
         const templatesRes = await templatesApi.getAllTemplates();
@@ -76,9 +73,7 @@ export const useGraphLoader = ({
         setEditingName(effectiveGraphName);
 
         // Build nodes/edges/viewport from the server graph using the shared utility
-        const builtState = buildGraphDiffState(graphData, templatesList, {
-          selectedThreadId: currentSelectedThreadId,
-        });
+        const builtState = buildGraphDiffState(graphData, templatesList);
 
         const reactFlowNodes = builtState.nodes;
         const reactFlowEdges = builtState.edges;
@@ -105,7 +100,6 @@ export const useGraphLoader = ({
             nodes: pendingRevision.nodes,
             edges: pendingRevision.edges,
             viewport: pendingRevision.viewport,
-            selectedThreadId: currentSelectedThreadId,
             graphName: effectiveGraphName,
             baseVersion: pendingRevision.toVersion,
           };

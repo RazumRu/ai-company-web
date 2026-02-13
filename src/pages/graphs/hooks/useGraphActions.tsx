@@ -49,7 +49,6 @@ interface UseGraphActionsOptions {
   edges: GraphEdge[];
   templates: TemplateDto[];
   setEdges: (edges: GraphEdge[]) => void;
-  selectedThreadId: string | undefined;
   viewportRef: MutableRefObject<Viewport>;
   draftStateRef: MutableRefObject<UseGraphDraftStateReturn>;
   serverGraphState: GraphDiffState;
@@ -62,7 +61,6 @@ interface UseGraphActionsOptions {
   hasAgentNodes: boolean;
   userInteractedRef: MutableRefObject<boolean>;
   fetchCompiledNodes: (options?: {
-    threadId?: string;
     graphStatusOverride?: GraphDtoStatusEnum | null;
   }) => Promise<void>;
   navigate: NavigateFunction;
@@ -80,7 +78,6 @@ export const useGraphActions = ({
   edges,
   templates,
   setEdges,
-  selectedThreadId,
   viewportRef,
   draftStateRef,
   serverGraphState,
@@ -221,7 +218,7 @@ export const useGraphActions = ({
             nodes,
             edges,
             viewport: viewportRef.current,
-            selectedThreadId,
+
             graphName: updatedGraph.name,
             baseVersion: pendingToVersion,
             toVersion: pendingToVersion,
@@ -237,7 +234,7 @@ export const useGraphActions = ({
           nodes,
           edges,
           viewport: viewportRef.current,
-          selectedThreadId,
+          selectedThreadId: undefined,
           graphName: updatedGraph.name,
           baseVersion: updatedGraph.version,
         };
@@ -282,7 +279,6 @@ export const useGraphActions = ({
     id,
     nodes,
     rebuildStateFromGraph,
-    selectedThreadId,
     setEdges,
     setEditingName,
     setServerGraphState,
@@ -397,7 +393,6 @@ export const useGraphActions = ({
         setGraph(response.data);
         void fetchCompiledNodes({
           graphStatusOverride: response.data.status,
-          threadId: selectedThreadId,
         });
       } else {
         const response = await graphsApi.runGraph(id);
@@ -405,7 +400,6 @@ export const useGraphActions = ({
         setGraph(updatedGraph);
         void fetchCompiledNodes({
           graphStatusOverride: updatedGraph.status,
-          threadId: selectedThreadId,
         });
 
         if (updatedGraph.status === GraphDtoStatusEnum.Error) {
@@ -429,7 +423,7 @@ export const useGraphActions = ({
     } finally {
       setActionLoading(false);
     }
-  }, [fetchCompiledNodes, graph, id, selectedThreadId, setGraph]);
+  }, [fetchCompiledNodes, graph, id, setGraph]);
 
   const graphMenuItems = useMemo(
     () => [

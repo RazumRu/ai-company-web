@@ -13,37 +13,9 @@ import type {
   GraphNode,
   NodeMetadata,
 } from '../types';
-import type { MessageMeta } from '../types/graphPage';
 import { createEdge, resolveHandlesForNodes } from './graphCanvasUtils';
 
-export const REVISION_FETCH_LIMIT = 50;
-export const MESSAGE_PAGE_SIZE = 100;
-
-export const isDraftThreadId = (threadId?: string | null): boolean => {
-  return Boolean(threadId && threadId.startsWith('draft-'));
-};
-
-export const ensureThreadStatusPulseStyle = (() => {
-  let injected = false;
-  return () => {
-    if (injected || typeof document === 'undefined') return;
-    if (document.getElementById('thread-status-pulse-style')) {
-      injected = true;
-      return;
-    }
-    const style = document.createElement('style');
-    style.id = 'thread-status-pulse-style';
-    style.textContent = `
-      @keyframes thread-status-pulse {
-        0% { box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.45); }
-        70% { box-shadow: 0 0 0 8px rgba(24, 144, 255, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(24, 144, 255, 0); }
-      }
-    `;
-    document.head.appendChild(style);
-    injected = true;
-  };
-})();
+export const REVISION_FETCH_LIMIT = 10;
 
 export const ensureRevisionStatusPulseStyle = (() => {
   let injected = false;
@@ -126,7 +98,6 @@ const stripNodeDataCallbacks = (data: unknown): Record<string, unknown> => {
 export const normalizeGraphDiffSnapshot = (state: GraphDiffState) => {
   return {
     graphName: state.graphName ?? '',
-    selectedThreadId: state.selectedThreadId ?? null,
     nodes: state.nodes
       .map((node) => {
         const strippedData = stripNodeDataCallbacks(node.data);
@@ -160,13 +131,6 @@ export const normalizeGraphDiffSnapshot = (state: GraphDiffState) => {
   };
 };
 
-export const createDefaultMessageMeta = (): MessageMeta => ({
-  loading: false,
-  loadingMore: false,
-  hasMore: true,
-  offset: 0,
-});
-
 export const sortRevisions = (list: GraphRevisionDto[]): GraphRevisionDto[] => {
   return [...list].sort((a, b) => {
     const aTime = new Date(a.updatedAt || a.createdAt).getTime();
@@ -188,7 +152,6 @@ export const buildGraphDiffState = (
   templates: TemplateDto[],
   options?: {
     fallbackViewport?: Viewport;
-    selectedThreadId?: string;
   },
 ): GraphDiffState => {
   const metadata = (graphData.metadata as GraphMetadata) || {};
@@ -258,7 +221,6 @@ export const buildGraphDiffState = (
     nodes: reactFlowNodes,
     edges: reactFlowEdges,
     viewport,
-    selectedThreadId: options?.selectedThreadId,
     graphName: graphData.name,
     baseVersion: graphData.version,
   };
