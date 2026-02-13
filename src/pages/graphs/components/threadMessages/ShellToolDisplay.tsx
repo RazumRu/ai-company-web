@@ -29,10 +29,6 @@ export interface ShellToolDisplayProps {
    * Request token usage for the shell tool call output (tool result message).
    */
   requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
-  /**
-   * Optional border color for inter-agent communication.
-   */
-  borderColor?: string;
 }
 
 const ansiUp = (() => {
@@ -272,29 +268,31 @@ const renderToolPopoverContent = (
         </div>
       )}
 
-      <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Output:</div>
-        <div style={innerStyle}>
-          {parsed ? (
-            <JsonView value={parsed as object} style={lightTheme} />
-          ) : (
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}>
-              {typeof value === 'string' && containsAnsi(value) ? (
-                <span
-                  dangerouslySetInnerHTML={{ __html: renderAnsiHtml(value) }}
-                />
-              ) : (
-                String(value ?? '')
-              )}
-            </pre>
-          )}
+      {(parsed || (value !== undefined && value !== null)) && (
+        <div style={sectionStyle}>
+          <div style={sectionTitleStyle}>Output:</div>
+          <div style={innerStyle}>
+            {parsed ? (
+              <JsonView value={parsed as object} style={lightTheme} />
+            ) : (
+              <pre
+                style={{
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}>
+                {typeof value === 'string' && containsAnsi(value) ? (
+                  <span
+                    dangerouslySetInnerHTML={{ __html: renderAnsiHtml(value) }}
+                  />
+                ) : (
+                  String(value ?? '')
+                )}
+              </pre>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -318,7 +316,6 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
   title,
   requestTokenUsageIn,
   requestTokenUsageOut,
-  borderColor,
 }) => {
   const { message } = App.useApp();
   const [commandExpanded, setCommandExpanded] = useState(false);
@@ -559,10 +556,6 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     backgroundBlendMode: 'soft-light',
   };
 
-  if (borderColor) {
-    containerStyle.borderLeft = `3px solid ${borderColor}`;
-  }
-
   return (
     <div>
       <div style={containerStyle}>
@@ -575,7 +568,8 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
             padding: '5px 10px',
             background: '#1a1a1a',
           }}>
-          {status === 'executed' && resultContent !== undefined ? (
+          {(status === 'executed' && resultContent !== undefined) ||
+          (toolOptions && Object.keys(toolOptions).length > 0) ? (
             <Popover
               content={renderToolPopoverContent(
                 resultContent,
@@ -588,10 +582,7 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
               placement="topLeft">
               <div
                 style={{
-                  cursor:
-                    status === 'executed' && resultContent !== undefined
-                      ? 'pointer'
-                      : 'default',
+                  cursor: 'pointer',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',

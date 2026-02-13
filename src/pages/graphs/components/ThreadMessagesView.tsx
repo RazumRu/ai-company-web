@@ -26,6 +26,7 @@ import { getAgentAvatarDataUri } from '../../../utils/agentAvatars';
 import { getReasoningIdentifier } from '../../../utils/threadMessages';
 import type { PendingMessage } from '../types/messages';
 import { ChatBubble } from './threadMessages/ChatBubble';
+import { CommunicationBlock } from './threadMessages/CommunicationBlock';
 import {
   formatMessageContent,
   isBlankContent,
@@ -45,7 +46,6 @@ import {
   ensureThinkingIndicatorStyles,
   extractToolErrorText,
   fullHeightColumnStyle,
-  generateColorFromNodeId,
   getAdditionalKwargs,
   getMessageString,
   getMessageTitle,
@@ -146,6 +146,21 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     );
     const toggleSubagentBlock = useCallback((id: string) => {
       setExpandedSubagentIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }, []);
+
+    const [expandedCommIds, setExpandedCommIds] = useState<Set<string>>(
+      () => new Set(),
+    );
+    const toggleCommBlock = useCallback((id: string) => {
+      setExpandedCommIds((prev) => {
         const next = new Set(prev);
         if (next.has(id)) {
           next.delete(id);
@@ -349,23 +364,25 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             </div>
           )}
 
-          <div style={sectionStyle}>
-            <div style={sectionTitleStyle}>Output:</div>
-            <div style={innerStyle}>
-              {parsed ? (
-                <JsonView value={parsed as object} style={lightTheme} />
-              ) : (
-                <pre
-                  style={{
-                    margin: 0,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}>
-                  {String(value ?? '')}
-                </pre>
-              )}
+          {(parsed || (value !== undefined && value !== null)) && (
+            <div style={sectionStyle}>
+              <div style={sectionTitleStyle}>Output:</div>
+              <div style={innerStyle}>
+                {parsed ? (
+                  <JsonView value={parsed as object} style={lightTheme} />
+                ) : (
+                  <pre
+                    style={{
+                      margin: 0,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}>
+                    {String(value ?? '')}
+                  </pre>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       );
     };
@@ -449,6 +466,22 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       });
     }, [preparedMessagesResult]);
 
+    // Auto-expand new communication blocks by default
+    useEffect(() => {
+      const commIds = new Set<string>();
+      for (const item of preparedMessagesResult) {
+        if (item.type === 'communication') {
+          commIds.add(`comm-${item.id}`);
+        }
+      }
+
+      setExpandedCommIds((prev) => {
+        const newIds = Array.from(commIds).filter((id) => !prev.has(id));
+        if (newIds.length === 0) return prev;
+        return new Set([...prev, ...newIds]);
+      });
+    }, [preparedMessagesResult]);
+
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
         <div style={centeredStateStyle}>{content}</div>
@@ -478,7 +511,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       resultContent?: unknown,
       requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
-      borderColor?: string,
     ) => {
       if (status !== 'executed') {
         return undefined;
@@ -514,10 +546,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         backgroundColor: '#f3f3f3',
         borderLeft: `3px solid ${messageColor}`,
       };
-
-      if (borderColor) {
-        bubbleStyle.borderLeft = `3px solid ${borderColor}`;
-      }
 
       return (
         <ChatBubble
@@ -577,7 +605,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
       requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
     ) => {
-      const isClickable = status === 'executed' && resultContent !== undefined;
+      const hasToolOptions =
+        toolOptions !== undefined &&
+        toolOptions !== null &&
+        Object.keys(toolOptions).length > 0;
+      const isClickable =
+        (status === 'executed' && resultContent !== undefined) ||
+        hasToolOptions;
       const isCalling = status === 'calling';
       const errorText =
         status === 'executed' ? extractToolErrorText(resultContent) : undefined;
@@ -593,9 +627,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         (toolOptions?.purpose
           ? `${name} | ${String(toolOptions.purpose)}`
           : `tool ${name} is ${statusText}`);
+      const needsEllipsis =
+        resultContent === undefined && status !== 'executed';
       const displayTitle = hasError
         ? `${displayTitleBase} - ${errorText}`
-        : displayTitleBase;
+        : needsEllipsis
+          ? `${displayTitleBase}...`
+          : displayTitleBase;
       const accessibleName = displayTitle || name;
       const line = (
         <div
@@ -668,7 +706,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       titleText?: string,
       requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
       requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
-      borderColor?: string,
     ) => {
       return (
         <ShellToolDisplay
@@ -681,7 +718,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           metadata={metadata}
           requestTokenUsageIn={requestTokenUsageIn}
           requestTokenUsageOut={requestTokenUsageOut}
-          borderColor={borderColor}
         />
       );
     };
@@ -727,7 +763,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
-    const renderMessage = (message: ThreadMessageDto, borderColor?: string) => {
+    const renderMessage = (message: ThreadMessageDto) => {
       const role = (message.message?.role as string) || '';
       const content = formatMessageContent(message.message?.content);
       const metadataText =
@@ -783,11 +819,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
       const avatarTooltip = isHuman ? 'You' : agentName;
 
-      // Apply border if borderColor is provided
-      const bubbleBorderStyle = borderColor
-        ? { borderLeft: `3px solid ${borderColor}` }
-        : undefined;
-
       // Special rendering for agent instruction messages
       if (isAgentInstruction) {
         // For agent instruction messages, show only date (no "from ..." part)
@@ -807,7 +838,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               border: '2px solid #d3adf7',
               borderRadius: '8px',
               padding: '12px 16px',
-              ...bubbleBorderStyle,
             }}
             copyContent={content}
             footer={
@@ -873,7 +903,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               border: '1px solid #91d5ff',
               borderRadius: '8px',
               padding: '12px 16px',
-              ...bubbleBorderStyle,
             }}
             copyContent={content}
             footer={
@@ -933,7 +962,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           avatarColor={avatarColor}
           avatarSrc={avatarSrc}
           avatarTooltip={avatarTooltip}
-          bubbleStyle={bubbleBorderStyle}
+          bubbleStyle={undefined}
           copyContent={content}
           footer={
             metadataText ? (
@@ -1153,8 +1182,39 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               innerMessages={it.innerMessages}
               statistics={it.statistics}
               resultText={it.resultText}
+              errorText={it.errorText}
               isExpanded={expandedSubagentIds.has(subId)}
               onToggle={() => toggleSubagentBlock(subId)}
+              renderItem={renderWorkingItem}
+            />
+          </div>
+        );
+      }
+
+      if (it.type === 'communication') {
+        const commId = `comm-${it.id}`;
+        const commTargetName =
+          it.targetAgentName ||
+          (it.targetNodeId && nodeDisplayNames?.[it.targetNodeId]) ||
+          (it.targetNodeId ? `Node ${it.targetNodeId.slice(-6)}` : undefined);
+        const innerNodeId =
+          it.innerMessages.find((im) => im.nodeId)?.nodeId ?? undefined;
+        const targetAvatar = innerNodeId
+          ? getAgentAvatarDataUri(innerNodeId)
+          : undefined;
+        return (
+          <div key={`work-comm-${it.id}-${idx}`}>
+            <CommunicationBlock
+              targetAgentName={commTargetName}
+              targetAvatarSrc={targetAvatar}
+              parentMessage={it.parentMessage}
+              instructionMessage={it.instructionMessage}
+              status={it.status}
+              innerMessages={it.innerMessages}
+              resultText={it.resultText}
+              errorText={it.errorText}
+              isExpanded={expandedCommIds.has(commId)}
+              onToggle={() => toggleCommBlock(commId)}
               renderItem={renderWorkingItem}
             />
           </div>
@@ -1197,10 +1257,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           .toUpperCase();
       };
 
-      const renderWorkingBlock = (
-        items: PreparedMessage[],
-        borderColor?: string,
-      ) => {
+      const renderWorkingBlock = (items: PreparedMessage[]) => {
         const groupId = `working-${items[0]?.id ?? 'group'}`;
         const isExpanded = expandedWorkingIds.has(groupId);
         const isCollapsible = items.length > 1;
@@ -1231,10 +1288,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           borderRadius: 8,
           padding: '10px 12px',
         };
-
-        if (borderColor) {
-          bubbleStyle.borderLeft = `3px solid ${borderColor}`;
-        }
 
         const handleWorkingToggle = () => {
           if (!isCollapsible) return;
@@ -1320,13 +1373,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       while (i < preparedMessagesResult.length) {
         const item = preparedMessagesResult[i];
 
-        // Generate border color if inter-agent communication
-        // Use the message's own nodeId so each agent gets a unique color
-        const borderColor =
-          item.inCommunicationExec && item.nodeId
-            ? generateColorFromNodeId(item.nodeId)
-            : undefined;
-
         if (item.type === 'system') {
           pushRow(item.id, renderSystemMessage(item.message));
           i++;
@@ -1344,17 +1390,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessagesResult[j]);
               j++;
             }
-            const hasCommExec =
-              group.length > 0 && group.some((g) => g.inCommunicationExec);
-            const groupNodeId = group.find((g) => g.nodeId)?.nodeId;
-            const groupBorderColor =
-              hasCommExec && groupNodeId
-                ? generateColorFromNodeId(groupNodeId)
-                : undefined;
-            pushRow(
-              `working-${item.id}`,
-              renderWorkingBlock(group, groupBorderColor),
-            );
+            pushRow(`working-${item.id}`, renderWorkingBlock(group));
             i = j;
             continue;
           }
@@ -1374,7 +1410,22 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'chat') {
-          pushRow(item.id, renderMessage(item.message, borderColor));
+          // Chat content that accompanies tool calls should start/join a working group
+          if (item.isToolCallContent && isWorkGroupItem(item)) {
+            const group: PreparedMessage[] = [item];
+            let j = i + 1;
+            while (
+              j < preparedMessagesResult.length &&
+              isWorkGroupItem(preparedMessagesResult[j])
+            ) {
+              group.push(preparedMessagesResult[j]);
+              j++;
+            }
+            pushRow(`working-${item.id}`, renderWorkingBlock(group));
+            i = j;
+            continue;
+          }
+          pushRow(item.id, renderMessage(item.message));
           i++;
           continue;
         }
@@ -1398,9 +1449,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             borderRadius: 8,
             padding: '10px 12px',
             width: '100%',
-            ...(borderColor
-              ? { borderLeft: `3px solid ${borderColor}` }
-              : undefined),
           };
 
           pushRow(
@@ -1422,8 +1470,74 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 innerMessages={item.innerMessages}
                 statistics={item.statistics}
                 resultText={item.resultText}
+                errorText={item.errorText}
                 isExpanded={expandedSubagentIds.has(subId)}
                 onToggle={() => toggleSubagentBlock(subId)}
+                renderItem={renderWorkingItem}
+              />
+            </ChatBubble>,
+          );
+          i++;
+          continue;
+        }
+
+        if (item.type === 'communication') {
+          const commId = `comm-${item.id}`;
+          const commAvatarSeedNodeId = item.nodeId ?? nodeId ?? undefined;
+          const commAvatarLabel = getAvatarInitials(
+            formatNodeLabel(commAvatarSeedNodeId) ?? undefined,
+          );
+          const commAvatarSrc = commAvatarSeedNodeId
+            ? getAgentAvatarDataUri(commAvatarSeedNodeId)
+            : undefined;
+          const commAgentName =
+            (commAvatarSeedNodeId &&
+              nodeDisplayNames?.[commAvatarSeedNodeId]) ||
+            (commAvatarSeedNodeId
+              ? `Node ${commAvatarSeedNodeId.slice(-6)}`
+              : 'Agent');
+          const commTargetName =
+            item.targetAgentName ||
+            (item.targetNodeId && nodeDisplayNames?.[item.targetNodeId]) ||
+            (item.targetNodeId
+              ? `Node ${item.targetNodeId.slice(-6)}`
+              : undefined);
+          // Derive target avatar from the first inner message's nodeId
+          const targetInnerNodeId =
+            item.innerMessages.find((im) => im.nodeId)?.nodeId ?? undefined;
+          const commTargetAvatarSrc = targetInnerNodeId
+            ? getAgentAvatarDataUri(targetInnerNodeId)
+            : undefined;
+
+          const commBubbleStyle: React.CSSProperties = {
+            backgroundColor: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            padding: '10px 12px',
+            width: '100%',
+          };
+
+          pushRow(
+            item.id,
+            <ChatBubble
+              isHuman={false}
+              avatarLabel={commAvatarLabel}
+              avatarColor="#722ed1"
+              avatarSrc={commAvatarSrc}
+              avatarTooltip={commAgentName}
+              containerStyle={{ width: '100%' }}
+              bubbleStyle={commBubbleStyle}>
+              <CommunicationBlock
+                targetAgentName={commTargetName}
+                targetAvatarSrc={commTargetAvatarSrc}
+                parentMessage={item.parentMessage}
+                instructionMessage={item.instructionMessage}
+                status={item.status}
+                innerMessages={item.innerMessages}
+                resultText={item.resultText}
+                errorText={item.errorText}
+                isExpanded={expandedCommIds.has(commId)}
+                onToggle={() => toggleCommBlock(commId)}
                 renderItem={renderWorkingItem}
               />
             </ChatBubble>,
@@ -1443,17 +1557,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessagesResult[j]);
               j++;
             }
-            const hasCommExec =
-              group.length > 0 && group.some((g) => g.inCommunicationExec);
-            const groupNodeId = group.find((g) => g.nodeId)?.nodeId;
-            const groupBorderColor =
-              hasCommExec && groupNodeId
-                ? generateColorFromNodeId(groupNodeId)
-                : undefined;
-            pushRow(
-              `working-${item.id}`,
-              renderWorkingBlock(group, groupBorderColor),
-            );
+            pushRow(`working-${item.id}`, renderWorkingBlock(group));
             i = j;
             continue;
           }
@@ -1469,7 +1573,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   createdAt: item.createdAt,
                   roleLabel: 'ai',
                 },
-                borderColor,
               ),
             );
             i++;
@@ -1493,7 +1596,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 item.title,
                 item.requestTokenUsageIn,
                 item.requestTokenUsageOut,
-                borderColor,
               ),
             );
             i++;

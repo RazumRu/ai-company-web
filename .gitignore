@@ -31,3 +31,5 @@ _.ntvs_
 _.njsproj
 _.sln
 \*.sw?
+
+.playwright-mcp/

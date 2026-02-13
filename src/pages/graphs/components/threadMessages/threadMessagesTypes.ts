@@ -107,11 +107,32 @@ export type PreparedMessage =
       innerMessages: PreparedMessage[];
       statistics?: SubagentStatistics;
       resultText?: string;
+      errorText?: string;
       model?: string;
       status: ToolRenderStatus;
       id: string;
       nodeId?: string;
       createdAt?: string;
       inCommunicationExec?: boolean;
+      sourceAgentNodeId?: string;
+    }
+  | {
+      type: 'communication';
+      toolCallId: string;
+      targetNodeId?: string;
+      /** Target agent display name from the communication_exec args. */
+      targetAgentName?: string;
+      /** The parent AI message that triggered the communication_exec tool call.
+       *  Its text content is rendered as the first item inside the block. */
+      parentMessage?: ThreadMessageDto;
+      instructionMessage?: ThreadMessageDto;
+      innerMessages: PreparedMessage[];
+      resultText?: string;
+      errorText?: string;
+      model?: string;
+      status: ToolRenderStatus;
+      id: string;
+      nodeId?: string;
+      createdAt?: string;
       sourceAgentNodeId?: string;
     };

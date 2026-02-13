@@ -31,6 +31,10 @@ body {
   background: transparent !important;
 }
 
+.md-content > :last-child {
+  margin-bottom: 0 !important;
+}
+
 .hoverable-chat-message {
   color: #8c8c8c;
   transition: color 0.2s ease;

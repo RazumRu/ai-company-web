@@ -342,7 +342,7 @@ export const CustomNode = React.memo(
     const templateKind = nodeTemplate?.kind ?? nodeData.templateKind;
     const templateKindLower = (templateKind || '').toLowerCase();
     const isAgentNode = templateKindLower === 'simpleagent';
-    const showNodeStatus = ['runtime', 'simpleagent', 'trigger'].includes(
+    const showNodeStatus = ['runtime', 'mcp', 'trigger'].includes(
       templateKindLower,
     );
 

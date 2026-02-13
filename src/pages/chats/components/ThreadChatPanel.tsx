@@ -373,9 +373,16 @@ export const ThreadChatPanel: React.FC<ThreadChatPanelProps> = ({
       ? repos.find((r) => r.id === selectedRepoId)
       : undefined;
     const isFirstMessageWithRepo = isDraft && selectedRepo && !repoLocked;
-    const effectiveMessageText = isFirstMessageWithRepo
-      ? `${messageText}\n\n──────────\nRepository: ${selectedRepo.owner}/${selectedRepo.repo}, Branch: ${selectedRepo.defaultBranch}`
-      : messageText;
+    const repoSignature = selectedRepo
+      ? `Repository: ${selectedRepo.owner}/${selectedRepo.repo}`
+      : '';
+    const alreadyHasRepo = repoSignature
+      ? messageText.includes(repoSignature)
+      : false;
+    const effectiveMessageText =
+      isFirstMessageWithRepo && !alreadyHasRepo
+        ? `${messageText}\n\n──────────\n${repoSignature}, Branch: ${selectedRepo.defaultBranch}`
+        : messageText;
 
     const now = new Date().toISOString();
     const optimisticMessageId = `optimistic-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;

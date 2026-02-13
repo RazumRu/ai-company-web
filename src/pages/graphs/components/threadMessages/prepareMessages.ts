@@ -18,6 +18,7 @@ import {
   getMessageValue,
   getToolMessageKey,
   isToolLikeRole,
+  parseJsonSafe,
 } from './threadMessagesViewUtils';
 
 interface PrepareReadyMessagesOptions {
@@ -82,6 +83,10 @@ export const prepareReadyMessages = (
   // subagent parents.  Without this, the recursive call would re-scan inner
   // messages (which also carry __toolCallId) and skip them all.
   const subagentToolCallIds = new Set<string>();
+  const communicationToolCallIds = new Set<string>();
+  // Map communication_exec tool call ID → target agent name from args.
+  // Used as a fallback to group inner messages when __toolCallId doesn't match.
+  const commToolCallAgentName = new Map<string, string>();
   for (const msg of msgs) {
     if ((msg.message?.role as string) !== 'ai') continue;
     const tcs = getMessageValue<ToolCall[]>(msg.message, 'toolCalls');
@@ -91,6 +96,15 @@ export const prepareReadyMessages = (
       if (tcName === 'subagents_run_task' && tc.id) {
         subagentToolCallIds.add(tc.id);
       }
+      if (tcName === 'communication_exec' && tc.id) {
+        communicationToolCallIds.add(tc.id);
+        const tcArgs = argsToObject(tc.function?.arguments ?? tc.args);
+        const agentName =
+          typeof tcArgs?.agent === 'string' ? tcArgs.agent : undefined;
+        if (agentName) {
+          commToolCallAgentName.set(tc.id, agentName);
+        }
+      }
     }
   }
 
@@ -98,13 +112,46 @@ export const prepareReadyMessages = (
   const subagentInnerByToolCallId = new Map<string, ThreadMessageDto[]>();
   const subagentInnerMsgIds = new Set<string>();
 
+  // Pre-scan: group communication inner messages by parent tool call ID
+  const commInnerByToolCallId = new Map<string, ThreadMessageDto[]>();
+  const commInstructionByToolCallId = new Map<string, ThreadMessageDto>();
+  const commInnerMsgIds = new Set<string>();
+
+  /** Try to match an inter-agent message to a communication_exec tool call ID
+   *  by checking if the message's externalThreadId contains the target agent name. */
+  const resolveCommToolCallId = (msg: ThreadMessageDto): string | undefined => {
+    const extId = msg.externalThreadId;
+    if (!extId) return undefined;
+    for (const [tcId, agentName] of commToolCallAgentName) {
+      if (extId.includes(`__${agentName}`)) {
+        return tcId;
+      }
+    }
+    // Fallback: if there is only one communication_exec call, assign all
+    // __interAgentCommunication messages to it.
+    if (communicationToolCallIds.size === 1) {
+      return communicationToolCallIds.values().next().value;
+    }
+    return undefined;
+  };
+
   for (const msg of msgs) {
     const additional = getAdditionalKwargs(msg.message);
     const parentToolCallId =
       typeof additional?.__toolCallId === 'string'
         ? additional.__toolCallId
         : undefined;
-    if (parentToolCallId && subagentToolCallIds.has(parentToolCallId)) {
+    const isInterAgent = Boolean(additional?.__interAgentCommunication);
+
+    // Only group into subagent blocks if NOT an inter-agent communication message.
+    // Communication inner messages may carry a __toolCallId that points to a
+    // subagent call within the communication; those should stay in the communication
+    // block and be handled by the recursive call inside it.
+    if (
+      parentToolCallId &&
+      subagentToolCallIds.has(parentToolCallId) &&
+      !isInterAgent
+    ) {
       if (!subagentInnerByToolCallId.has(parentToolCallId)) {
         subagentInnerByToolCallId.set(parentToolCallId, []);
       }
@@ -112,6 +159,35 @@ export const prepareReadyMessages = (
       if (msg.id) subagentInnerMsgIds.add(msg.id);
       const key = getToolMessageKey(msg);
       if (key) subagentInnerMsgIds.add(key);
+    }
+
+    // Group communication inner messages.  The backend may set __toolCallId to
+    // the communication_exec call ID, or it may only flag __interAgentCommunication
+    // without a matching __toolCallId.  Handle both cases.
+    let commParentId: string | undefined;
+    if (parentToolCallId && communicationToolCallIds.has(parentToolCallId)) {
+      commParentId = parentToolCallId;
+    } else if (isInterAgent) {
+      commParentId = resolveCommToolCallId(msg);
+    }
+
+    if (commParentId) {
+      // The "Providing Instructions" message is the instruction message
+      const isInstruction = Boolean(
+        additional?.__isAgentInstructionMessage ??
+        additional?.isAgentInstructionMessage,
+      );
+      if (isInstruction && !commInstructionByToolCallId.has(commParentId)) {
+        commInstructionByToolCallId.set(commParentId, msg);
+      } else {
+        if (!commInnerByToolCallId.has(commParentId)) {
+          commInnerByToolCallId.set(commParentId, []);
+        }
+        commInnerByToolCallId.get(commParentId)!.push(msg);
+      }
+      if (msg.id) commInnerMsgIds.add(msg.id);
+      const key = getToolMessageKey(msg);
+      if (key) commInnerMsgIds.add(key);
     }
   }
 
@@ -201,11 +277,12 @@ export const prepareReadyMessages = (
   while (i < msgs.length) {
     const m = msgs[i];
 
-    // Skip subagent inner messages — they are consumed into subagent blocks
+    // Skip subagent / communication inner messages — consumed into blocks
     const mToolKey = getToolMessageKey(m);
     if (
-      (m.id && subagentInnerMsgIds.has(m.id)) ||
-      (mToolKey && subagentInnerMsgIds.has(mToolKey))
+      (m.id && (subagentInnerMsgIds.has(m.id) || commInnerMsgIds.has(m.id))) ||
+      (mToolKey &&
+        (subagentInnerMsgIds.has(mToolKey) || commInnerMsgIds.has(mToolKey)))
     ) {
       i++;
       continue;
@@ -252,7 +329,17 @@ export const prepareReadyMessages = (
     if (role === 'ai' && messageToolCalls && messageToolCalls.length > 0) {
       const hasNonBlankContent = !isBlankContent(m.message?.content);
 
-      if (hasNonBlankContent) {
+      // Check whether any tool call in this AI message is communication_exec.
+      // If so, the AI text content will be folded INTO the communication block
+      // instead of being emitted as a separate chat message.
+      const hasCommToolCall = messageToolCalls.some(
+        (tc) =>
+          (tc.name || tc.function?.name) === 'communication_exec' &&
+          tc.id &&
+          communicationToolCallIds.has(tc.id),
+      );
+
+      if (hasNonBlankContent && !hasCommToolCall) {
         prepared.push({
           type: 'chat',
           message: m,
@@ -319,13 +406,17 @@ export const prepareReadyMessages = (
 
           const resultObj = isPlainObject(resultContent)
             ? (resultContent as Record<string, unknown>)
-            : null;
+            : typeof resultContent === 'string'
+              ? (parseJsonSafe(resultContent) as Record<string, unknown> | null)
+              : null;
           const statistics =
             (resultObj?.statistics as SubagentStatistics) ?? undefined;
           const resultText =
             typeof resultObj?.result === 'string'
               ? resultObj.result
               : undefined;
+          const errorText =
+            typeof resultObj?.error === 'string' ? resultObj.error : undefined;
 
           const parsedArgs = argsToObject(toolArgs);
           const taskDescription =
@@ -354,6 +445,7 @@ export const prepareReadyMessages = (
             innerMessages: innerPrepared,
             statistics,
             resultText,
+            errorText,
             model,
             status: matched
               ? 'executed'
@@ -364,6 +456,73 @@ export const prepareReadyMessages = (
             nodeId: matched?.nodeId ?? m.nodeId,
             createdAt: m.createdAt,
             inCommunicationExec: isInterAgent,
+            sourceAgentNodeId,
+          });
+          continue;
+        }
+
+        // Communication tool call → emit a 'communication' prepared message
+        const isCommTool =
+          name === 'communication_exec' &&
+          tc.id &&
+          communicationToolCallIds.has(tc.id);
+        if (isCommTool) {
+          const innerRawMessages = commInnerByToolCallId.get(tc.id!) ?? [];
+          const innerPrepared = prepareReadyMessages(innerRawMessages, options);
+          const instructionMsg = commInstructionByToolCallId.get(tc.id!);
+
+          const commResultObj = isPlainObject(resultContent)
+            ? (resultContent as Record<string, unknown>)
+            : typeof resultContent === 'string'
+              ? (parseJsonSafe(resultContent) as Record<string, unknown> | null)
+              : null;
+          const commResultText =
+            typeof commResultObj?.result === 'string'
+              ? commResultObj.result
+              : typeof commResultObj?.message === 'string'
+                ? commResultObj.message
+                : undefined;
+          const commErrorText =
+            typeof commResultObj?.error === 'string'
+              ? commResultObj.error
+              : undefined;
+
+          const parsedArgs = argsToObject(toolArgs);
+          const targetNodeId =
+            typeof parsedArgs?.targetNodeId === 'string'
+              ? parsedArgs.targetNodeId
+              : undefined;
+          const targetAgentName =
+            commToolCallAgentName.get(tc.id!) ??
+            (typeof parsedArgs?.agent === 'string'
+              ? (parsedArgs.agent as string)
+              : undefined);
+
+          const commModel = extractSubagentModel(innerRawMessages);
+
+          // Pass the parent AI message so its text content can be shown
+          // as the first item inside the communication block.
+          const parentHasContent = !isBlankContent(m.message?.content);
+
+          prepared.push({
+            type: 'communication',
+            toolCallId: tc.id!,
+            targetNodeId,
+            targetAgentName,
+            parentMessage: parentHasContent ? m : undefined,
+            instructionMessage: instructionMsg,
+            innerMessages: innerPrepared,
+            resultText: commResultText,
+            errorText: commErrorText,
+            model: commModel,
+            status: matched
+              ? 'executed'
+              : allowCallingIndicators && isLatestRun(toolCallRunId)
+                ? 'calling'
+                : 'stopped',
+            id: `comm-${tc.id || `${m.id || m.createdAt}-${idx}`}`,
+            nodeId: matched?.nodeId ?? m.nodeId,
+            createdAt: m.createdAt,
             sourceAgentNodeId,
           });
           continue;

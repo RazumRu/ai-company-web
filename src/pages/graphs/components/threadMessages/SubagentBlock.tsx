@@ -72,6 +72,7 @@ export interface SubagentBlockProps {
   innerMessages: PreparedMessage[];
   statistics?: SubagentStatistics;
   resultText?: string;
+  errorText?: string;
   isExpanded: boolean;
   onToggle: () => void;
   renderItem: (item: PreparedMessage, index: number) => React.ReactNode;
@@ -86,6 +87,7 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
   innerMessages,
   statistics,
   resultText,
+  errorText,
   isExpanded,
   onToggle,
   renderItem,
@@ -93,9 +95,8 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
   const isCalling = status === 'calling';
 
   const headerLabel = useMemo(() => {
-    const detail = purpose || taskDescription;
-    return detail ? `Calling subagent: ${detail}` : 'Calling subagent';
-  }, [purpose, taskDescription]);
+    return purpose ? `Subagent: ${purpose}` : 'Subagent';
+  }, [purpose]);
 
   const collapsedSummary = useMemo(() => {
     const parts: string[] = [];
@@ -131,12 +132,6 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
         flexDirection: 'column',
         gap: 6,
         width: '100%',
-        ...(isCalling
-          ? {
-              animation:
-                'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
-            }
-          : undefined),
       }}>
       {/* Header row */}
       <div
@@ -157,11 +152,18 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
         )}
         {isCalling && <LoadingOutlined style={HEADER_ICON_STYLE} />}
         <Text style={HEADER_LABEL_STYLE}>{headerLabel}</Text>
-        {status === 'executed' && (
+        {status === 'executed' && !errorText && (
           <Tag
             color="success"
             style={{ margin: 0, fontSize: 11, lineHeight: '18px' }}>
             done
+          </Tag>
+        )}
+        {status === 'executed' && errorText && (
+          <Tag
+            color="error"
+            style={{ margin: 0, fontSize: 11, lineHeight: '18px' }}>
+            error
           </Tag>
         )}
         {status === 'stopped' && (
@@ -183,18 +185,26 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
         )}
       </div>
 
+      {/* Task description — always visible as first "message" */}
+      {taskDescription && (
+        <div
+          style={{
+            padding: '6px 10px',
+            fontSize: 12,
+            color: '#595959',
+            backgroundColor: '#fafafa',
+            borderRadius: 6,
+            border: '1px solid #f0f0f0',
+            whiteSpace: 'pre-wrap',
+            lineHeight: 1.5,
+          }}>
+          {taskDescription}
+        </div>
+      )}
+
       {/* Expanded content */}
       {isExpanded && (
         <>
-          {/* Task description */}
-          {taskDescription && (
-            <Text
-              type="secondary"
-              style={{ fontSize: 12, fontStyle: 'italic' }}>
-              Task: {taskDescription}
-            </Text>
-          )}
-
           {/* Inner messages area */}
           <div style={INNER_AREA_STYLE}>
             {innerMessages.length === 0 && isCalling && (
@@ -211,8 +221,21 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
             ))}
           </div>
 
-          {/* Result preview when no inner messages */}
-          {resultText && innerMessages.length === 0 && (
+          {/* Error — shown as last message with error styling */}
+          {errorText && (
+            <div
+              style={{
+                ...RESULT_PREVIEW_STYLE,
+                color: '#cf1322',
+                backgroundColor: '#fff2f0',
+                border: '1px solid #ffccc7',
+              }}>
+              {errorText}
+            </div>
+          )}
+
+          {/* Result — always shown as last message when available */}
+          {resultText && !errorText && (
             <div style={RESULT_PREVIEW_STYLE}>{resultText}</div>
           )}
 
