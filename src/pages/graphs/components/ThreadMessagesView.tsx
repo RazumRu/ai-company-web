@@ -1,9 +1,5 @@
 // ThreadMessagesView.tsx
-import {
-  CaretDownOutlined,
-  CaretRightOutlined,
-  ToolOutlined,
-} from '@ant-design/icons';
+import { ToolOutlined } from '@ant-design/icons';
 import JsonView from '@uiw/react-json-view';
 import { lightTheme } from '@uiw/react-json-view/light';
 import { Popover, Space, Spin, Typography } from 'antd';
@@ -11,6 +7,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -106,6 +103,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
   }) => {
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const prevScrollHeightRef = useRef<number>(0);
+    const prevScrollTopRef = useRef<number>(0);
     const isPrependingRef = useRef<boolean>(false);
     const pendingAutoScrollRef = useRef<boolean>(false);
     const autoScrollDisabledRef = useRef<boolean>(false);
@@ -116,51 +114,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     >(() => new Set());
     const toggleReasoningMessage = useCallback((id: string) => {
       setExpandedReasoningIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
-    }, []);
-
-    const [expandedWorkingIds, setExpandedWorkingIds] = useState<Set<string>>(
-      () => new Set(),
-    );
-    const toggleWorkingBlock = useCallback((id: string) => {
-      setExpandedWorkingIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
-    }, []);
-
-    const [expandedSubagentIds, setExpandedSubagentIds] = useState<Set<string>>(
-      () => new Set(),
-    );
-    const toggleSubagentBlock = useCallback((id: string) => {
-      setExpandedSubagentIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-        return next;
-      });
-    }, []);
-
-    const [expandedCommIds, setExpandedCommIds] = useState<Set<string>>(
-      () => new Set(),
-    );
-    const toggleCommBlock = useCallback((id: string) => {
-      setExpandedCommIds((prev) => {
         const next = new Set(prev);
         if (next.has(id)) {
           next.delete(id);
@@ -191,17 +144,33 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       pendingAutoScrollRef.current = true;
     }, [selectedThreadId, nodeId]);
 
-    useEffect(() => {
+    // Restore scroll position synchronously before paint when older messages
+    // are prepended at the top (load-more pagination).  Using useLayoutEffect
+    // prevents the visible flicker / jump that occurs when the adjustment
+    // happens in a regular useEffect (which runs *after* the browser paints).
+    //
+    // We use the scrollHeight and scrollTop captured at the moment the user
+    // triggered load-more (in handleScroll) rather than the current scrollTop,
+    // because intermediate renders (e.g. the loadingMore spinner appearing /
+    // disappearing) can shift the scroll position between the trigger and the
+    // moment new messages actually arrive.
+    useLayoutEffect(() => {
       if (!isPrependingRef.current) return;
+      if (messages.length === lastMessageCountRef.current) return;
+
       const el = scrollContainerRef.current;
       if (el) {
-        const diff = el.scrollHeight - prevScrollHeightRef.current;
-        el.scrollTop = diff + el.scrollTop;
+        const newContentHeight = el.scrollHeight - prevScrollHeightRef.current;
+        el.scrollTop = prevScrollTopRef.current + newContentHeight;
       }
       isPrependingRef.current = false;
+      lastMessageCountRef.current = messages.length;
     }, [messages.length]);
 
+    // Auto-scroll to bottom on initial load, thread switch, or when the user
+    // is already scrolled near the bottom and new messages arrive.
     useEffect(() => {
+      if (isPrependingRef.current) return;
       if (messagesLoading) return;
       const el = scrollContainerRef.current;
       if (!el) return;
@@ -273,6 +242,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         typeof onLoadMoreMessages === 'function'
       ) {
         prevScrollHeightRef.current = el.scrollHeight;
+        prevScrollTopRef.current = el.scrollTop;
         isPrependingRef.current = true;
         onLoadMoreMessages();
       }
@@ -396,91 +366,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     }, [messages, isNodeRunning, isThreadStopped, currentThreadLastRunId]);
 
     const isThinkingVisible = isNodeRunning && isAgentNode && !isThreadStopped;
-
-    // Auto-expand new working groups by default
-    useEffect(() => {
-      const workingGroupIds = new Set<string>();
-
-      for (let i = 0; i < preparedMessagesResult.length; i++) {
-        const item = preparedMessagesResult[i];
-
-        // Check if this is the start of a working group
-        if (isWorkGroupItem(item)) {
-          const groupId = `working-${item.id}`;
-          workingGroupIds.add(groupId);
-
-          // Skip to the end of this working group
-          let j = i + 1;
-          while (
-            j < preparedMessagesResult.length &&
-            isWorkGroupItem(preparedMessagesResult[j])
-          ) {
-            j++;
-          }
-          i = j - 1; // -1 because the for loop will increment
-        }
-      }
-
-      // Add any new working group IDs to the expanded set
-      let didAddNew = false;
-      setExpandedWorkingIds((prev) => {
-        const newIds = Array.from(workingGroupIds).filter(
-          (id) => !prev.has(id),
-        );
-        if (newIds.length === 0) return prev;
-        didAddNew = true;
-        return new Set([...prev, ...newIds]);
-      });
-
-      // Schedule scroll after state update and DOM re-render.
-      // Note: didAddNew is safe to read here because setExpandedWorkingIds
-      // runs the updater synchronously even though the re-render is batched.
-      if (didAddNew) {
-        setTimeout(() => {
-          const el = scrollContainerRef.current;
-          if (!el || messagesLoading) return;
-
-          const shouldAutoScroll =
-            pendingAutoScrollRef.current || !autoScrollDisabledRef.current;
-
-          if (shouldAutoScroll) {
-            el.scrollTop = el.scrollHeight;
-          }
-        }, 0);
-      }
-    }, [preparedMessagesResult, isWorkGroupItem, messagesLoading]);
-
-    // Auto-expand new subagent blocks by default
-    useEffect(() => {
-      const subagentIds = new Set<string>();
-      for (const item of preparedMessagesResult) {
-        if (item.type === 'subagent') {
-          subagentIds.add(`subagent-${item.id}`);
-        }
-      }
-
-      setExpandedSubagentIds((prev) => {
-        const newIds = Array.from(subagentIds).filter((id) => !prev.has(id));
-        if (newIds.length === 0) return prev;
-        return new Set([...prev, ...newIds]);
-      });
-    }, [preparedMessagesResult]);
-
-    // Auto-expand new communication blocks by default
-    useEffect(() => {
-      const commIds = new Set<string>();
-      for (const item of preparedMessagesResult) {
-        if (item.type === 'communication') {
-          commIds.add(`comm-${item.id}`);
-        }
-      }
-
-      setExpandedCommIds((prev) => {
-        const newIds = Array.from(commIds).filter((id) => !prev.has(id));
-        if (newIds.length === 0) return prev;
-        return new Set([...prev, ...newIds]);
-      });
-    }, [preparedMessagesResult]);
 
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
@@ -1170,7 +1055,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       }
 
       if (it.type === 'subagent') {
-        const subId = `subagent-${it.id}`;
         return (
           <div key={`work-subagent-${it.id}-${idx}`}>
             <SubagentBlock
@@ -1183,8 +1067,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               statistics={it.statistics}
               resultText={it.resultText}
               errorText={it.errorText}
-              isExpanded={expandedSubagentIds.has(subId)}
-              onToggle={() => toggleSubagentBlock(subId)}
               renderItem={renderWorkingItem}
             />
           </div>
@@ -1192,7 +1074,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       }
 
       if (it.type === 'communication') {
-        const commId = `comm-${it.id}`;
         const commTargetName =
           it.targetAgentName ||
           (it.targetNodeId && nodeDisplayNames?.[it.targetNodeId]) ||
@@ -1213,8 +1094,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               innerMessages={it.innerMessages}
               resultText={it.resultText}
               errorText={it.errorText}
-              isExpanded={expandedCommIds.has(commId)}
-              onToggle={() => toggleCommBlock(commId)}
               renderItem={renderWorkingItem}
             />
           </div>
@@ -1258,17 +1137,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       };
 
       const renderWorkingBlock = (items: PreparedMessage[]) => {
-        const groupId = `working-${items[0]?.id ?? 'group'}`;
-        const isExpanded = expandedWorkingIds.has(groupId);
-        const isCollapsible = items.length > 1;
-        const toolCallCount = items.reduce(
-          (count, item) => (item.type === 'tool' ? count + 1 : count),
-          0,
-        );
-        const lastToolItem =
-          [...items].reverse().find((it) => it.type === 'tool') ?? null;
-        const collapsedItems = lastToolItem ? [lastToolItem] : items.slice(-1);
-
         const avatarSeedNodeId =
           items.find((it) => it.nodeId)?.nodeId ?? nodeId ?? undefined;
         const avatarLabel = getAvatarInitials(
@@ -1289,21 +1157,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           padding: '10px 12px',
         };
 
-        const handleWorkingToggle = () => {
-          if (!isCollapsible) return;
-          toggleWorkingBlock(groupId);
-        };
-
-        const handleWorkingKeyDown = (
-          event: React.KeyboardEvent<HTMLDivElement>,
-        ) => {
-          if (!isCollapsible) return;
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            toggleWorkingBlock(groupId);
-          }
-        };
-
         return (
           <ChatBubble
             isHuman={false}
@@ -1320,50 +1173,19 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 gap: 5,
                 width: '100%',
               }}>
-              <div
-                role={isCollapsible ? 'button' : undefined}
-                tabIndex={isCollapsible ? 0 : -1}
-                onClick={handleWorkingToggle}
-                onKeyDown={handleWorkingKeyDown}
+              <Text
+                type="secondary"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  cursor: isCollapsible ? 'pointer' : 'default',
-                  width: 'fit-content',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#8c8c8c',
+                  textAlign: 'left',
                 }}>
-                {isCollapsible ? (
-                  isExpanded ? (
-                    <CaretDownOutlined
-                      style={{ fontSize: 12, color: '#8c8c8c' }}
-                    />
-                  ) : (
-                    <CaretRightOutlined
-                      style={{ fontSize: 12, color: '#8c8c8c' }}
-                    />
-                  )
-                ) : null}
-                <Text
-                  type="secondary"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#8c8c8c',
-                    textAlign: 'left',
-                  }}>
-                  Working...
-                </Text>
-                {!isExpanded && isCollapsible ? (
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {`${toolCallCount} tool call${toolCallCount === 1 ? '' : 's'}`}
-                  </Text>
-                ) : null}
-              </div>
+                Working...
+              </Text>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {(isExpanded ? items : collapsedItems).map((it, idx) =>
-                  renderWorkingItem(it, idx),
-                )}
+                {items.map((it, idx) => renderWorkingItem(it, idx))}
               </div>
             </div>
           </ChatBubble>
@@ -1431,7 +1253,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'subagent') {
-          const subId = `subagent-${item.id}`;
           const avatarSeedNodeId = item.nodeId ?? nodeId ?? undefined;
           const subAvatarLabel = getAvatarInitials(
             formatNodeLabel(avatarSeedNodeId) ?? undefined,
@@ -1471,8 +1292,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 statistics={item.statistics}
                 resultText={item.resultText}
                 errorText={item.errorText}
-                isExpanded={expandedSubagentIds.has(subId)}
-                onToggle={() => toggleSubagentBlock(subId)}
                 renderItem={renderWorkingItem}
               />
             </ChatBubble>,
@@ -1482,7 +1301,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         }
 
         if (item.type === 'communication') {
-          const commId = `comm-${item.id}`;
           const commAvatarSeedNodeId = item.nodeId ?? nodeId ?? undefined;
           const commAvatarLabel = getAvatarInitials(
             formatNodeLabel(commAvatarSeedNodeId) ?? undefined,
@@ -1536,8 +1354,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 innerMessages={item.innerMessages}
                 resultText={item.resultText}
                 errorText={item.errorText}
-                isExpanded={expandedCommIds.has(commId)}
-                onToggle={() => toggleCommBlock(commId)}
                 renderItem={renderWorkingItem}
               />
             </ChatBubble>,

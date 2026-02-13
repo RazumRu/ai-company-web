@@ -1,8 +1,4 @@
-import {
-  CaretDownOutlined,
-  CaretRightOutlined,
-  LoadingOutlined,
-} from '@ant-design/icons';
+import { LoadingOutlined } from '@ant-design/icons';
 import { Tag, Typography } from 'antd';
 import React, { useMemo } from 'react';
 
@@ -17,11 +13,6 @@ import {
 
 const { Text } = Typography;
 
-const HEADER_ICON_STYLE: React.CSSProperties = {
-  fontSize: 11,
-  color: '#595959',
-};
-
 const HEADER_LABEL_STYLE: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
@@ -33,8 +24,6 @@ const HEADER_LABEL_STYLE: React.CSSProperties = {
 };
 
 const INNER_AREA_STYLE: React.CSSProperties = {
-  maxHeight: 420,
-  overflowY: 'auto',
   overflowX: 'hidden',
   padding: '8px 10px',
   backgroundColor: '#fafafa',
@@ -73,56 +62,31 @@ export interface SubagentBlockProps {
   statistics?: SubagentStatistics;
   resultText?: string;
   errorText?: string;
-  isExpanded: boolean;
-  onToggle: () => void;
   renderItem: (item: PreparedMessage, index: number) => React.ReactNode;
 }
 
 export const SubagentBlock: React.FC<SubagentBlockProps> = ({
   purpose,
   taskDescription,
-  agentId,
   model,
   status,
   innerMessages,
   statistics,
   resultText,
   errorText,
-  isExpanded,
-  onToggle,
   renderItem,
 }) => {
   const isCalling = status === 'calling';
 
-  const headerLabel = useMemo(() => {
-    return purpose ? `Subagent: ${purpose}` : 'Subagent';
-  }, [purpose]);
+  const headerLabel = useMemo(
+    () => (purpose ? `Subagent: ${purpose}` : 'Subagent'),
+    [purpose],
+  );
 
-  const collapsedSummary = useMemo(() => {
-    const parts: string[] = [];
-    if (statistics?.toolCallsMade) {
-      parts.push(
-        `${statistics.toolCallsMade} tool call${statistics.toolCallsMade === 1 ? '' : 's'}`,
-      );
-    }
-    if (innerMessages.length > 0) {
-      parts.push(
-        `${innerMessages.length} msg${innerMessages.length === 1 ? '' : 's'}`,
-      );
-    }
-    if (statistics?.usage?.totalTokens) {
-      parts.push(
-        `${formatRequestTokenCount(statistics.usage.totalTokens)} tokens`,
-      );
-    }
-    return parts.join(', ');
-  }, [statistics, innerMessages.length]);
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onToggle();
-    }
+  const TAG_STYLE: React.CSSProperties = {
+    margin: 0,
+    fontSize: 11,
+    lineHeight: '18px',
   };
 
   return (
@@ -135,57 +99,34 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
       }}>
       {/* Header row */}
       <div
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={handleKeyDown}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          cursor: 'pointer',
         }}>
-        {isExpanded ? (
-          <CaretDownOutlined style={HEADER_ICON_STYLE} />
-        ) : (
-          <CaretRightOutlined style={HEADER_ICON_STYLE} />
+        {isCalling && (
+          <LoadingOutlined style={{ fontSize: 11, color: '#595959' }} />
         )}
-        {isCalling && <LoadingOutlined style={HEADER_ICON_STYLE} />}
         <Text style={HEADER_LABEL_STYLE}>{headerLabel}</Text>
         {status === 'executed' && !errorText && (
-          <Tag
-            color="success"
-            style={{ margin: 0, fontSize: 11, lineHeight: '18px' }}>
+          <Tag color="success" style={TAG_STYLE}>
             done
           </Tag>
         )}
         {status === 'executed' && errorText && (
-          <Tag
-            color="error"
-            style={{ margin: 0, fontSize: 11, lineHeight: '18px' }}>
+          <Tag color="error" style={TAG_STYLE}>
             error
           </Tag>
         )}
-        {status === 'stopped' && (
-          <Tag style={{ margin: 0, fontSize: 11, lineHeight: '18px' }}>
-            stopped
-          </Tag>
-        )}
+        {status === 'stopped' && <Tag style={TAG_STYLE}>stopped</Tag>}
         {status === 'calling' && (
-          <Tag
-            color="processing"
-            style={{ margin: 0, fontSize: 11, lineHeight: '18px' }}>
+          <Tag color="processing" style={TAG_STYLE}>
             running
           </Tag>
         )}
-        {!isExpanded && collapsedSummary && (
-          <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-            {collapsedSummary}
-          </Text>
-        )}
       </div>
 
-      {/* Task description — always visible as first "message" */}
+      {/* Task description */}
       {taskDescription && (
         <div
           style={{
@@ -202,47 +143,40 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
         </div>
       )}
 
-      {/* Expanded content */}
-      {isExpanded && (
-        <>
-          {/* Inner messages area */}
-          <div style={INNER_AREA_STYLE}>
-            {innerMessages.length === 0 && isCalling && (
-              <Text
-                type="secondary"
-                style={{ fontSize: 12, fontStyle: 'italic' }}>
-                Subagent is working...
-              </Text>
-            )}
-            {innerMessages.map((item, idx) => (
-              <div key={item.id || idx} style={{ marginBottom: 6 }}>
-                {renderItem(item, idx)}
-              </div>
-            ))}
+      {/* Inner messages area */}
+      <div style={INNER_AREA_STYLE}>
+        {innerMessages.length === 0 && isCalling && (
+          <Text type="secondary" style={{ fontSize: 12, fontStyle: 'italic' }}>
+            Subagent is working...
+          </Text>
+        )}
+        {innerMessages.map((item, idx) => (
+          <div key={item.id || idx} style={{ marginBottom: 6 }}>
+            {renderItem(item, idx)}
           </div>
+        ))}
+      </div>
 
-          {/* Error — shown as last message with error styling */}
-          {errorText && (
-            <div
-              style={{
-                ...RESULT_PREVIEW_STYLE,
-                color: '#cf1322',
-                backgroundColor: '#fff2f0',
-                border: '1px solid #ffccc7',
-              }}>
-              {errorText}
-            </div>
-          )}
-
-          {/* Result — always shown as last message when available */}
-          {resultText && !errorText && (
-            <div style={RESULT_PREVIEW_STYLE}>{resultText}</div>
-          )}
-
-          {/* Statistics footer */}
-          <StatisticsFooter statistics={statistics} model={model} />
-        </>
+      {/* Error */}
+      {errorText && (
+        <div
+          style={{
+            ...RESULT_PREVIEW_STYLE,
+            color: '#cf1322',
+            backgroundColor: '#fff2f0',
+            border: '1px solid #ffccc7',
+          }}>
+          {errorText}
+        </div>
       )}
+
+      {/* Result */}
+      {resultText && !errorText && (
+        <div style={RESULT_PREVIEW_STYLE}>{resultText}</div>
+      )}
+
+      {/* Statistics footer */}
+      <StatisticsFooter statistics={statistics} model={model} />
     </div>
   );
 };

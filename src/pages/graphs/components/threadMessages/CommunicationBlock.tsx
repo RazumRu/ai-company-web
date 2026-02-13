@@ -1,8 +1,4 @@
-import {
-  CaretDownOutlined,
-  CaretRightOutlined,
-  LoadingOutlined,
-} from '@ant-design/icons';
+import { LoadingOutlined } from '@ant-design/icons';
 import { Tag, Typography } from 'antd';
 import React, { useMemo } from 'react';
 
@@ -12,11 +8,6 @@ import { formatMessageContent } from './messageUtils';
 import type { PreparedMessage } from './threadMessagesTypes';
 
 const { Text } = Typography;
-
-const HEADER_ICON_STYLE: React.CSSProperties = {
-  fontSize: 11,
-  color: '#595959',
-};
 
 const HEADER_LABEL_STYLE: React.CSSProperties = {
   fontSize: 12,
@@ -52,8 +43,6 @@ export interface CommunicationBlockProps {
   innerMessages: PreparedMessage[];
   resultText?: string;
   errorText?: string;
-  isExpanded: boolean;
-  onToggle: () => void;
   renderItem: (item: PreparedMessage, index: number) => React.ReactNode;
 }
 
@@ -66,8 +55,6 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
   innerMessages,
   resultText,
   errorText,
-  isExpanded,
-  onToggle,
   renderItem,
 }) => {
   const isCalling = status === 'calling';
@@ -90,18 +77,6 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
     return formatMessageContent(raw);
   }, [instructionMessage]);
 
-  const collapsedSummary =
-    innerMessages.length > 0
-      ? `${innerMessages.length} msg${innerMessages.length === 1 ? '' : 's'}`
-      : '';
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onToggle();
-    }
-  };
-
   return (
     <div
       style={{
@@ -112,22 +87,14 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
       }}>
       {/* Header row */}
       <div
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={handleKeyDown}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 6,
-          cursor: 'pointer',
         }}>
-        {isExpanded ? (
-          <CaretDownOutlined style={HEADER_ICON_STYLE} />
-        ) : (
-          <CaretRightOutlined style={HEADER_ICON_STYLE} />
+        {isCalling && (
+          <LoadingOutlined style={{ fontSize: 11, color: '#595959' }} />
         )}
-        {isCalling && <LoadingOutlined style={HEADER_ICON_STYLE} />}
         {targetAvatarSrc && (
           <img
             src={targetAvatarSrc}
@@ -157,14 +124,9 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
             running
           </Tag>
         )}
-        {!isExpanded && collapsedSummary && (
-          <Text type="secondary" style={{ fontSize: 11, flexShrink: 0 }}>
-            {collapsedSummary}
-          </Text>
-        )}
       </div>
 
-      {/* Parent AI text — always visible as first content (like taskDescription in SubagentBlock) */}
+      {/* Parent AI text */}
       {parentContent && (
         <div
           style={{
@@ -187,7 +149,7 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
         </div>
       )}
 
-      {/* Instruction content — always visible */}
+      {/* Instruction content */}
       {instructionContent && (
         <div
           style={{
@@ -231,117 +193,108 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
         </div>
       )}
 
-      {/* Expanded content */}
-      {isExpanded && (
-        <>
-          {/* Inner messages area */}
-          <div style={INNER_AREA_STYLE}>
-            {innerMessages.length === 0 && isCalling && (
-              <Text
-                type="secondary"
-                style={{ fontSize: 12, fontStyle: 'italic' }}>
-                Agent is working...
-              </Text>
-            )}
-            {innerMessages.map((item, idx) => (
-              <div
-                key={item.id || idx}
-                style={
-                  idx < innerMessages.length - 1
-                    ? { marginBottom: 4 }
-                    : undefined
-                }>
-                {renderItem(item, idx)}
-              </div>
-            ))}
+      {/* Inner messages area */}
+      <div style={INNER_AREA_STYLE}>
+        {innerMessages.length === 0 && isCalling && (
+          <Text type="secondary" style={{ fontSize: 12, fontStyle: 'italic' }}>
+            Agent is working...
+          </Text>
+        )}
+        {innerMessages.map((item, idx) => (
+          <div
+            key={item.id || idx}
+            style={
+              idx < innerMessages.length - 1 ? { marginBottom: 4 } : undefined
+            }>
+            {renderItem(item, idx)}
           </div>
+        ))}
+      </div>
 
-          {/* Error — shown with error styling */}
-          {errorText && (
-            <div
+      {/* Error */}
+      {errorText && (
+        <div
+          style={{
+            padding: '6px 10px',
+            fontSize: 12,
+            backgroundColor: '#fff2f0',
+            borderRadius: 6,
+            border: '1px solid #ffccc7',
+            lineHeight: 1.5,
+          }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 6,
+              paddingBottom: 6,
+              borderBottom: '1px solid #ffccc7',
+            }}>
+            <span
               style={{
-                padding: '6px 10px',
                 fontSize: 12,
-                backgroundColor: '#fff2f0',
-                borderRadius: 6,
-                border: '1px solid #ffccc7',
-                lineHeight: 1.5,
+                fontWeight: 600,
+                color: '#cf1322',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
               }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 6,
-                  paddingBottom: 6,
-                  borderBottom: '1px solid #ffccc7',
-                }}>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#cf1322',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}>
-                  Error
-                  {targetAgentName ? ` from ${targetAgentName}` : ''}
-                </span>
-              </div>
-              <MarkdownContent
-                content={errorText}
-                style={{
-                  fontSize: '12px',
-                  lineHeight: '1.4',
-                  color: '#cf1322',
-                }}
-              />
-            </div>
-          )}
+              Error
+              {targetAgentName ? ` from ${targetAgentName}` : ''}
+            </span>
+          </div>
+          <MarkdownContent
+            content={errorText}
+            style={{
+              fontSize: '12px',
+              lineHeight: '1.4',
+              color: '#cf1322',
+            }}
+          />
+        </div>
+      )}
 
-          {/* Result — shown with success styling */}
-          {resultText && !errorText && (
-            <div
+      {/* Result */}
+      {resultText && !errorText && (
+        <div
+          style={{
+            padding: '6px 10px',
+            fontSize: 12,
+            backgroundColor: '#f6ffed',
+            borderRadius: 6,
+            border: '1px solid #b7eb8f',
+            lineHeight: 1.5,
+          }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 6,
+              paddingBottom: 6,
+              borderBottom: '1px solid #b7eb8f',
+            }}>
+            <span
               style={{
-                padding: '6px 10px',
                 fontSize: 12,
-                backgroundColor: '#f6ffed',
-                borderRadius: 6,
-                border: '1px solid #b7eb8f',
-                lineHeight: 1.5,
+                fontWeight: 600,
+                color: '#389e0d',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
               }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 6,
-                  paddingBottom: 6,
-                  borderBottom: '1px solid #b7eb8f',
-                }}>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#389e0d',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}>
-                  Result
-                  {targetAgentName ? ` from ${targetAgentName}` : ''}
-                </span>
-              </div>
-              <MarkdownContent
-                content={resultText}
-                style={{
-                  fontSize: '12px',
-                  lineHeight: '1.4',
-                  color: '#135200',
-                }}
-              />
-            </div>
-          )}
-        </>
+              Result
+              {targetAgentName ? ` from ${targetAgentName}` : ''}
+            </span>
+          </div>
+          <MarkdownContent
+            content={resultText}
+            style={{
+              fontSize: '12px',
+              lineHeight: '1.4',
+              color: '#135200',
+            }}
+          />
+        </div>
       )}
     </div>
   );
