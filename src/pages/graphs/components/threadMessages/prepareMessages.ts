@@ -143,14 +143,16 @@ export const prepareReadyMessages = (
         : undefined;
     const isInterAgent = Boolean(additional?.__interAgentCommunication);
 
-    // Only group into subagent blocks if NOT an inter-agent communication message.
-    // Communication inner messages may carry a __toolCallId that points to a
-    // subagent call within the communication; those should stay in the communication
-    // block and be handled by the recursive call inside it.
+    // Group into subagent blocks when __toolCallId matches a subagents_run_task
+    // call.  Skip only when the __toolCallId also matches a communication_exec
+    // call (those stay in the communication block).  Inter-agent messages whose
+    // __toolCallId points to a subagent call ARE grouped — the recursive
+    // prepareReadyMessages call inside communication blocks needs this to build
+    // proper SubagentBlock entries.
     if (
       parentToolCallId &&
       subagentToolCallIds.has(parentToolCallId) &&
-      !isInterAgent
+      !communicationToolCallIds.has(parentToolCallId)
     ) {
       if (!subagentInnerByToolCallId.has(parentToolCallId)) {
         subagentInnerByToolCallId.set(parentToolCallId, []);
@@ -447,6 +449,8 @@ export const prepareReadyMessages = (
             resultText,
             errorText,
             model,
+            rawToolArgs: parsedArgs ?? toolArgs,
+            rawToolResult: resultContent,
             status: matched
               ? 'executed'
               : allowCallingIndicators && isLatestRun(toolCallRunId)
@@ -503,6 +507,18 @@ export const prepareReadyMessages = (
           // Pass the parent AI message so its text content can be shown
           // as the first item inside the communication block.
           const parentHasContent = !isBlankContent(m.message?.content);
+
+          // Skip redundant result-only communication blocks — these appear
+          // when the backend emits a second communication_exec call that
+          // carries only the final result without any inner conversation.
+          const hasSubstantiveContent =
+            innerPrepared.length > 0 ||
+            instructionMsg ||
+            parentHasContent ||
+            (!matched && allowCallingIndicators && isLatestRun(toolCallRunId));
+          if (!hasSubstantiveContent) {
+            continue;
+          }
 
           prepared.push({
             type: 'communication',

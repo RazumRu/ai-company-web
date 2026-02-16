@@ -12,6 +12,7 @@
 | **updatedAt**         | **string**                                                                    |             | [default to undefined]            |
 | **message**           | [**ThreadMessageDtoMessage**](ThreadMessageDtoMessage.md)                     |             | [default to undefined]            |
 | **requestTokenUsage** | [**ThreadMessageDtoRequestTokenUsage**](ThreadMessageDtoRequestTokenUsage.md) |             | [optional] [default to undefined] |
+| **toolTokenUsage**    | [**ThreadMessageDtoRequestTokenUsage**](ThreadMessageDtoRequestTokenUsage.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -27,6 +28,7 @@ const instance: ThreadMessageDto = {
   updatedAt,
   message,
   requestTokenUsage,
+  toolTokenUsage,
 };
 ```
 

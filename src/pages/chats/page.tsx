@@ -121,6 +121,7 @@ export const ChatsPage = () => {
     formatNodeLabel,
     handleOpenUsageStatsModal,
     handleCloseUsageStatsModal,
+    invalidateThreadUsageStats,
     usageStatsModalOpen,
     usageStatsModalThreadId,
     threadUsageStats,
@@ -159,6 +160,7 @@ export const ChatsPage = () => {
       ensureGraphsLoaded,
       graphCache,
       templatesById,
+      invalidateThreadUsageStats,
     });
 
   const socketEventsForUsageStatsThread = useMemo(() => {

@@ -364,11 +364,19 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
     typeof outputCandidate === 'string'
       ? normalizeShellText(outputCandidate)
       : null;
+  const focusResultCandidate = resultObj?.focusResult;
+  const focusResultText =
+    typeof focusResultCandidate === 'string' && focusResultCandidate.trim()
+      ? normalizeShellText(focusResultCandidate)
+      : null;
+  const outputFocusCandidate = toolOptions?.outputFocus;
+  const outputFocusText =
+    typeof outputFocusCandidate === 'string' && outputFocusCandidate.trim()
+      ? outputFocusCandidate.trim()
+      : null;
   const exitCodeCandidate = resultObj?.exitCode;
   const exitCode =
-    typeof exitCodeCandidate === 'number'
-      ? (exitCodeCandidate as number)
-      : null;
+    typeof exitCodeCandidate === 'number' ? exitCodeCandidate : null;
   const exitCodeColor =
     hasToolError || (exitCode !== null && exitCode !== 0)
       ? '#ff4d4f'
@@ -725,6 +733,18 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                 )}
               </div>
             </div>
+            {outputFocusText && (
+              <div
+                style={{
+                  marginTop: 4,
+                  paddingLeft: 20,
+                  fontSize: '11px',
+                  color: '#8c8c8c',
+                  fontStyle: 'italic',
+                }}>
+                Focus: {outputFocusText}
+              </div>
+            )}
           </div>
         )}
 
@@ -808,6 +828,59 @@ export const ShellToolDisplay: React.FC<ShellToolDisplayProps> = ({
                   onClick={() => setOutputExpanded(!outputExpanded)}>
                   {outputExpanded ? 'Show less' : 'Show more...'}
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {status === 'executed' && focusResultText && (
+          <div
+            style={{
+              borderTop: '1px solid #333',
+            }}>
+            <div
+              style={{
+                padding: '5px 10px',
+                borderBottom: '1px solid #333',
+                background: '#1a1a1a',
+              }}>
+              <span style={{ fontSize: '11px', color: '#c4c4c4' }}>
+                Focus Result
+              </span>
+            </div>
+            <div style={{ padding: '5px 10px' }}>
+              {containsAnsi(focusResultText) ? (
+                <pre
+                  style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: '#b5cea8',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    lineHeight: '1.5',
+                  }}>
+                  <span
+                    dangerouslySetInnerHTML={{
+                      __html: renderAnsiHtml(focusResultText),
+                    }}
+                  />
+                </pre>
+              ) : (
+                <SyntaxHighlighter
+                  language="bash"
+                  style={vscDarkPlus}
+                  customStyle={{
+                    margin: 0,
+                    padding: 0,
+                    background: 'transparent',
+                    fontSize: '12px',
+                  }}
+                  PreTag="div"
+                  codeTagProps={{
+                    style: { fontFamily: 'inherit', color: '#b5cea8' },
+                  }}>
+                  {focusResultText}
+                </SyntaxHighlighter>
               )}
             </div>
           </div>

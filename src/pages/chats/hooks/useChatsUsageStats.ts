@@ -346,6 +346,7 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
       const maxRetries = 3;
       const retryDelay = 2000;
       let timeoutId: NodeJS.Timeout | null = null;
+      let cancelled = false;
 
       const load = async () => {
         try {
@@ -354,6 +355,7 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
             [threadId]: true,
           }));
           const response = await threadsApi.getThreadUsageStatistics(threadId);
+          if (cancelled) return;
           setThreadUsageStats((prev) => ({
             ...prev,
             [threadId]: response.data,
@@ -363,6 +365,7 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
             [threadId]: false,
           }));
         } catch (error) {
+          if (cancelled) return;
           console.error(
             `Error loading thread usage statistics (attempt ${retryCount + 1}/${maxRetries + 1}):`,
             error,
@@ -388,6 +391,7 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
 
       void load();
       return () => {
+        cancelled = true;
         if (timeoutId) clearTimeout(timeoutId);
       };
     },
@@ -402,24 +406,14 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
     selectedThreadIdForUsageStats &&
     threadUsageStats[selectedThreadIdForUsageStats],
   );
-  const isLoadingUsageStatsForSelected = Boolean(
-    selectedThreadIdForUsageStats &&
-    threadUsageStatsLoading[selectedThreadIdForUsageStats],
-  );
 
   useEffect(() => {
-    if (
-      !selectedThreadIdForUsageStats ||
-      hasUsageStatsForSelected ||
-      isLoadingUsageStatsForSelected
-    )
-      return;
+    if (!selectedThreadIdForUsageStats || hasUsageStatsForSelected) return;
 
     return fetchUsageStatsWithRetry(selectedThreadIdForUsageStats);
   }, [
     selectedThreadIdForUsageStats,
     hasUsageStatsForSelected,
-    isLoadingUsageStatsForSelected,
     fetchUsageStatsWithRetry,
   ]);
 
@@ -442,6 +436,21 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
 
   const handleCloseUsageStatsModal = useCallback(() => {
     setUsageStatsModalOpen(false);
+  }, []);
+
+  const invalidateThreadUsageStats = useCallback((threadId: string) => {
+    setThreadUsageStats((prev) => {
+      if (!prev[threadId]) return prev;
+      const next = { ...prev };
+      delete next[threadId];
+      return next;
+    });
+    setThreadUsageStatsLoading((prev) => {
+      if (!prev[threadId]) return prev;
+      const next = { ...prev };
+      delete next[threadId];
+      return next;
+    });
   }, []);
 
   return {
@@ -467,5 +476,6 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
     formatNodeLabel,
     handleOpenUsageStatsModal,
     handleCloseUsageStatsModal,
+    invalidateThreadUsageStats,
   };
 };

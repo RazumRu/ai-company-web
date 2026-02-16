@@ -109,6 +109,10 @@ export type PreparedMessage =
       resultText?: string;
       errorText?: string;
       model?: string;
+      /** Raw tool call arguments for the subagents_run_task call. */
+      rawToolArgs?: unknown;
+      /** Raw tool result content from the subagents_run_task response. */
+      rawToolResult?: unknown;
       status: ToolRenderStatus;
       id: string;
       nodeId?: string;

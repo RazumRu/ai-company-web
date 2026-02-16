@@ -56,8 +56,7 @@ docs/ThreadMessageDtoMessageOneOf4.md
 docs/ThreadMessageDtoRequestTokenUsage.md
 docs/ThreadUsageStatisticsDto.md
 docs/ThreadUsageStatisticsDtoByNodeValue.md
-docs/ThreadUsageStatisticsDtoByToolInner.md
-docs/ThreadUsageStatisticsDtoMessagesAggregate.md
+docs/ThreadUsageStatisticsDtoSchema0.md
 docs/ThreadUsageStatisticsDtoToolsAggregate.md
 docs/ThreadUsageStatisticsDtoTotal.md
 docs/ThreadsApi.md

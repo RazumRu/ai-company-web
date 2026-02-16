@@ -357,6 +357,18 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
+    const buildSubagentPopover = (
+      rawResult: unknown,
+      rawArgs: unknown,
+    ): React.ReactNode =>
+      renderToolPopoverContent(
+        rawResult,
+        rawArgs && typeof rawArgs === 'object'
+          ? (rawArgs as Record<string, JsonValue>)
+          : undefined,
+        'subagents_run_task',
+      );
+
     const preparedMessagesResult = useMemo(() => {
       return prepareReadyMessages(messages, {
         isNodeRunning,
@@ -366,6 +378,24 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     }, [messages, isNodeRunning, isThreadStopped, currentThreadLastRunId]);
 
     const isThinkingVisible = isNodeRunning && isAgentNode && !isThreadStopped;
+
+    const lastAgentNodeId = useMemo(() => {
+      for (let k = preparedMessagesResult.length - 1; k >= 0; k--) {
+        const pm = preparedMessagesResult[k];
+        const nid = pm.sourceAgentNodeId || pm.nodeId;
+        if (nid) return nid;
+      }
+      return nodeId;
+    }, [preparedMessagesResult, nodeId]);
+
+    const lastAgentAvatarSrc = lastAgentNodeId
+      ? getAgentAvatarDataUri(lastAgentNodeId)
+      : undefined;
+
+    const lastAgentName = lastAgentNodeId
+      ? nodeDisplayNames?.[lastAgentNodeId] ||
+        `Node ${lastAgentNodeId.slice(-6)}`
+      : 'Agent';
 
     const renderFullHeightState = (content: React.ReactNode) => (
       <div style={fullHeightColumnStyle}>
@@ -1055,18 +1085,29 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       }
 
       if (it.type === 'subagent') {
+        const subPopover =
+          it.status !== 'calling'
+            ? buildSubagentPopover(it.rawToolResult, it.rawToolArgs)
+            : undefined;
         return (
-          <div key={`work-subagent-${it.id}-${idx}`}>
+          <div
+            key={`work-subagent-${it.id}-${idx}`}
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '10px 12px',
+            }}>
             <SubagentBlock
               purpose={it.purpose}
               taskDescription={it.taskDescription}
-              agentId={it.agentId}
               model={it.model}
               status={it.status}
               innerMessages={it.innerMessages}
               statistics={it.statistics}
               resultText={it.resultText}
               errorText={it.errorText}
+              popoverContent={subPopover}
               renderItem={renderWorkingItem}
             />
           </div>
@@ -1084,7 +1125,14 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           ? getAgentAvatarDataUri(innerNodeId)
           : undefined;
         return (
-          <div key={`work-comm-${it.id}-${idx}`}>
+          <div
+            key={`work-comm-${it.id}-${idx}`}
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '10px 12px',
+            }}>
             <CommunicationBlock
               targetAgentName={commTargetName}
               targetAvatarSrc={targetAvatar}
@@ -1272,6 +1320,11 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             width: '100%',
           };
 
+          const topSubPopover =
+            item.status !== 'calling'
+              ? buildSubagentPopover(item.rawToolResult, item.rawToolArgs)
+              : undefined;
+
           pushRow(
             item.id,
             <ChatBubble
@@ -1285,13 +1338,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               <SubagentBlock
                 purpose={item.purpose}
                 taskDescription={item.taskDescription}
-                agentId={item.agentId}
                 model={item.model}
                 status={item.status}
                 innerMessages={item.innerMessages}
                 statistics={item.statistics}
                 resultText={item.resultText}
                 errorText={item.errorText}
+                popoverContent={topSubPopover}
                 renderItem={renderWorkingItem}
               />
             </ChatBubble>,
@@ -1320,7 +1373,6 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             (item.targetNodeId
               ? `Node ${item.targetNodeId.slice(-6)}`
               : undefined);
-          // Derive target avatar from the first inner message's nodeId
           const targetInnerNodeId =
             item.innerMessages.find((im) => im.nodeId)?.nodeId ?? undefined;
           const commTargetAvatarSrc = targetInnerNodeId
@@ -1509,26 +1561,34 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           {isThinkingVisible && !messagesLoading && (
             <div
               style={{
-                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '4px 0',
                 animation:
                   'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
               }}>
+              {lastAgentAvatarSrc && (
+                <img
+                  src={lastAgentAvatarSrc}
+                  alt=""
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    display: 'block',
+                  }}
+                />
+              )}
               <div
                 style={{
                   fontSize: '12px',
                   color: '#8c8c8c',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
                   lineHeight: '1.5',
-                  wordBreak: 'break-word',
-                  width: '100%',
                 }}>
-                Agent is thinking...
+                {lastAgentName} is thinking...
               </div>
             </div>
           )}

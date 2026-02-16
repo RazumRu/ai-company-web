@@ -1,6 +1,6 @@
 # ThreadUsageStatisticsDtoToolsAggregate
 
-Aggregated statistics for all tool message requests
+Aggregated statistics for all tool-related LLM requests
 
 ## Properties
 

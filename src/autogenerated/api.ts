@@ -1447,6 +1447,12 @@ export interface ThreadMessageDto {
    * @memberof ThreadMessageDto
    */
   'requestTokenUsage'?: ThreadMessageDtoRequestTokenUsage | null;
+  /**
+   *
+   * @type {ThreadMessageDtoRequestTokenUsage}
+   * @memberof ThreadMessageDto
+   */
+  'toolTokenUsage'?: ThreadMessageDtoRequestTokenUsage | null;
 }
 /**
  * @type ThreadMessageDtoMessage
@@ -1808,10 +1814,10 @@ export interface ThreadUsageStatisticsDto {
   'byNode': { [key: string]: ThreadUsageStatisticsDtoByNodeValue };
   /**
    * Usage statistics breakdown by tool name
-   * @type {Array<ThreadUsageStatisticsDtoByToolInner>}
+   * @type {Array<ThreadUsageStatisticsDtoSchema0>}
    * @memberof ThreadUsageStatisticsDto
    */
-  'byTool': Array<ThreadUsageStatisticsDtoByToolInner>;
+  'byTool': Array<ThreadUsageStatisticsDtoSchema0>;
   /**
    *
    * @type {ThreadUsageStatisticsDtoToolsAggregate}
@@ -1819,11 +1825,11 @@ export interface ThreadUsageStatisticsDto {
    */
   'toolsAggregate': ThreadUsageStatisticsDtoToolsAggregate;
   /**
-   *
-   * @type {ThreadUsageStatisticsDtoMessagesAggregate}
+   * Number of user (human) messages in the thread
+   * @type {number}
    * @memberof ThreadUsageStatisticsDto
    */
-  'messagesAggregate': ThreadUsageStatisticsDtoMessagesAggregate;
+  'userMessageCount': number;
 }
 /**
  *
@@ -1877,91 +1883,54 @@ export interface ThreadUsageStatisticsDtoByNodeValue {
 /**
  *
  * @export
- * @interface ThreadUsageStatisticsDtoByToolInner
+ * @interface ThreadUsageStatisticsDtoSchema0
  */
-export interface ThreadUsageStatisticsDtoByToolInner {
+export interface ThreadUsageStatisticsDtoSchema0 {
   /**
    * Tool name
    * @type {string}
-   * @memberof ThreadUsageStatisticsDtoByToolInner
+   * @memberof ThreadUsageStatisticsDtoSchema0
    */
   'toolName': string;
   /**
-   * Total tokens used by this tool
+   * Total tokens from LLM requests related to this tool
    * @type {number}
-   * @memberof ThreadUsageStatisticsDtoByToolInner
+   * @memberof ThreadUsageStatisticsDtoSchema0
    */
   'totalTokens': number;
   /**
-   * Total price for this tool in USD
+   * Total price from LLM requests related to this tool in USD
    * @type {number}
-   * @memberof ThreadUsageStatisticsDtoByToolInner
+   * @memberof ThreadUsageStatisticsDtoSchema0
    */
   'totalPrice'?: number;
   /**
    * Number of times this tool was called
    * @type {number}
-   * @memberof ThreadUsageStatisticsDtoByToolInner
+   * @memberof ThreadUsageStatisticsDtoSchema0
    */
   'callCount': number;
+  /**
+   * Tool\'s own execution token cost (e.g. subagent aggregate tokens)
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoSchema0
+   */
+  'toolTokens'?: number;
+  /**
+   * Tool\'s own execution price in USD
+   * @type {number}
+   * @memberof ThreadUsageStatisticsDtoSchema0
+   */
+  'toolPrice'?: number;
+  /**
+   * Sub-tool calls made within this tool (e.g. tools called by a subagent)
+   * @type {Array<ThreadUsageStatisticsDtoSchema0>}
+   * @memberof ThreadUsageStatisticsDtoSchema0
+   */
+  'subCalls'?: Array<ThreadUsageStatisticsDtoSchema0>;
 }
 /**
- * Aggregated statistics for all non-tool message requests (human, ai, system, reasoning)
- * @export
- * @interface ThreadUsageStatisticsDtoMessagesAggregate
- */
-export interface ThreadUsageStatisticsDtoMessagesAggregate {
-  /**
-   * Input tokens
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'inputTokens': number;
-  /**
-   * Cached input tokens
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'cachedInputTokens'?: number;
-  /**
-   * Output tokens
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'outputTokens': number;
-  /**
-   * Reasoning tokens
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'reasoningTokens'?: number;
-  /**
-   * Total tokens
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'totalTokens': number;
-  /**
-   * Total price in USD
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'totalPrice'?: number;
-  /**
-   * Current context size in tokens (snapshot, not additive)
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'currentContext'?: number;
-  /**
-   * Number of requests (messages with requestTokenUsage)
-   * @type {number}
-   * @memberof ThreadUsageStatisticsDtoMessagesAggregate
-   */
-  'requestCount': number;
-}
-/**
- * Aggregated statistics for all tool message requests
+ * Aggregated statistics for all tool-related LLM requests
  * @export
  * @interface ThreadUsageStatisticsDtoToolsAggregate
  */

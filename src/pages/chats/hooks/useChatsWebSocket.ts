@@ -82,6 +82,7 @@ interface UseChatsWebSocketDeps {
 
   graphCache: Record<string, GraphCacheEntry>;
   templatesById: Record<string, TemplateDto>;
+  invalidateThreadUsageStats: (threadId: string) => void;
 }
 
 export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
@@ -108,6 +109,7 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
     ensureGraphsLoaded,
     graphCache,
     templatesById,
+    invalidateThreadUsageStats,
   } = deps;
 
   const draftThreadRef = useRef(draftThread);
@@ -402,6 +404,15 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
         setSelectedThreadId(updatedThread.id);
         pendingThreadSelectionRef.current = null;
       }
+
+      // Invalidate cached usage stats when thread finishes so the
+      // auto-load effect refetches fresh totals from the API.
+      if (
+        updatedThread.status === ThreadDtoStatusEnum.Done ||
+        updatedThread.status === ThreadDtoStatusEnum.Stopped
+      ) {
+        invalidateThreadUsageStats(updatedThread.id);
+      }
     },
     [
       appendThreadSocketEvent,
@@ -412,6 +423,7 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
       setSelectedThreadId,
       setSelectedThreadShadow,
       pendingThreadSelectionRef,
+      invalidateThreadUsageStats,
     ],
   );
 
