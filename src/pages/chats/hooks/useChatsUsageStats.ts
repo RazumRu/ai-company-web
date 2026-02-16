@@ -162,20 +162,12 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
 
   const selectedThreadThreadUsage = useMemo(() => {
     if (!selectedThread || selectedThreadIsDraft) return undefined;
-    const base =
-      selectedThreadAggregateUsage ??
-      selectedThreadTokenUsageFromApi ??
-      undefined;
-    if (!base) return undefined;
 
-    // The backend may not distribute totalPrice to individual nodes,
-    // so the aggregated per-node sum can be 0 even when the API total
-    // has a real price. Prefer the authoritative API total price.
-    const apiPrice = selectedThreadTokenUsageFromApi?.totalPrice;
-    if (apiPrice && (!base.totalPrice || base.totalPrice === 0)) {
-      return { ...base, totalPrice: apiPrice };
-    }
-    return base;
+    // Prefer the authoritative API total when available — it includes all
+    // agents, tools, and sub-calls and is the single source of truth.
+    // Fall back to the real-time aggregated per-node sum only while the
+    // API total hasn't been fetched yet (e.g. thread still running).
+    return selectedThreadTokenUsageFromApi ?? selectedThreadAggregateUsage;
   }, [
     selectedThread,
     selectedThreadAggregateUsage,

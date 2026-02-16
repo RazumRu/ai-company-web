@@ -44,6 +44,16 @@ import {
   normalizeIncomingCreatedAtForDisplay,
 } from '../utils/chatsPageUtils';
 
+/** Additive number merge — returns `existing + incoming`, treating undefined as 0. */
+const addUsageField = (
+  existing: number | undefined,
+  incoming: number | undefined,
+): number | undefined => {
+  if (typeof incoming !== 'number' || !Number.isFinite(incoming))
+    return existing;
+  return (existing ?? 0) + incoming;
+};
+
 interface UseChatsWebSocketDeps {
   graphFilterId: string | undefined;
   selectedThreadId: string | undefined;
@@ -136,6 +146,11 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
   useEffect(() => {
     graphFilterIdRef.current = graphFilterId;
   }, [graphFilterId]);
+
+  // Track which thread→nodeId pairs have received agent.state.update
+  // events so we don't double-count with additive agent.message usage.
+  // Keyed by threadId so entries can be cleared when a thread restarts.
+  const nodesWithStateUpdateRef = useRef<Map<string, Set<string>>>(new Map());
 
   const [threadSocketEvents, setThreadSocketEvents] = useState<
     Record<string, ThreadSocketEventEntry[]>
@@ -405,13 +420,15 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
         pendingThreadSelectionRef.current = null;
       }
 
-      // Invalidate cached usage stats when thread finishes so the
-      // auto-load effect refetches fresh totals from the API.
+      // Invalidate cached usage stats and clear the state-update tracking
+      // when a thread finishes so the auto-load effect refetches fresh totals
+      // from the API and future re-runs start with a clean slate.
       if (
         updatedThread.status === ThreadDtoStatusEnum.Done ||
         updatedThread.status === ThreadDtoStatusEnum.Stopped
       ) {
         invalidateThreadUsageStats(updatedThread.id);
+        nodesWithStateUpdateRef.current.delete(updatedThread.id);
       }
     },
     [
@@ -590,6 +607,59 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
         [threadId]: incomingMessage.externalThreadId,
       }));
     }
+
+    // Accumulate per-request token usage into real-time node totals.
+    // Only do this for nodes that don't receive agent.state.update events
+    // (e.g. subagent nodes), since state updates already provide cumulative
+    // totals and additive accumulation would cause double-counting.
+    const reqUsage = incomingMessage.requestTokenUsage;
+    const threadNodeSet = nodesWithStateUpdateRef.current.get(threadId);
+    const nodeHasStateUpdates = threadNodeSet?.has(nodeId) ?? false;
+    if (reqUsage && nodeId && !nodeHasStateUpdates) {
+      setThreadTokenUsageByNode((prev) => {
+        const existingThread = prev[threadId] ?? {};
+        const existingNode = existingThread[nodeId] ?? {};
+
+        return {
+          ...prev,
+          [threadId]: {
+            ...existingThread,
+            [nodeId]: {
+              inputTokens: addUsageField(
+                existingNode.inputTokens,
+                reqUsage.inputTokens,
+              ),
+              cachedInputTokens: addUsageField(
+                existingNode.cachedInputTokens,
+                reqUsage.cachedInputTokens,
+              ),
+              outputTokens: addUsageField(
+                existingNode.outputTokens,
+                reqUsage.outputTokens,
+              ),
+              reasoningTokens: addUsageField(
+                existingNode.reasoningTokens,
+                reqUsage.reasoningTokens,
+              ),
+              totalTokens: addUsageField(
+                existingNode.totalTokens,
+                reqUsage.totalTokens,
+              ),
+              totalPrice: addUsageField(
+                existingNode.totalPrice,
+                reqUsage.totalPrice,
+              ),
+              // currentContext is a snapshot, not additive — always replace
+              currentContext:
+                typeof reqUsage.currentContext === 'number' &&
+                Number.isFinite(reqUsage.currentContext)
+                  ? reqUsage.currentContext
+                  : existingNode.currentContext,
+            },
+          },
+        };
+      });
+    }
   });
 
   useWebSocketEvent('agent.state.update', (notification) => {
@@ -600,6 +670,15 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
     if (!internalThreadId) return;
     appendThreadSocketEvent(internalThreadId, data);
     if (!data.nodeId) return;
+
+    // Mark this node as receiving cumulative state updates so we skip
+    // additive accumulation from agent.message for the same node.
+    let threadNodeSet = nodesWithStateUpdateRef.current.get(internalThreadId);
+    if (!threadNodeSet) {
+      threadNodeSet = new Set();
+      nodesWithStateUpdateRef.current.set(internalThreadId, threadNodeSet);
+    }
+    threadNodeSet.add(data.nodeId);
 
     const usageUpdate = compactUsageUpdate(data.data ?? {});
     if (Object.keys(usageUpdate).length === 0) return;

@@ -40,6 +40,51 @@ const THEMES: Record<string, StyledSectionTheme> = {
   },
 };
 
+/** Pre-built style objects per variant to avoid allocating new objects on every render. */
+const VARIANT_STYLES = Object.fromEntries(
+  Object.entries(THEMES).map(([key, theme]) => [
+    key,
+    {
+      wrapper: {
+        padding: '6px 10px',
+        fontSize: 12,
+        backgroundColor: theme.background,
+        borderRadius: 6,
+        border: `1px solid ${theme.border}`,
+        lineHeight: 1.5,
+      } as React.CSSProperties,
+      header: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 6,
+        paddingBottom: 6,
+        borderBottom: `1px solid ${theme.border}`,
+      } as React.CSSProperties,
+      label: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: theme.labelColor,
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+      } as React.CSSProperties,
+      content: {
+        fontSize: '12px',
+        lineHeight: '1.4',
+        color: theme.contentColor,
+      } as React.CSSProperties,
+    },
+  ]),
+) as Record<
+  string,
+  {
+    wrapper: React.CSSProperties;
+    header: React.CSSProperties;
+    label: React.CSSProperties;
+    content: React.CSSProperties;
+  }
+>;
+
 export type StyledSectionVariant = keyof typeof THEMES;
 
 export interface StyledSectionProps {
@@ -53,46 +98,14 @@ export const StyledSection: React.FC<StyledSectionProps> = ({
   label,
   content,
 }) => {
-  const theme = THEMES[variant];
+  const styles = VARIANT_STYLES[variant];
 
   return (
-    <div
-      style={{
-        padding: '6px 10px',
-        fontSize: 12,
-        backgroundColor: theme.background,
-        borderRadius: 6,
-        border: `1px solid ${theme.border}`,
-        lineHeight: 1.5,
-      }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 6,
-          paddingBottom: 6,
-          borderBottom: `1px solid ${theme.border}`,
-        }}>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: theme.labelColor,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}>
-          {label}
-        </span>
+    <div style={styles.wrapper}>
+      <div style={styles.header}>
+        <span style={styles.label}>{label}</span>
       </div>
-      <MarkdownContent
-        content={content}
-        style={{
-          fontSize: '12px',
-          lineHeight: '1.4',
-          color: theme.contentColor,
-        }}
-      />
+      <MarkdownContent content={content} style={styles.content} />
     </div>
   );
 };

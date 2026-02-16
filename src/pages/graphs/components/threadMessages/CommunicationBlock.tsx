@@ -11,6 +11,7 @@ import {
   HEADER_LABEL_STYLE,
   INNER_AREA_STYLE,
   PARENT_CONTENT_STYLE,
+  THINKING_STYLE,
 } from './blockStyles';
 import { formatMessageContent } from './messageUtils';
 import { StatisticsFooter } from './StatisticsFooter';
@@ -201,6 +202,15 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
           label={resultLabel}
           content={resultText}
         />
+      )}
+
+      {/* Thinking indicator — shown at the end while the agent is running */}
+      {isCalling && innerMessages.length > 0 && (
+        <div style={THINKING_STYLE}>
+          {targetAgentName
+            ? `${targetAgentName} is thinking...`
+            : 'Agent is thinking...'}
+        </div>
       )}
 
       {/* Statistics footer */}

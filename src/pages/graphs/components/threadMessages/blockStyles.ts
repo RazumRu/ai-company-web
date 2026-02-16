@@ -2,6 +2,14 @@ import type React from 'react';
 
 /** Shared styles used by SubagentBlock and CommunicationBlock. */
 
+export const THINKING_STYLE: React.CSSProperties = {
+  fontSize: 11,
+  fontStyle: 'italic',
+  color: '#8c8c8c',
+  paddingTop: 2,
+  animation: 'messages-tab-thinking-pulse 1.6s ease-in-out infinite',
+};
+
 export const HEADER_LABEL_STYLE: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
