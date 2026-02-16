@@ -78,7 +78,7 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
     return null;
   }
 
-  const { total, requests, byNode, byTool, toolsAggregate, messagesAggregate } =
+  const { total, requests, byNode, byTool, toolsAggregate, userMessageCount } =
     usage;
 
   // Prepare byNode data
@@ -90,6 +90,18 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
         ...stats,
       }))
     : [];
+
+  // Check if any tool has subCalls so we can enable tree expansion
+  const anyToolHasSubCalls = byTool?.some(
+    (t) => t.subCalls && t.subCalls.length > 0,
+  );
+
+  // Check if any tool-level execution cost exists (toolTokens / toolPrice)
+  const anyToolHasOwnCost = byTool?.some(
+    (t) =>
+      (typeof t.toolTokens === 'number' && t.toolTokens > 0) ||
+      (typeof t.toolPrice === 'number' && t.toolPrice > 0),
+  );
 
   const toolColumns: ColumnsType<(typeof byTool)[0]> = [
     {
@@ -106,19 +118,41 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
       align: 'right',
     },
     {
-      title: 'Total Tokens',
+      title: 'LLM Tokens',
       dataIndex: 'totalTokens',
       key: 'totalTokens',
       render: formatNumber,
       align: 'right',
     },
     {
-      title: 'Total Price',
+      title: 'LLM Price',
       dataIndex: 'totalPrice',
       key: 'totalPrice',
       render: formatUsd,
       align: 'right',
     },
+    ...(anyToolHasOwnCost
+      ? [
+          {
+            title: 'Tool Tokens',
+            dataIndex: 'toolTokens' as const,
+            key: 'toolTokens',
+            render: (value: number | undefined) =>
+              typeof value === 'number' && value > 0
+                ? formatNumber(value)
+                : '-',
+            align: 'right' as const,
+          },
+          {
+            title: 'Tool Price',
+            dataIndex: 'toolPrice' as const,
+            key: 'toolPrice',
+            render: (value: number | undefined) =>
+              typeof value === 'number' && value > 0 ? formatUsd(value) : '-',
+            align: 'right' as const,
+          },
+        ]
+      : []),
   ];
 
   const hasLocalEvents =
@@ -159,6 +193,13 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
             <Statistic
               title="Requests"
               value={formatNumber(requests)}
+              valueStyle={{ fontSize: 16 }}
+            />
+          )}
+          {typeof userMessageCount === 'number' && (
+            <Statistic
+              title="User Messages"
+              value={formatNumber(userMessageCount)}
               valueStyle={{ fontSize: 16 }}
             />
           )}
@@ -210,73 +251,34 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
 
       <Divider style={{ margin: '12px 0' }} />
 
-      {/* Messages and Tools Aggregates - in one line */}
-      {(messagesAggregate || toolsAggregate) && (
+      {/* Tools Aggregate */}
+      {toolsAggregate && (
         <>
           <div style={{ marginBottom: 16 }}>
-            <div
-              style={{
-                display: 'flex',
-                gap: 32,
-                flexWrap: 'wrap',
-              }}>
-              {messagesAggregate && (
-                <div style={{ flex: '1 1 300px' }}>
-                  <Text
-                    strong
-                    style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
-                    Messages Aggregate
-                  </Text>
-                  <Space size="middle" wrap>
-                    <Statistic
-                      title="Requests"
-                      value={formatNumber(messagesAggregate.requestCount)}
-                      valueStyle={{ fontSize: 14 }}
-                    />
-                    <Statistic
-                      title="Tokens"
-                      value={formatNumber(messagesAggregate.totalTokens)}
-                      valueStyle={{ fontSize: 14 }}
-                    />
-                    {typeof messagesAggregate.totalPrice === 'number' && (
-                      <Statistic
-                        title="Cost"
-                        value={formatUsd(messagesAggregate.totalPrice)}
-                        valueStyle={{ fontSize: 14 }}
-                      />
-                    )}
-                  </Space>
-                </div>
+            <Text
+              strong
+              style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
+              Tools Aggregate
+            </Text>
+            <Space size="middle" wrap>
+              <Statistic
+                title="Requests"
+                value={formatNumber(toolsAggregate.requestCount)}
+                valueStyle={{ fontSize: 14 }}
+              />
+              <Statistic
+                title="Tokens"
+                value={formatNumber(toolsAggregate.totalTokens)}
+                valueStyle={{ fontSize: 14 }}
+              />
+              {typeof toolsAggregate.totalPrice === 'number' && (
+                <Statistic
+                  title="Cost"
+                  value={formatUsd(toolsAggregate.totalPrice)}
+                  valueStyle={{ fontSize: 14 }}
+                />
               )}
-              {toolsAggregate && (
-                <div style={{ flex: '1 1 300px' }}>
-                  <Text
-                    strong
-                    style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
-                    Tools Aggregate
-                  </Text>
-                  <Space size="middle" wrap>
-                    <Statistic
-                      title="Requests"
-                      value={formatNumber(toolsAggregate.requestCount)}
-                      valueStyle={{ fontSize: 14 }}
-                    />
-                    <Statistic
-                      title="Tokens"
-                      value={formatNumber(toolsAggregate.totalTokens)}
-                      valueStyle={{ fontSize: 14 }}
-                    />
-                    {typeof toolsAggregate.totalPrice === 'number' && (
-                      <Statistic
-                        title="Cost"
-                        value={formatUsd(toolsAggregate.totalPrice)}
-                        valueStyle={{ fontSize: 14 }}
-                      />
-                    )}
-                  </Space>
-                </div>
-              )}
-            </div>
+            </Space>
           </div>
           <Divider style={{ margin: '12px 0' }} />
         </>
@@ -377,7 +379,7 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
         </div>
       )}
 
-      {/* Usage by Tool - Always expanded */}
+      {/* Usage by Tool — expandable when tools have subCalls */}
       {byTool && byTool.length > 0 && (
         <>
           <Divider style={{ margin: '12px 0' }} />
@@ -393,7 +395,14 @@ export const ThreadUsageDisplay: React.FC<ThreadUsageDisplayProps> = ({
               pagination={false}
               size="small"
               scroll={{ x: 'max-content' }}
-              rowKey="toolName"
+              rowKey={(record, index) => `${record.toolName}-${index ?? 0}`}
+              {...(anyToolHasSubCalls
+                ? {
+                    childrenColumnName: 'subCalls',
+                    defaultExpandAllRows: true,
+                    indentSize: 20,
+                  }
+                : {})}
             />
           </div>
         </>

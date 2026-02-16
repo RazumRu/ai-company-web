@@ -17,18 +17,38 @@ interface TokenUsagePopoverIconProps {
   requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
 }
 
+/** Returns true when two token-usage objects carry identical numeric values. */
+const isSameUsage = (
+  a?: ThreadMessageDtoRequestTokenUsage | null,
+  b?: ThreadMessageDtoRequestTokenUsage | null,
+): boolean => {
+  if (!a || !b) return false;
+  return (
+    a.totalTokens === b.totalTokens &&
+    a.inputTokens === b.inputTokens &&
+    a.outputTokens === b.outputTokens &&
+    a.totalPrice === b.totalPrice
+  );
+};
+
 export const TokenUsagePopoverIcon: React.FC<TokenUsagePopoverIconProps> = ({
   requestTokenUsage,
   requestTokenUsageIn,
   requestTokenUsageOut,
 }) => {
-  const effectiveRequestTokenUsageIn = requestTokenUsageIn || requestTokenUsage;
+  const effectiveIn = requestTokenUsageIn || requestTokenUsage;
+  // Skip the Output section when it carries the same numbers as Input
+  // (happens when the backend echoes the same usage on both messages).
+  const effectiveOut =
+    requestTokenUsageOut && !isSameUsage(effectiveIn, requestTokenUsageOut)
+      ? requestTokenUsageOut
+      : null;
 
-  if (!effectiveRequestTokenUsageIn && !requestTokenUsageOut) {
+  if (!effectiveIn && !effectiveOut) {
     return null;
   }
 
-  const renderRequestTokenUsageSection = (
+  const renderSection = (
     usage: ThreadMessageDtoRequestTokenUsage,
     label: string,
   ) => (
@@ -64,19 +84,17 @@ export const TokenUsagePopoverIcon: React.FC<TokenUsagePopoverIconProps> = ({
     </>
   );
 
+  // When only one section is shown, use a simpler label without (Input)/(Output).
+  const showBoth = !!effectiveIn && !!effectiveOut;
+  const inLabel = showBoth
+    ? 'Request Token Usage (Input):'
+    : 'Request Token Usage:';
+
   const popoverContent = (
     <Space direction="vertical" size={4} style={{ maxWidth: 340 }}>
-      {effectiveRequestTokenUsageIn &&
-        renderRequestTokenUsageSection(
-          effectiveRequestTokenUsageIn,
-          'Request Token Usage (Input):',
-        )}
-
-      {requestTokenUsageOut &&
-        renderRequestTokenUsageSection(
-          requestTokenUsageOut,
-          'Request Token Usage (Output):',
-        )}
+      {effectiveIn && renderSection(effectiveIn, inLabel)}
+      {effectiveOut &&
+        renderSection(effectiveOut, 'Request Token Usage (Output):')}
     </Space>
   );
 

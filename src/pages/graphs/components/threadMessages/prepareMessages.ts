@@ -451,6 +451,8 @@ export const prepareReadyMessages = (
             model,
             rawToolArgs: parsedArgs ?? toolArgs,
             rawToolResult: resultContent,
+            requestTokenUsageIn: m.requestTokenUsage,
+            requestTokenUsageOut: matched?.requestTokenUsage,
             status: matched
               ? 'executed'
               : allowCallingIndicators && isLatestRun(toolCallRunId)
@@ -490,6 +492,8 @@ export const prepareReadyMessages = (
             typeof commResultObj?.error === 'string'
               ? commResultObj.error
               : undefined;
+          const commStatistics =
+            (commResultObj?.statistics as SubagentStatistics) ?? undefined;
 
           const parsedArgs = argsToObject(toolArgs);
           const targetNodeId =
@@ -528,9 +532,14 @@ export const prepareReadyMessages = (
             parentMessage: parentHasContent ? m : undefined,
             instructionMessage: instructionMsg,
             innerMessages: innerPrepared,
+            statistics: commStatistics,
             resultText: commResultText,
             errorText: commErrorText,
             model: commModel,
+            rawToolArgs: parsedArgs ?? toolArgs,
+            rawToolResult: resultContent,
+            requestTokenUsageIn: m.requestTokenUsage,
+            requestTokenUsageOut: matched?.requestTokenUsage,
             status: matched
               ? 'executed'
               : allowCallingIndicators && isLatestRun(toolCallRunId)

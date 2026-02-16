@@ -113,6 +113,10 @@ export type PreparedMessage =
       rawToolArgs?: unknown;
       /** Raw tool result content from the subagents_run_task response. */
       rawToolResult?: unknown;
+      /** Request-level token usage from the AI message that made the call. */
+      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
+      /** Request-level token usage from the tool result message. */
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
       status: ToolRenderStatus;
       id: string;
       nodeId?: string;
@@ -131,9 +135,18 @@ export type PreparedMessage =
       parentMessage?: ThreadMessageDto;
       instructionMessage?: ThreadMessageDto;
       innerMessages: PreparedMessage[];
+      statistics?: SubagentStatistics;
       resultText?: string;
       errorText?: string;
       model?: string;
+      /** Raw tool call arguments for the communication_exec call. */
+      rawToolArgs?: unknown;
+      /** Raw tool result content from the communication_exec response. */
+      rawToolResult?: unknown;
+      /** Request-level token usage from the AI message that made the call. */
+      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
+      /** Request-level token usage from the tool result message. */
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
       status: ToolRenderStatus;
       id: string;
       nodeId?: string;

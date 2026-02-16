@@ -357,16 +357,21 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
-    const buildSubagentPopover = (
+    const buildToolBlockPopover = (
       rawResult: unknown,
       rawArgs: unknown,
+      toolLabel: string,
+      tokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
+      tokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
     ): React.ReactNode =>
       renderToolPopoverContent(
         rawResult,
         rawArgs && typeof rawArgs === 'object'
           ? (rawArgs as Record<string, JsonValue>)
           : undefined,
-        'subagents_run_task',
+        toolLabel,
+        tokenUsageIn,
+        tokenUsageOut,
       );
 
     const preparedMessagesResult = useMemo(() => {
@@ -1087,7 +1092,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       if (it.type === 'subagent') {
         const subPopover =
           it.status !== 'calling'
-            ? buildSubagentPopover(it.rawToolResult, it.rawToolArgs)
+            ? buildToolBlockPopover(
+                it.rawToolResult,
+                it.rawToolArgs,
+                'subagents_run_task',
+                it.requestTokenUsageIn,
+                it.requestTokenUsageOut,
+              )
             : undefined;
         return (
           <div
@@ -1108,6 +1119,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               resultText={it.resultText}
               errorText={it.errorText}
               popoverContent={subPopover}
+              requestTokenUsageIn={it.requestTokenUsageIn}
+              requestTokenUsageOut={it.requestTokenUsageOut}
               renderItem={renderWorkingItem}
             />
           </div>
@@ -1124,6 +1137,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         const targetAvatar = innerNodeId
           ? getAgentAvatarDataUri(innerNodeId)
           : undefined;
+        const commPopover =
+          it.status !== 'calling'
+            ? buildToolBlockPopover(
+                it.rawToolResult,
+                it.rawToolArgs,
+                'communication_exec',
+                it.requestTokenUsageIn,
+                it.requestTokenUsageOut,
+              )
+            : undefined;
         return (
           <div
             key={`work-comm-${it.id}-${idx}`}
@@ -1140,8 +1163,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               instructionMessage={it.instructionMessage}
               status={it.status}
               innerMessages={it.innerMessages}
+              statistics={it.statistics}
               resultText={it.resultText}
               errorText={it.errorText}
+              model={it.model}
+              popoverContent={commPopover}
+              requestTokenUsageIn={it.requestTokenUsageIn}
+              requestTokenUsageOut={it.requestTokenUsageOut}
               renderItem={renderWorkingItem}
             />
           </div>
@@ -1322,7 +1350,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
           const topSubPopover =
             item.status !== 'calling'
-              ? buildSubagentPopover(item.rawToolResult, item.rawToolArgs)
+              ? buildToolBlockPopover(
+                  item.rawToolResult,
+                  item.rawToolArgs,
+                  'subagents_run_task',
+                  item.requestTokenUsageIn,
+                  item.requestTokenUsageOut,
+                )
               : undefined;
 
           pushRow(
@@ -1345,6 +1379,8 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 resultText={item.resultText}
                 errorText={item.errorText}
                 popoverContent={topSubPopover}
+                requestTokenUsageIn={item.requestTokenUsageIn}
+                requestTokenUsageOut={item.requestTokenUsageOut}
                 renderItem={renderWorkingItem}
               />
             </ChatBubble>,
@@ -1387,6 +1423,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
             width: '100%',
           };
 
+          const topCommPopover =
+            item.status !== 'calling'
+              ? buildToolBlockPopover(
+                  item.rawToolResult,
+                  item.rawToolArgs,
+                  'communication_exec',
+                  item.requestTokenUsageIn,
+                  item.requestTokenUsageOut,
+                )
+              : undefined;
+
           pushRow(
             item.id,
             <ChatBubble
@@ -1404,8 +1451,13 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 instructionMessage={item.instructionMessage}
                 status={item.status}
                 innerMessages={item.innerMessages}
+                statistics={item.statistics}
                 resultText={item.resultText}
                 errorText={item.errorText}
+                model={item.model}
+                popoverContent={topCommPopover}
+                requestTokenUsageIn={item.requestTokenUsageIn}
+                requestTokenUsageOut={item.requestTokenUsageOut}
                 renderItem={renderWorkingItem}
               />
             </ChatBubble>,

@@ -6,11 +6,17 @@ import { TokenUsagePopoverIcon } from './TokenUsagePopoverIcon';
 export const renderFooterLineWithUsage = (
   text: string,
   requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null,
+  requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
+  requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
 ): React.ReactNode => {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span>{text}</span>
-      <TokenUsagePopoverIcon requestTokenUsage={requestTokenUsage} />
+      <TokenUsagePopoverIcon
+        requestTokenUsage={requestTokenUsage}
+        requestTokenUsageIn={requestTokenUsageIn}
+        requestTokenUsageOut={requestTokenUsageOut}
+      />
     </span>
   );
 };
