@@ -34,6 +34,14 @@ export const TAG_STYLE: React.CSSProperties = {
   lineHeight: '18px',
 };
 
+/** Row that places the StatisticsFooter and the "thinking…" indicator on a
+ *  single line.  Used by both SubagentBlock and CommunicationBlock. */
+export const FOOTER_ROW_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: 10,
+};
+
 export const PARENT_CONTENT_STYLE: React.CSSProperties = {
   padding: '6px 10px',
   fontSize: 12,

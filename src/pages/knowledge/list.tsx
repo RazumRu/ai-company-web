@@ -255,9 +255,11 @@ export const KnowledgeListPage = () => {
       }
 
       setSaving(true);
+      const trimmedPolitic = values.politic?.trim();
       const payload = {
         title: values.title.trim(),
-        politic: values.politic?.trim() || undefined,
+        // Send null (not undefined) so the backend clears the field when empty.
+        politic: trimmedPolitic || null,
         content: editorValue,
         tags: values.tags?.map((tag) => tag.trim()).filter(Boolean),
       };

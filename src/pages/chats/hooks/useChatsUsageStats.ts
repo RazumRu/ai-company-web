@@ -163,10 +163,16 @@ export const useChatsUsageStats = (deps: UseChatsUsageStatsDeps) => {
   const selectedThreadThreadUsage = useMemo(() => {
     if (!selectedThread || selectedThreadIsDraft) return undefined;
 
-    // Prefer the authoritative API total when available — it includes all
-    // agents, tools, and sub-calls and is the single source of truth.
-    // Fall back to the real-time aggregated per-node sum only while the
-    // API total hasn't been fetched yet (e.g. thread still running).
+    const isRunning =
+      'status' in selectedThread && selectedThread.status === 'running';
+
+    // While the thread is running, prefer the real-time aggregated per-node
+    // sum so the UI updates live as messages stream in.  Once the thread
+    // stops, prefer the authoritative API total — it includes all agents,
+    // tools, and sub-calls and is the single source of truth.
+    if (isRunning && selectedThreadAggregateUsage) {
+      return selectedThreadAggregateUsage;
+    }
     return selectedThreadTokenUsageFromApi ?? selectedThreadAggregateUsage;
   }, [
     selectedThread,

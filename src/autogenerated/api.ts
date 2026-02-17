@@ -761,17 +761,17 @@ export interface KnowledgeDocCreateDto {
    */
   'content': string;
   /**
-   * Optional LLM usage guidance for this document. If the politic instructs to fetch full content (e.g. \"always fetch the full content instead of fetching only specific chunks\"), full document retrieval is permitted.
+   *
    * @type {string}
    * @memberof KnowledgeDocCreateDto
    */
-  'politic'?: string;
+  'politic'?: string | null;
   /**
-   * Optional tags to apply to the document
+   *
    * @type {Array<string>}
    * @memberof KnowledgeDocCreateDto
    */
-  'tags'?: Array<string>;
+  'tags'?: Array<string> | null;
 }
 /**
  *
@@ -859,17 +859,17 @@ export interface KnowledgeDocUpdateDto {
    */
   'content'?: string;
   /**
-   * Optional LLM usage guidance for this document. If the politic instructs to fetch full content (e.g. \"always fetch the full content instead of fetching only specific chunks\"), full document retrieval is permitted.
+   *
    * @type {string}
    * @memberof KnowledgeDocUpdateDto
    */
-  'politic'?: string;
+  'politic'?: string | null;
   /**
-   * Optional tags to apply to the document
+   *
    * @type {Array<string>}
    * @memberof KnowledgeDocUpdateDto
    */
-  'tags'?: Array<string>;
+  'tags'?: Array<string> | null;
 }
 /**
  *

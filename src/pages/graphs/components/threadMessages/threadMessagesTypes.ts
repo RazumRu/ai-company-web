@@ -55,6 +55,7 @@ export type PreparedMessage =
       nodeId?: string;
       createdAt?: string;
       inCommunicationExec?: boolean;
+      inSubagentExec?: boolean;
       sourceAgentNodeId?: string;
     }
   | {
@@ -64,6 +65,7 @@ export type PreparedMessage =
       nodeId?: string;
       createdAt?: string;
       inCommunicationExec?: boolean;
+      inSubagentExec?: boolean;
       sourceAgentNodeId?: string;
     }
   | {
@@ -73,6 +75,7 @@ export type PreparedMessage =
       nodeId?: string;
       createdAt?: string;
       inCommunicationExec?: boolean;
+      inSubagentExec?: boolean;
       sourceAgentNodeId?: string;
       /** When true this chat message is the AI text content of a message that
        *  also contains tool calls — it should be rendered inside the working
@@ -96,6 +99,7 @@ export type PreparedMessage =
       roleLabel?: string;
       title?: string;
       inCommunicationExec?: boolean;
+      inSubagentExec?: boolean;
       sourceAgentNodeId?: string;
     }
   | {
@@ -122,6 +126,7 @@ export type PreparedMessage =
       nodeId?: string;
       createdAt?: string;
       inCommunicationExec?: boolean;
+      inSubagentExec?: boolean;
       sourceAgentNodeId?: string;
     }
   | {

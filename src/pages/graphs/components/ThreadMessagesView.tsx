@@ -1069,6 +1069,20 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         );
       }
 
+      if (it.type === 'system') {
+        const sysContent = formatMessageContent(it.message.message?.content);
+        return (
+          <div
+            key={`work-system-${it.id}-${idx}`}
+            style={{ fontSize: '12px', color: '#afafaf' }}>
+            <MarkdownContent
+              content={sysContent}
+              allowHorizontalScroll={true}
+            />
+          </div>
+        );
+      }
+
       if (it.type === 'chat') {
         const content = formatMessageContent(it.message.message?.content);
         if (isBlankContent(it.message.message?.content)) return null;

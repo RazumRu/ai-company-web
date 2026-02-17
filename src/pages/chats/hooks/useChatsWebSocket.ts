@@ -147,8 +147,12 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
     graphFilterIdRef.current = graphFilterId;
   }, [graphFilterId]);
 
-  // Track which thread→nodeId pairs have received agent.state.update
-  // events so we don't double-count with additive agent.message usage.
+  // Track which thread→nodeId pairs have received agent.state.update events.
+  // For nodes with state updates, we skip additive requestTokenUsage from
+  // the parent node's own messages (to avoid double-counting with cumulative
+  // state totals) but still accumulate toolTokenUsage and subagent/comm
+  // requestTokenUsage additively (subagent costs aren't in state updates
+  // until the subagent completes).
   // Keyed by threadId so entries can be cleared when a thread restarts.
   const nodesWithStateUpdateRef = useRef<Map<string, Set<string>>>(new Map());
 
@@ -609,13 +613,50 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
     }
 
     // Accumulate per-request token usage into real-time node totals.
-    // Only do this for nodes that don't receive agent.state.update events
-    // (e.g. subagent nodes), since state updates already provide cumulative
-    // totals and additive accumulation would cause double-counting.
+    //
+    // For nodes that receive agent.state.update events (cumulative totals),
+    // we skip additive requestTokenUsage to avoid double-counting — the state
+    // update is the authoritative source.  However we still additively
+    // accumulate toolTokenUsage, which captures subagent/tool costs that
+    // the node-level state update may not yet include.
+    //
+    // Exception: subagent / inter-agent communication messages carry their
+    // own requestTokenUsage representing the *subagent's* LLM cost, which
+    // is NOT included in the parent node's agent.state.update totals until
+    // the subagent completes.  Always accumulate these additively so the
+    // thread header updates in real-time during subagent execution.
+    //
+    // For nodes without state updates, we accumulate requestTokenUsage
+    // additively so the UI shows live progress.
     const reqUsage = incomingMessage.requestTokenUsage;
+    const toolUsage = incomingMessage.toolTokenUsage;
     const threadNodeSet = nodesWithStateUpdateRef.current.get(threadId);
     const nodeHasStateUpdates = threadNodeSet?.has(nodeId) ?? false;
-    if (reqUsage && nodeId && !nodeHasStateUpdates) {
+
+    // Detect subagent/communication inner messages via additional_kwargs flags.
+    const msgRecord = incomingMessage.message as unknown as
+      | Record<string, unknown>
+      | undefined;
+    const msgKwargs =
+      msgRecord?.additionalKwargs ?? msgRecord?.additional_kwargs;
+    const isSubagentOrCommMessage =
+      typeof msgKwargs === 'object' &&
+      msgKwargs !== null &&
+      (Boolean(
+        (msgKwargs as Record<string, unknown>).__subagentCommunication,
+      ) ||
+        Boolean(
+          (msgKwargs as Record<string, unknown>).__interAgentCommunication,
+        ));
+
+    const usageToAccumulate =
+      isSubagentOrCommMessage && reqUsage
+        ? reqUsage
+        : !nodeHasStateUpdates && reqUsage
+          ? reqUsage
+          : toolUsage;
+
+    if (usageToAccumulate && nodeId) {
       setThreadTokenUsageByNode((prev) => {
         const existingThread = prev[threadId] ?? {};
         const existingNode = existingThread[nodeId] ?? {};
@@ -627,33 +668,33 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
             [nodeId]: {
               inputTokens: addUsageField(
                 existingNode.inputTokens,
-                reqUsage.inputTokens,
+                usageToAccumulate.inputTokens,
               ),
               cachedInputTokens: addUsageField(
                 existingNode.cachedInputTokens,
-                reqUsage.cachedInputTokens,
+                usageToAccumulate.cachedInputTokens,
               ),
               outputTokens: addUsageField(
                 existingNode.outputTokens,
-                reqUsage.outputTokens,
+                usageToAccumulate.outputTokens,
               ),
               reasoningTokens: addUsageField(
                 existingNode.reasoningTokens,
-                reqUsage.reasoningTokens,
+                usageToAccumulate.reasoningTokens,
               ),
               totalTokens: addUsageField(
                 existingNode.totalTokens,
-                reqUsage.totalTokens,
+                usageToAccumulate.totalTokens,
               ),
               totalPrice: addUsageField(
                 existingNode.totalPrice,
-                reqUsage.totalPrice,
+                usageToAccumulate.totalPrice,
               ),
               // currentContext is a snapshot, not additive — always replace
               currentContext:
-                typeof reqUsage.currentContext === 'number' &&
-                Number.isFinite(reqUsage.currentContext)
-                  ? reqUsage.currentContext
+                typeof usageToAccumulate.currentContext === 'number' &&
+                Number.isFinite(usageToAccumulate.currentContext)
+                  ? usageToAccumulate.currentContext
                   : existingNode.currentContext,
             },
           },
@@ -672,7 +713,7 @@ export const useChatsWebSocket = (deps: UseChatsWebSocketDeps) => {
     if (!data.nodeId) return;
 
     // Mark this node as receiving cumulative state updates so we skip
-    // additive accumulation from agent.message for the same node.
+    // additive requestTokenUsage from agent.message for the same node.
     let threadNodeSet = nodesWithStateUpdateRef.current.get(internalThreadId);
     if (!threadNodeSet) {
       threadNodeSet = new Set();

@@ -25,6 +25,12 @@ interface PrepareReadyMessagesOptions {
   isNodeRunning: boolean;
   isThreadStopped: boolean;
   currentThreadLastRunId?: string | null;
+  /** When true, suppresses synthetic communication block post-processing.
+   *  Set automatically when recursing inside a communication block. */
+  insideCommunicationBlock?: boolean;
+  /** When true, suppresses synthetic subagent block post-processing.
+   *  Set automatically when recursing inside a subagent block. */
+  insideSubagentBlock?: boolean;
 }
 
 /** Extracts the model name from the first inner message that has __model set. */
@@ -38,6 +44,43 @@ const extractSubagentModel = (
     }
   }
   return undefined;
+};
+
+/** Accumulates token usage from inner messages to provide live statistics
+ *  while a subagent/communication block is still running (no final result yet).
+ *  Prefers `requestTokenUsage` (LLM request costs) per message and falls back
+ *  to `toolTokenUsage` (tool-level costs) when the former is absent — this
+ *  avoids double-counting when both fields are set on the same message. */
+const accumulateLiveStatistics = (
+  innerMessages: ThreadMessageDto[],
+): SubagentStatistics | undefined => {
+  let totalTokens = 0;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let totalPrice = 0;
+  let count = 0;
+
+  for (const msg of innerMessages) {
+    const usage = msg.requestTokenUsage ?? msg.toolTokenUsage;
+    if (!usage) continue;
+    count++;
+    if (typeof usage.totalTokens === 'number') totalTokens += usage.totalTokens;
+    if (typeof usage.inputTokens === 'number') inputTokens += usage.inputTokens;
+    if (typeof usage.outputTokens === 'number')
+      outputTokens += usage.outputTokens;
+    if (typeof usage.totalPrice === 'number') totalPrice += usage.totalPrice;
+  }
+
+  if (count === 0) return undefined;
+
+  return {
+    usage: {
+      totalTokens,
+      inputTokens,
+      outputTokens,
+      totalPrice,
+    },
+  };
 };
 
 export const prepareReadyMessages = (
@@ -87,6 +130,9 @@ export const prepareReadyMessages = (
   // Map communication_exec tool call ID → target agent name from args.
   // Used as a fallback to group inner messages when __toolCallId doesn't match.
   const commToolCallAgentName = new Map<string, string>();
+  // Map communication_exec tool call ID → __createdAt of the parent AI message.
+  // Used to temporally disambiguate when multiple calls target the same agent.
+  const commToolCallCreatedAt = new Map<string, string>();
   for (const msg of msgs) {
     if ((msg.message?.role as string) !== 'ai') continue;
     const tcs = getMessageValue<ToolCall[]>(msg.message, 'toolCalls');
@@ -104,6 +150,15 @@ export const prepareReadyMessages = (
         if (agentName) {
           commToolCallAgentName.set(tc.id, agentName);
         }
+        // Store __createdAt from the AI message for temporal resolution.
+        const msgAdditional = getAdditionalKwargs(msg.message);
+        const createdAt =
+          typeof msgAdditional?.__createdAt === 'string'
+            ? msgAdditional.__createdAt
+            : msg.createdAt;
+        if (createdAt) {
+          commToolCallCreatedAt.set(tc.id, createdAt);
+        }
       }
     }
   }
@@ -117,22 +172,98 @@ export const prepareReadyMessages = (
   const commInstructionByToolCallId = new Map<string, ThreadMessageDto>();
   const commInnerMsgIds = new Set<string>();
 
+  // Reverse map: agent name → communication_exec tool call IDs targeting it.
+  const commToolCallsByAgentName = new Map<string, string[]>();
+  for (const [tcId, agentName] of commToolCallAgentName) {
+    const list = commToolCallsByAgentName.get(agentName) ?? [];
+    list.push(tcId);
+    commToolCallsByAgentName.set(agentName, list);
+  }
+
+  /** Find the communication_exec call whose __createdAt is the latest one
+   *  still ≤ the inner message's __createdAt.  When timestamps are unavailable,
+   *  falls back to the last call in the list. */
+  const resolveCommByTimestamp = (
+    tcIds: string[],
+    msg: ThreadMessageDto,
+  ): string => {
+    if (tcIds.length === 1) return tcIds[0];
+
+    const msgAdditional = getAdditionalKwargs(msg.message);
+    const msgCreatedAt =
+      typeof msgAdditional?.__createdAt === 'string'
+        ? msgAdditional.__createdAt
+        : msg.createdAt;
+
+    if (!msgCreatedAt) return tcIds[tcIds.length - 1];
+
+    // Walk the list (ordered by appearance in the message stream) and pick
+    // the latest comm call that was created at or before the inner message.
+    let best: string | undefined;
+    for (const tcId of tcIds) {
+      const callCreatedAt = commToolCallCreatedAt.get(tcId);
+      if (!callCreatedAt) continue;
+      if (callCreatedAt <= msgCreatedAt) {
+        best = tcId;
+      }
+    }
+
+    return best ?? tcIds[tcIds.length - 1];
+  };
+
   /** Try to match an inter-agent message to a communication_exec tool call ID
    *  by checking if the message's externalThreadId contains the target agent name. */
   const resolveCommToolCallId = (msg: ThreadMessageDto): string | undefined => {
     const extId = msg.externalThreadId;
-    if (!extId) return undefined;
-    for (const [tcId, agentName] of commToolCallAgentName) {
-      if (extId.includes(`__${agentName}`)) {
-        return tcId;
+    // 1. Match by externalThreadId containing the agent name.
+    //    Collect ALL matching tool call IDs; when multiple calls target the
+    //    same agent the externalThreadId matches them all, so we resolve
+    //    via timestamp.
+    if (extId) {
+      const matchedByExtId: string[] = [];
+      for (const [tcId, agentName] of commToolCallAgentName) {
+        if (extId.includes(`__${agentName}`)) {
+          matchedByExtId.push(tcId);
+        }
+      }
+      if (matchedByExtId.length === 1) return matchedByExtId[0];
+      if (matchedByExtId.length > 1) {
+        return resolveCommByTimestamp(matchedByExtId, msg);
       }
     }
-    // Fallback: if there is only one communication_exec call, assign all
-    // __interAgentCommunication messages to it.
+    // 2. Match by __sourceAgentName in kwargs → find comm call targeting that agent.
+    //    When multiple calls target the same agent, use timestamps to resolve.
+    const additional = getAdditionalKwargs(msg.message);
+    const sourceAgent =
+      typeof additional?.__sourceAgentName === 'string'
+        ? additional.__sourceAgentName
+        : undefined;
+    if (sourceAgent) {
+      const tcIds = commToolCallsByAgentName.get(sourceAgent);
+      if (tcIds && tcIds.length > 0) {
+        return resolveCommByTimestamp(tcIds, msg);
+      }
+    }
+    // 3. Fallback: if there is only one communication_exec call, assign all
+    //    __interAgentCommunication messages to it.
     if (communicationToolCallIds.size === 1) {
       return communicationToolCallIds.values().next().value;
     }
     return undefined;
+  };
+
+  /** Check whether a message itself CONTAINS a tool call with the given ID.
+   *  This detects the case where the AI message that made the subagent/comm
+   *  call carries __toolCallId equal to its own tool call.  Such a message is
+   *  the *parent*, not an inner message, and must not be consumed here. */
+  const msgOwnsToolCall = (
+    msg: ThreadMessageDto,
+    toolCallId: string,
+  ): boolean => {
+    if ((msg.message?.role as string) !== 'ai') return false;
+    const tcs = getMessageValue<ToolCall[]>(msg.message, 'toolCalls');
+    if (!tcs) return false;
+    return tcs.some((tc) => tc.id === toolCallId);
   };
 
   for (const msg of msgs) {
@@ -142,6 +273,12 @@ export const prepareReadyMessages = (
         ? additional.__toolCallId
         : undefined;
     const isInterAgent = Boolean(additional?.__interAgentCommunication);
+    const isSubagentComm = Boolean(additional?.__subagentCommunication);
+
+    // Skip messages that own the tool call — they are the parent AI message,
+    // not an inner message, and must not be consumed as an inner of its own call.
+    const isParentOfOwnToolCall =
+      parentToolCallId != null && msgOwnsToolCall(msg, parentToolCallId);
 
     // Group into subagent blocks when __toolCallId matches a subagents_run_task
     // call.  Skip only when the __toolCallId also matches a communication_exec
@@ -151,6 +288,7 @@ export const prepareReadyMessages = (
     // proper SubagentBlock entries.
     if (
       parentToolCallId &&
+      !isParentOfOwnToolCall &&
       subagentToolCallIds.has(parentToolCallId) &&
       !communicationToolCallIds.has(parentToolCallId)
     ) {
@@ -166,10 +304,29 @@ export const prepareReadyMessages = (
     // Group communication inner messages.  The backend may set __toolCallId to
     // the communication_exec call ID, or it may only flag __interAgentCommunication
     // without a matching __toolCallId.  Handle both cases.
+    //
+    // Messages flagged __subagentCommunication also belong to the communication
+    // block (the subagent runs inside the communication context).  They need to
+    // be in commInnerByToolCallId so the recursive prepareReadyMessages call
+    // inside the communication block can re-group them into a SubagentBlock.
+    //
+    // Guard: if a message owns a communication_exec call that matches its own
+    // __toolCallId, it is the PARENT of that communication block — skip it.
+    // But if it only owns a subagent call (subagents_run_task) it can still be
+    // a valid inner message of a communication block, so we allow it through.
+    const ownsCommToolCall =
+      parentToolCallId != null &&
+      communicationToolCallIds.has(parentToolCallId) &&
+      msgOwnsToolCall(msg, parentToolCallId);
+
     let commParentId: string | undefined;
-    if (parentToolCallId && communicationToolCallIds.has(parentToolCallId)) {
+    if (
+      parentToolCallId &&
+      !ownsCommToolCall &&
+      communicationToolCallIds.has(parentToolCallId)
+    ) {
       commParentId = parentToolCallId;
-    } else if (isInterAgent) {
+    } else if ((isInterAgent || isSubagentComm) && !ownsCommToolCall) {
       commParentId = resolveCommToolCallId(msg);
     }
 
@@ -225,6 +382,11 @@ export const prepareReadyMessages = (
     return Boolean(additional?.__interAgentCommunication);
   };
 
+  const isSubagentCommunication = (msg: ThreadMessageDto): boolean => {
+    const additional = getAdditionalKwargs(msg.message);
+    return Boolean(additional?.__subagentCommunication);
+  };
+
   const getSourceAgentNodeId = (msg: ThreadMessageDto): string | undefined => {
     const additional = getAdditionalKwargs(msg.message);
     return typeof additional?.__sourceAgentNodeId === 'string'
@@ -274,12 +436,13 @@ export const prepareReadyMessages = (
   });
 
   const prepared: PreparedMessage[] = [];
+
   let i = 0;
 
   while (i < msgs.length) {
     const m = msgs[i];
 
-    // Skip subagent / communication inner messages — consumed into blocks
+    // Skip subagent / communication inner messages — consumed into blocks.
     const mToolKey = getToolMessageKey(m);
     if (
       (m.id && (subagentInnerMsgIds.has(m.id) || commInnerMsgIds.has(m.id))) ||
@@ -292,6 +455,7 @@ export const prepareReadyMessages = (
 
     const role = (m.message?.role as string) || '';
     const isInterAgent = isInterAgentCommunication(m);
+    const isSubagent = isSubagentCommunication(m);
     const sourceAgentNodeId = getSourceAgentNodeId(m);
 
     if (role === 'reasoning') {
@@ -303,6 +467,7 @@ export const prepareReadyMessages = (
           nodeId: m.nodeId,
           createdAt: m.createdAt,
           inCommunicationExec: isInterAgent,
+          inSubagentExec: isSubagent,
           sourceAgentNodeId,
         });
       }
@@ -318,6 +483,7 @@ export const prepareReadyMessages = (
         nodeId: m.nodeId,
         createdAt: m.createdAt,
         inCommunicationExec: isInterAgent,
+        inSubagentExec: isSubagent,
         sourceAgentNodeId,
       });
       i++;
@@ -349,6 +515,7 @@ export const prepareReadyMessages = (
           nodeId: m.nodeId,
           createdAt: m.createdAt,
           inCommunicationExec: isInterAgent,
+          inSubagentExec: isSubagent,
           sourceAgentNodeId,
           // Mark as tool-call content so it renders inside the working block
           // rather than as a standalone chat bubble.
@@ -404,7 +571,10 @@ export const prepareReadyMessages = (
           subagentInnerByToolCallId.has(tc.id);
         if (isSubagentTool) {
           const innerRawMessages = subagentInnerByToolCallId.get(tc.id!) ?? [];
-          const innerPrepared = prepareReadyMessages(innerRawMessages, options);
+          const innerPrepared = prepareReadyMessages(innerRawMessages, {
+            ...options,
+            insideSubagentBlock: true,
+          });
 
           const resultObj = isPlainObject(resultContent)
             ? (resultContent as Record<string, unknown>)
@@ -412,7 +582,8 @@ export const prepareReadyMessages = (
               ? (parseJsonSafe(resultContent) as Record<string, unknown> | null)
               : null;
           const statistics =
-            (resultObj?.statistics as SubagentStatistics) ?? undefined;
+            (resultObj?.statistics as SubagentStatistics) ??
+            accumulateLiveStatistics(innerRawMessages);
           const resultText =
             typeof resultObj?.result === 'string'
               ? resultObj.result
@@ -462,6 +633,7 @@ export const prepareReadyMessages = (
             nodeId: matched?.nodeId ?? m.nodeId,
             createdAt: m.createdAt,
             inCommunicationExec: isInterAgent,
+            inSubagentExec: isSubagent,
             sourceAgentNodeId,
           });
           continue;
@@ -474,7 +646,10 @@ export const prepareReadyMessages = (
           communicationToolCallIds.has(tc.id);
         if (isCommTool) {
           const innerRawMessages = commInnerByToolCallId.get(tc.id!) ?? [];
-          const innerPrepared = prepareReadyMessages(innerRawMessages, options);
+          const innerPrepared = prepareReadyMessages(innerRawMessages, {
+            ...options,
+            insideCommunicationBlock: true,
+          });
           const instructionMsg = commInstructionByToolCallId.get(tc.id!);
 
           const commResultObj = isPlainObject(resultContent)
@@ -493,7 +668,8 @@ export const prepareReadyMessages = (
               ? commResultObj.error
               : undefined;
           const commStatistics =
-            (commResultObj?.statistics as SubagentStatistics) ?? undefined;
+            (commResultObj?.statistics as SubagentStatistics) ??
+            accumulateLiveStatistics(innerRawMessages);
 
           const parsedArgs = argsToObject(toolArgs);
           const targetNodeId =
@@ -564,9 +740,6 @@ export const prepareReadyMessages = (
         const matchedTitle = getMessageTitle(matched?.message);
         const effectiveTitle = matchedTitle || callTitle;
 
-        const toolIsInterAgent = isInterAgent;
-        const toolSourceAgentNodeId = sourceAgentNodeId;
-
         prepared.push({
           type: 'tool',
           name: name || 'tool',
@@ -587,8 +760,9 @@ export const prepareReadyMessages = (
           createdAt: matched?.createdAt ?? m.createdAt,
           roleLabel: effectiveTitle || name || 'tool',
           title: effectiveTitle,
-          inCommunicationExec: toolIsInterAgent,
-          sourceAgentNodeId: toolSourceAgentNodeId,
+          inCommunicationExec: isInterAgent,
+          inSubagentExec: isSubagent,
+          sourceAgentNodeId,
         });
       }
 
@@ -645,6 +819,7 @@ export const prepareReadyMessages = (
         roleLabel: title || name || 'tool',
         title,
         inCommunicationExec: isInterAgent,
+        inSubagentExec: isSubagent,
         sourceAgentNodeId,
       });
       i++;
@@ -659,10 +834,248 @@ export const prepareReadyMessages = (
         nodeId: m.nodeId,
         createdAt: m.createdAt,
         inCommunicationExec: isInterAgent,
+        inSubagentExec: isSubagent,
         sourceAgentNodeId,
       });
     }
     i++;
+  }
+
+  // ── Synthetic block helpers ───────────────────────────────────────────
+  // When parent AI messages (communication_exec / subagents_run_task) aren't
+  // loaded due to pagination, their inner messages render as standalone
+  // top-level items.  The helpers below detect this and wrap them in
+  // synthetic blocks so the UI shows the expected grouped layout.
+
+  /** Extract the raw ThreadMessageDto from a PreparedMessage (if any). */
+  const getRawMsg = (item: PreparedMessage): ThreadMessageDto | undefined =>
+    'message' in item
+      ? (item as { message?: ThreadMessageDto }).message
+      : undefined;
+
+  /**
+   * Group `inSubagentExec` items into synthetic subagent blocks.
+   * Items whose __toolCallId doesn't match any loaded tool call are grouped
+   * by that ID; remaining items pass through unchanged.
+   */
+  const wrapOrphanSubagentItems = (
+    items: PreparedMessage[],
+  ): PreparedMessage[] => {
+    const subagentGroups = new Map<string, PreparedMessage[]>();
+    const ungrouped: PreparedMessage[] = [];
+
+    for (const item of items) {
+      const rawMsg = getRawMsg(item);
+      const additional = rawMsg
+        ? getAdditionalKwargs(rawMsg.message)
+        : undefined;
+      const tcId =
+        typeof additional?.__toolCallId === 'string'
+          ? additional.__toolCallId
+          : undefined;
+
+      if (tcId && !existingToolCallIds.has(tcId)) {
+        if (!subagentGroups.has(tcId)) {
+          subagentGroups.set(tcId, []);
+        }
+        subagentGroups.get(tcId)!.push(item);
+      } else {
+        ungrouped.push(item);
+      }
+    }
+
+    if (subagentGroups.size === 0) return items;
+
+    const syntheticBlocks: PreparedMessage[] = [];
+    for (const [tcId, groupItems] of subagentGroups) {
+      const firstRaw = getRawMsg(groupItems[0]);
+      const firstAdditional = firstRaw
+        ? getAdditionalKwargs(firstRaw.message)
+        : undefined;
+      const subModel =
+        typeof firstAdditional?.__model === 'string'
+          ? firstAdditional.__model
+          : undefined;
+
+      syntheticBlocks.push({
+        type: 'subagent',
+        toolCallId: tcId,
+        innerMessages: groupItems,
+        model: subModel,
+        status: 'executed',
+        id: `subagent-synthetic-${tcId}`,
+        nodeId: 'nodeId' in groupItems[0] ? groupItems[0].nodeId : undefined,
+        createdAt:
+          'createdAt' in groupItems[0] ? groupItems[0].createdAt : undefined,
+        inCommunicationExec:
+          'inCommunicationExec' in groupItems[0]
+            ? groupItems[0].inCommunicationExec
+            : undefined,
+        inSubagentExec: true,
+        sourceAgentNodeId:
+          'sourceAgentNodeId' in groupItems[0]
+            ? groupItems[0].sourceAgentNodeId
+            : undefined,
+      });
+    }
+
+    return [...ungrouped, ...syntheticBlocks];
+  };
+
+  // ── Post-processing: synthetic communication blocks ─────────────────
+  // When communication_exec parent AI messages aren't loaded (pagination),
+  // inner messages render as standalone items.  Group them into synthetic
+  // communication blocks by __toolCallId so each call gets its own block.
+  if (
+    communicationToolCallIds.size === 0 &&
+    !options.insideCommunicationBlock
+  ) {
+    const nonCommItems: PreparedMessage[] = [];
+
+    // Group communication items by __toolCallId; items without one go into
+    // a single fallback bucket keyed by '__unresolved'.
+    const commGroups = new Map<
+      string,
+      { items: PreparedMessage[]; instructionMsg?: ThreadMessageDto }
+    >();
+    const UNRESOLVED_KEY = '__unresolved';
+
+    const getCommGroupKey = (item: PreparedMessage): string | undefined => {
+      const rawMsg = getRawMsg(item);
+      if (!rawMsg) return undefined;
+      const additional = getAdditionalKwargs(rawMsg.message);
+      const tcId =
+        typeof additional?.__toolCallId === 'string'
+          ? additional.__toolCallId
+          : undefined;
+      return tcId ?? UNRESOLVED_KEY;
+    };
+
+    // First pass: separate communication-flagged items from the rest.
+    for (const item of prepared) {
+      if ('inCommunicationExec' in item && item.inCommunicationExec) {
+        // Pull instruction message out for the block header.
+        const additional = getAdditionalKwargs(getRawMsg(item)?.message);
+        const isInstruction =
+          item.type === 'chat' &&
+          (additional?.__isAgentInstructionMessage ||
+            additional?.isAgentInstructionMessage);
+        const groupKey = getCommGroupKey(item) ?? UNRESOLVED_KEY;
+
+        if (!commGroups.has(groupKey)) {
+          commGroups.set(groupKey, { items: [] });
+        }
+        const group = commGroups.get(groupKey)!;
+
+        if (isInstruction && !group.instructionMsg) {
+          group.instructionMsg = getRawMsg(item);
+        } else {
+          group.items.push(item);
+        }
+      } else {
+        nonCommItems.push(item);
+      }
+    }
+
+    // Second pass: when we have communication items, pull subagent-only
+    // items too (they are subagent calls inside the communication context
+    // but only have __subagentCommunication, not __interAgentCommunication).
+    if (commGroups.size > 0) {
+      const remainingNonComm: PreparedMessage[] = [];
+      for (const item of nonCommItems) {
+        if ('inSubagentExec' in item && item.inSubagentExec) {
+          const groupKey = getCommGroupKey(item) ?? UNRESOLVED_KEY;
+          if (!commGroups.has(groupKey)) {
+            commGroups.set(groupKey, { items: [] });
+          }
+          commGroups.get(groupKey)!.items.push(item);
+        } else {
+          remainingNonComm.push(item);
+        }
+      }
+      nonCommItems.length = 0;
+      nonCommItems.push(...remainingNonComm);
+    }
+
+    const syntheticBlocks: PreparedMessage[] = [];
+    for (const [
+      groupKey,
+      { items: groupItems, instructionMsg },
+    ] of commGroups) {
+      if (groupItems.length === 0 && !instructionMsg) continue;
+
+      const finalInnerMessages = wrapOrphanSubagentItems(groupItems);
+
+      let targetAgentName: string | undefined;
+      for (const item of groupItems) {
+        const rawMsg = getRawMsg(item);
+        if (rawMsg) {
+          const additional = getAdditionalKwargs(rawMsg.message);
+          if (typeof additional?.__sourceAgentName === 'string') {
+            targetAgentName = additional.__sourceAgentName;
+            break;
+          }
+        }
+      }
+
+      const commModel = (() => {
+        for (const item of groupItems) {
+          const rawMsg = getRawMsg(item);
+          if (rawMsg) {
+            const additional = getAdditionalKwargs(rawMsg.message);
+            if (typeof additional?.__model === 'string') {
+              return additional.__model;
+            }
+          }
+        }
+        return undefined;
+      })();
+
+      syntheticBlocks.push({
+        type: 'communication',
+        toolCallId: groupKey,
+        targetAgentName,
+        instructionMessage: instructionMsg,
+        innerMessages: finalInnerMessages,
+        model: commModel,
+        status: 'executed',
+        id: `comm-synthetic-${groupKey}-${groupItems[0]?.id ?? 'orphan'}`,
+        nodeId:
+          groupItems.length > 0 && 'nodeId' in groupItems[0]
+            ? groupItems[0].nodeId
+            : undefined,
+        createdAt:
+          groupItems.length > 0 && 'createdAt' in groupItems[0]
+            ? groupItems[0].createdAt
+            : undefined,
+      });
+    }
+
+    if (syntheticBlocks.length > 0) {
+      return [...nonCommItems, ...syntheticBlocks];
+    }
+  }
+
+  // ── Post-processing: synthetic subagent blocks (top-level) ──────────
+  // When subagents_run_task parent AI messages aren't loaded, their inner
+  // messages appear as standalone items with inSubagentExec: true.
+  // Group them into synthetic subagent blocks.
+  if (subagentToolCallIds.size === 0 && !options.insideSubagentBlock) {
+    const subItems: PreparedMessage[] = [];
+    const nonSubItems: PreparedMessage[] = [];
+
+    for (const item of prepared) {
+      if ('inSubagentExec' in item && item.inSubagentExec) {
+        subItems.push(item);
+      } else {
+        nonSubItems.push(item);
+      }
+    }
+
+    if (subItems.length > 0) {
+      const wrapped = wrapOrphanSubagentItems(subItems);
+      return [...nonSubItems, ...wrapped];
+    }
   }
 
   return prepared;
