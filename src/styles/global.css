@@ -49,11 +49,19 @@ body {
   color: #595959;
 }
 
+@keyframes messages-tab-reasoning-streaming {
+  0% {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    color: rgba(0, 0, 0, 0.75);
+  }
+  100% {
+    color: rgba(0, 0, 0, 0.4);
+  }
+}
+
 .reasoning-message_streaming {
   animation: messages-tab-reasoning-streaming 2.8s ease-in-out infinite;
   animation-fill-mode: both;
-}
-
-.reasoning-message_chunk-appear {
-  animation: messages-tab-reasoning-appear 0.6s ease;
 }

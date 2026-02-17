@@ -218,45 +218,6 @@ export const ensureThinkingIndicatorStyles = (() => {
   };
 })();
 
-export const ensureReasoningAnimationStyles = (() => {
-  let injected = false;
-  return () => {
-    if (injected || typeof document === 'undefined') return;
-    if (document.getElementById('messages-tab-reasoning-style')) {
-      injected = true;
-      return;
-    }
-    const style = document.createElement('style');
-    style.id = 'messages-tab-reasoning-style';
-    style.textContent = `
-      @keyframes messages-tab-reasoning-appear {
-        0% {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @keyframes messages-tab-reasoning-streaming {
-        0% {
-          color: rgba(0, 0, 0, 0.4);
-        }
-        50% {
-          color: rgba(0, 0, 0, 0.75);
-        }
-        100% {
-          color: rgba(0, 0, 0, 0.4);
-        }
-      }
-    `;
-    document.head.appendChild(style);
-    injected = true;
-  };
-})();
-
 // ────────────────────────────────────────────
 // Style constants
 // ────────────────────────────────────────────
