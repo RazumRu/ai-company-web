@@ -9,7 +9,7 @@ import type { AgentStateUpdateNotification } from '../../../services/WebSocketTy
 import type { ThreadTokenUsageSnapshot } from '../types';
 
 export const THREADS_PAGE_SIZE = 30;
-export const THREAD_MESSAGES_PAGE_SIZE = 100;
+export const THREAD_MESSAGES_PAGE_SIZE = 500;
 export const MAX_THREAD_SOCKET_EVENTS = 200;
 
 export const isDraftThreadId = (threadId?: string | null): boolean => {

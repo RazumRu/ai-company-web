@@ -530,11 +530,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           : `tool ${name} is ${statusText}`);
       const needsEllipsis =
         resultContent === undefined && status !== 'executed';
-      const displayTitle = hasError
+      const displayTitleRaw = hasError
         ? `${displayTitleBase} - ${errorText}`
         : needsEllipsis
           ? `${displayTitleBase}...`
           : displayTitleBase;
+      // Show only the first line; truncate the rest with "…"
+      const firstNewline = displayTitleRaw.indexOf('\n');
+      const displayTitle =
+        firstNewline >= 0
+          ? `${displayTitleRaw.slice(0, firstNewline)}…`
+          : displayTitleRaw;
       const accessibleName = displayTitle || name;
       const line = (
         <div
@@ -568,6 +574,10 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 fontSize: '12px',
                 color: 'inherit',
                 fontWeight: hasError ? 600 : undefined,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: '100%',
               }}>
               {displayTitle}
             </Text>

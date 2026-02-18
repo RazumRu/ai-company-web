@@ -1,6 +1,8 @@
-import React from 'react';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 import { MarkdownContent } from '../../../../components/markdown/MarkdownContent';
+import { EXPAND_TOGGLE_STYLE } from './blockStyles';
 
 /** Reusable coloured section with an uppercase header label and markdown body.
  *  Used by SubagentBlock and CommunicationBlock for Task/Instruction, Error,
@@ -85,27 +87,85 @@ const VARIANT_STYLES = Object.fromEntries(
   }
 >;
 
+/** ~10 lines at 12px font size × 1.4 line-height ≈ 168px, plus some margin for paragraphs. */
+const COLLAPSED_MAX_HEIGHT = 180;
+
 export type StyledSectionVariant = keyof typeof THEMES;
 
 export interface StyledSectionProps {
   variant: StyledSectionVariant;
   label: string;
   content: string;
+  /** When true, long content is collapsed to ~10 lines with a "Show more" toggle. */
+  collapsible?: boolean;
 }
 
 export const StyledSection: React.FC<StyledSectionProps> = ({
   variant,
   label,
   content,
+  collapsible = false,
 }) => {
   const styles = VARIANT_STYLES[variant];
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!collapsible || !contentRef.current) return;
+    setOverflows(contentRef.current.scrollHeight > COLLAPSED_MAX_HEIGHT);
+  }, [collapsible, content]);
+
+  const toggle = useCallback(() => setExpanded((prev) => !prev), []);
+
+  const shouldClamp = collapsible && overflows && !expanded;
 
   return (
     <div style={styles.wrapper}>
       <div style={styles.header}>
         <span style={styles.label}>{label}</span>
       </div>
-      <MarkdownContent content={content} style={styles.content} />
+      <div
+        ref={contentRef}
+        style={
+          shouldClamp
+            ? {
+                maxHeight: COLLAPSED_MAX_HEIGHT,
+                overflow: 'hidden',
+                position: 'relative',
+              }
+            : undefined
+        }>
+        <MarkdownContent content={content} style={styles.content} />
+        {shouldClamp && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 32,
+              background: `linear-gradient(transparent, ${THEMES[variant].background})`,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+      </div>
+      {collapsible && overflows && (
+        <div onClick={toggle} style={EXPAND_TOGGLE_STYLE}>
+          {expanded ? (
+            <>
+              <DownOutlined style={{ fontSize: 9 }} />
+              Show less
+            </>
+          ) : (
+            <>
+              <RightOutlined style={{ fontSize: 9 }} />
+              Show more
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

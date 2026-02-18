@@ -42,6 +42,19 @@ export const FOOTER_ROW_STYLE: React.CSSProperties = {
   gap: 10,
 };
 
+/** Clickable "Show more / Collapse" toggle used by SubagentBlock,
+ *  CommunicationBlock and StyledSection. */
+export const EXPAND_TOGGLE_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  marginTop: 4,
+  cursor: 'pointer',
+  fontSize: 11,
+  color: '#8c8c8c',
+  userSelect: 'none',
+};
+
 export const PARENT_CONTENT_STYLE: React.CSSProperties = {
   padding: '6px 10px',
   fontSize: 12,
