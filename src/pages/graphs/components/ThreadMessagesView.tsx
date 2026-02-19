@@ -38,6 +38,7 @@ import type {
 import {
   centeredStateStyle,
   ensureThinkingIndicatorStyles,
+  extractDurationMs,
   extractToolErrorText,
   fullHeightColumnStyle,
   getAdditionalKwargs,
@@ -106,12 +107,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
     const autoScrollDisabledRef = useRef<boolean>(false);
     const lastMessageCountRef = useRef<number>(0);
 
-    // Helper to identify working group items
+    // Helper to identify working group items.
     const isWorkGroupItem = useCallback((item: PreparedMessage): boolean => {
       if (item.type === 'reasoning') return true;
-      if (item.type === 'tool') {
-        return (item.name || '').toLowerCase() !== 'finish';
-      }
+      // Finish tool calls should render as standalone bubbles, not inside
+      // the "Working..." block.
+      if (
+        item.type === 'tool' &&
+        item.name?.toLowerCase() !== 'finish' &&
+        item.name?.toLowerCase() !== 'proxy_finish'
+      )
+        return true;
       // AI text content that accompanies tool calls belongs in the working block.
       if (item.type === 'chat' && item.isToolCallContent) return true;
       return false;
@@ -237,6 +243,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       toolLabel?: string,
       requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
       requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
+      durationMs?: number,
     ): React.ReactNode => {
       let parsed: JsonValue | null = null;
       if (typeof value === 'string') {
@@ -302,6 +309,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 <TokenUsagePopoverIcon
                   requestTokenUsageIn={requestTokenUsageIn}
                   requestTokenUsageOut={requestTokenUsageOut}
+                  durationMs={durationMs}
                 />
               )}
             </div>
@@ -412,6 +420,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       resultContent?: unknown,
       requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null,
       metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
+      durationMs?: number,
     ) => {
       if (status !== 'executed') {
         return undefined;
@@ -473,6 +482,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   metadata?.nodeId,
                 ) ?? '',
                 requestTokenUsage,
+                undefined,
+                undefined,
+                durationMs,
               )}
             </Text>
           }>
@@ -496,16 +508,28 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       );
     };
 
-    const renderToolStatusLine = (
-      name: string,
-      status: ToolRenderStatus,
-      resultContent?: unknown,
-      toolOptions?: Record<string, JsonValue>,
-      titleText?: string,
-      align: 'left' | 'center' = 'center',
-      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
-      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
-    ) => {
+    const renderToolStatusLine = (opts: {
+      name: string;
+      status: ToolRenderStatus;
+      resultContent?: unknown;
+      toolOptions?: Record<string, JsonValue>;
+      titleText?: string;
+      align?: 'left' | 'center';
+      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
+      durationMs?: number;
+    }) => {
+      const {
+        name,
+        status,
+        resultContent,
+        toolOptions,
+        titleText,
+        align = 'center',
+        requestTokenUsageIn,
+        requestTokenUsageOut,
+        durationMs,
+      } = opts;
       const hasToolOptions =
         toolOptions !== undefined &&
         toolOptions !== null &&
@@ -566,7 +590,15 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               display: 'flex',
               alignItems: 'center',
               justifyContent: align === 'left' ? 'flex-start' : 'center',
+              gap: 4,
             }}>
+            <ToolOutlined
+              style={{
+                fontSize: 10,
+                color: hasError ? 'inherit' : '#8c8c8c',
+                flexShrink: 0,
+              }}
+            />
             <Text
               type="secondary"
               className="tool-status-line__text"
@@ -593,6 +625,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           name,
           requestTokenUsageIn,
           requestTokenUsageOut,
+          durationMs,
         );
         baseLine = (
           <Popover
@@ -607,28 +640,30 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
       return baseLine;
     };
 
-    const renderShellStatusLine = (
-      name: string,
-      status: ToolRenderStatus,
-      resultContent?: unknown,
-      shellCommand?: string,
-      toolOptions?: Record<string, JsonValue>,
-      metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string },
-      titleText?: string,
-      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null,
-      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null,
-    ) => {
+    const renderShellStatusLine = (opts: {
+      name: string;
+      status: ToolRenderStatus;
+      resultContent?: unknown;
+      shellCommand?: string;
+      toolOptions?: Record<string, JsonValue>;
+      metadata?: { nodeId?: string; createdAt?: string; roleLabel?: string };
+      titleText?: string;
+      requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
+      requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
+      durationMs?: number;
+    }) => {
       return (
         <ShellToolDisplay
-          name={name}
-          status={status}
-          resultContent={resultContent}
-          shellCommand={shellCommand}
-          toolOptions={toolOptions}
-          title={titleText}
-          metadata={metadata}
-          requestTokenUsageIn={requestTokenUsageIn}
-          requestTokenUsageOut={requestTokenUsageOut}
+          name={opts.name}
+          status={opts.status}
+          resultContent={opts.resultContent}
+          shellCommand={opts.shellCommand}
+          toolOptions={opts.toolOptions}
+          title={opts.titleText}
+          metadata={opts.metadata}
+          requestTokenUsageIn={opts.requestTokenUsageIn}
+          requestTokenUsageOut={opts.requestTokenUsageOut}
+          durationMs={opts.durationMs}
         />
       );
     };
@@ -685,16 +720,14 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         const name = getMessageString(message.message, 'name') || 'tool';
         const title = getMessageTitle(message.message);
         const resultContent = message.message?.content;
-        return renderToolStatusLine(
+        return renderToolStatusLine({
           name,
-          'executed',
+          status: 'executed',
           resultContent,
-          undefined,
-          title,
-          'center',
-          null,
-          message.requestTokenUsage,
-        );
+          titleText: title,
+          requestTokenUsageOut: message.requestTokenUsage,
+          durationMs: extractDurationMs(message.message),
+        });
       }
 
       if (isBlankContent(message.message?.content)) return null;
@@ -763,6 +796,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   {renderFooterLineWithUsage(
                     dateOnlyText,
                     message.requestTokenUsage,
+                    undefined,
+                    undefined,
+                    extractDurationMs(message.message),
                   )}
                 </Text>
               ) : undefined
@@ -828,6 +864,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   {renderFooterLineWithUsage(
                     metadataText,
                     message.requestTokenUsage,
+                    undefined,
+                    undefined,
+                    extractDurationMs(message.message),
                   )}
                 </Text>
               ) : undefined
@@ -887,6 +926,9 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                 {renderFooterLineWithUsage(
                   metadataText,
                   message.requestTokenUsage,
+                  undefined,
+                  undefined,
+                  extractDurationMs(message.message),
                 )}
               </Text>
             ) : undefined
@@ -1020,20 +1062,39 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
         if (it.toolKind === 'shell') {
           return (
             <div key={`work-shell-${it.id}-${idx}`}>
-              {renderShellStatusLine(
-                it.name,
-                it.status,
-                it.result,
-                it.shellCommand,
-                it.toolOptions,
-                {
+              {renderShellStatusLine({
+                name: it.name,
+                status: it.status,
+                resultContent: it.result,
+                shellCommand: it.shellCommand,
+                toolOptions: it.toolOptions,
+                metadata: {
                   nodeId: it.nodeId,
                   createdAt: it.createdAt,
                   roleLabel: it.roleLabel ?? it.name,
                 },
-                it.title,
-                it.requestTokenUsageIn,
-                it.requestTokenUsageOut,
+                titleText: it.title,
+                requestTokenUsageIn: it.requestTokenUsageIn,
+                requestTokenUsageOut: it.requestTokenUsageOut,
+                durationMs: it.durationMs,
+              })}
+            </div>
+          );
+        }
+
+        if (it.name && it.name.toLowerCase() === 'finish') {
+          return (
+            <div key={`work-finish-${it.id}-${idx}`}>
+              {renderFinishTool(
+                it.status,
+                it.result,
+                it.requestTokenUsage,
+                {
+                  nodeId: it.nodeId,
+                  createdAt: it.createdAt,
+                  roleLabel: 'ai',
+                },
+                it.durationMs,
               )}
             </div>
           );
@@ -1041,16 +1102,17 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
         return (
           <div key={`work-tool-${it.id}-${idx}`}>
-            {renderToolStatusLine(
-              it.name,
-              it.status,
-              it.result,
-              it.toolOptions,
-              it.title,
-              'left',
-              it.requestTokenUsageIn,
-              it.requestTokenUsageOut,
-            )}
+            {renderToolStatusLine({
+              name: it.name,
+              status: it.status,
+              resultContent: it.result,
+              toolOptions: it.toolOptions,
+              titleText: it.title,
+              align: 'left',
+              requestTokenUsageIn: it.requestTokenUsageIn,
+              requestTokenUsageOut: it.requestTokenUsageOut,
+              durationMs: it.durationMs,
+            })}
           </div>
         );
       }
@@ -1304,6 +1366,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
               group.push(preparedMessagesResult[j]);
               j++;
             }
+            // If the only collected item is the chat text itself (no actual
+            // work items followed), render it as a normal message instead of
+            // wrapping it in a "Working..." block.  This happens when the AI
+            // text accompanies only a finish tool call (which is excluded from
+            // the working group).
+            if (group.length === 1) {
+              pushRow(item.id, renderMessage(item.message));
+              i++;
+              continue;
+            }
             pushRow(`working-${item.id}`, renderWorkingBlock(group));
             i = j;
             continue;
@@ -1478,6 +1550,7 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
                   createdAt: item.createdAt,
                   roleLabel: 'ai',
                 },
+                item.durationMs,
               ),
             );
             i++;
@@ -1487,21 +1560,22 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
           if (item.toolKind === 'shell') {
             pushRow(
               item.id || `shell-${i}`,
-              renderShellStatusLine(
-                item.name,
-                item.status,
-                item.result,
-                item.shellCommand,
-                item.toolOptions,
-                {
+              renderShellStatusLine({
+                name: item.name,
+                status: item.status,
+                resultContent: item.result,
+                shellCommand: item.shellCommand,
+                toolOptions: item.toolOptions,
+                metadata: {
                   nodeId: item.nodeId,
                   createdAt: item.createdAt,
                   roleLabel: item.roleLabel ?? item.name,
                 },
-                item.title,
-                item.requestTokenUsageIn,
-                item.requestTokenUsageOut,
-              ),
+                titleText: item.title,
+                requestTokenUsageIn: item.requestTokenUsageIn,
+                requestTokenUsageOut: item.requestTokenUsageOut,
+                durationMs: item.durationMs,
+              }),
             );
             i++;
             continue;
@@ -1509,16 +1583,16 @@ const ThreadMessagesView: React.FC<ThreadMessagesViewProps> = React.memo(
 
           pushRow(
             item.id || `generic-tool-${i}`,
-            renderToolStatusLine(
-              item.name,
-              item.status,
-              item.result,
-              item.toolOptions,
-              item.title,
-              'center',
-              item.requestTokenUsageIn,
-              item.requestTokenUsageOut,
-            ),
+            renderToolStatusLine({
+              name: item.name,
+              status: item.status,
+              resultContent: item.result,
+              toolOptions: item.toolOptions,
+              titleText: item.title,
+              requestTokenUsageIn: item.requestTokenUsageIn,
+              requestTokenUsageOut: item.requestTokenUsageOut,
+              durationMs: item.durationMs,
+            }),
           );
           i++;
           continue;

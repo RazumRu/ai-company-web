@@ -88,13 +88,26 @@ export const SubagentBlock: React.FC<SubagentBlockProps> = ({
     [innerMessages, resultText],
   );
 
-  const isCollapsible =
-    !isCalling && filteredInnerMessages.length > COLLAPSED_MESSAGE_COUNT;
-  const visibleMessages =
-    isCollapsible && !expanded
-      ? filteredInnerMessages.slice(0, COLLAPSED_MESSAGE_COUNT)
-      : filteredInnerMessages;
-  const hiddenCount = filteredInnerMessages.length - COLLAPSED_MESSAGE_COUNT;
+  // Count only non-reasoning messages for collapse threshold.
+  const nonReasoningCount = filteredInnerMessages.filter(
+    (m) => m.type !== 'reasoning',
+  ).length;
+  const isCollapsible = nonReasoningCount > COLLAPSED_MESSAGE_COUNT;
+
+  // When collapsed, take items from the start until we have enough non-reasoning ones.
+  const visibleMessages = useMemo(() => {
+    if (!isCollapsible || expanded) return filteredInnerMessages;
+    const result: PreparedMessage[] = [];
+    let count = 0;
+    for (const m of filteredInnerMessages) {
+      result.push(m);
+      if (m.type !== 'reasoning') count++;
+      if (count >= COLLAPSED_MESSAGE_COUNT) break;
+    }
+    return result;
+  }, [filteredInnerMessages, isCollapsible, expanded]);
+
+  const hiddenCount = nonReasoningCount - COLLAPSED_MESSAGE_COUNT;
 
   const isClickable =
     (status === 'executed' || status === 'stopped') && !!popoverContent;

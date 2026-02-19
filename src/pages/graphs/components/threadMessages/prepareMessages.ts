@@ -11,6 +11,7 @@ import type {
 } from './threadMessagesTypes';
 import {
   argsToObject,
+  extractDurationMs,
   extractShellCommandFromArgs,
   getAdditionalKwargs,
   getMessageRunId,
@@ -50,39 +51,69 @@ const extractSubagentModel = (
   return undefined;
 };
 
-/** Accumulates token usage from inner messages to provide live statistics
- *  while a subagent/communication block is still running (no final result yet).
- *  Prefers `requestTokenUsage` (LLM request costs) per message and falls back
- *  to `toolTokenUsage` (tool-level costs) when the former is absent — this
- *  avoids double-counting when both fields are set on the same message. */
-const accumulateLiveStatistics = (
-  innerMessages: ThreadMessageDto[],
+/** Accumulates token usage from **prepared** messages to provide live
+ *  statistics for a subagent/communication block.  Operating on the prepared
+ *  (post-grouping) messages instead of raw ThreadMessageDtos avoids
+ *  double-counting: nested subagent/communication blocks contribute their own
+ *  `statistics` as single items rather than having every inner message counted
+ *  again at the parent level.
+ *
+ *  For flat message types (chat, reasoning, system) we use the original DTO's
+ *  `requestTokenUsage`; for tool messages we use the directly-attached
+ *  `requestTokenUsage`; for nested blocks (subagent, communication) we use
+ *  the block's already-computed `statistics`. */
+const accumulatePreparedStatistics = (
+  prepared: PreparedMessage[],
 ): SubagentStatistics | undefined => {
   let totalTokens = 0;
-  let inputTokens = 0;
-  let outputTokens = 0;
   let totalPrice = 0;
+  let durationMs = 0;
   let count = 0;
 
-  for (const msg of innerMessages) {
-    const usage = msg.requestTokenUsage ?? msg.toolTokenUsage;
-    if (!usage) continue;
-    count++;
-    if (typeof usage.totalTokens === 'number') totalTokens += usage.totalTokens;
-    if (typeof usage.inputTokens === 'number') inputTokens += usage.inputTokens;
-    if (typeof usage.outputTokens === 'number')
-      outputTokens += usage.outputTokens;
-    if (typeof usage.totalPrice === 'number') totalPrice += usage.totalPrice;
+  for (const item of prepared) {
+    if (item.type === 'subagent' || item.type === 'communication') {
+      // Nested block — use the block's aggregated statistics so we don't
+      // double-count its inner messages.
+      const s = item.statistics;
+      if (!s) continue;
+      count++;
+      const price = s.usage?.totalPrice ?? s.totalPrice;
+      if (typeof price === 'number') totalPrice += price;
+      if (typeof s.usage?.totalTokens === 'number')
+        totalTokens += s.usage.totalTokens;
+      if (typeof s.usage?.durationMs === 'number')
+        durationMs += s.usage.durationMs;
+    } else if (item.type === 'tool') {
+      // Tool messages carry requestTokenUsage directly (no .message wrapper).
+      const usage = item.requestTokenUsage;
+      if (!usage) continue;
+      count++;
+      if (typeof usage.totalTokens === 'number')
+        totalTokens += usage.totalTokens;
+      if (typeof usage.totalPrice === 'number') totalPrice += usage.totalPrice;
+      if (typeof item.durationMs === 'number') durationMs += item.durationMs;
+    } else {
+      // chat / reasoning / system — have a .message (ThreadMessageDto).
+      const usage =
+        item.message?.requestTokenUsage ?? item.message?.toolTokenUsage;
+      if (!usage) continue;
+      count++;
+      if (typeof usage.totalTokens === 'number')
+        totalTokens += usage.totalTokens;
+      if (typeof usage.totalPrice === 'number') totalPrice += usage.totalPrice;
+      // Extract durationMs from the DTO's additionalKwargs.
+      const dur = extractDurationMs(item.message.message);
+      if (typeof dur === 'number') durationMs += dur;
+    }
   }
 
   if (count === 0) return undefined;
 
   return {
     usage: {
-      totalTokens,
-      inputTokens,
-      outputTokens,
-      totalPrice,
+      totalTokens: totalTokens || undefined,
+      totalPrice: totalPrice || undefined,
+      durationMs: durationMs || undefined,
     },
   };
 };
@@ -593,7 +624,7 @@ export const prepareReadyMessages = (
               : null;
           const statistics =
             (resultObj?.statistics as SubagentStatistics) ??
-            accumulateLiveStatistics(innerRawMessages);
+            accumulatePreparedStatistics(innerPrepared);
           const resultText =
             typeof resultObj?.result === 'string'
               ? resultObj.result
@@ -679,7 +710,7 @@ export const prepareReadyMessages = (
               : undefined;
           const commStatistics =
             (commResultObj?.statistics as SubagentStatistics) ??
-            accumulateLiveStatistics(innerRawMessages);
+            accumulatePreparedStatistics(innerPrepared);
 
           const parsedArgs = argsToObject(toolArgs);
           const targetNodeId =
@@ -769,6 +800,7 @@ export const prepareReadyMessages = (
           requestTokenUsage: m.requestTokenUsage,
           requestTokenUsageIn: m.requestTokenUsage,
           requestTokenUsageOut: matched?.requestTokenUsage,
+          durationMs: extractDurationMs(m.message),
           nodeId: matched?.nodeId ?? m.nodeId,
           createdAt: matched?.createdAt ?? m.createdAt,
           roleLabel: effectiveTitle || name || 'tool',
@@ -827,6 +859,7 @@ export const prepareReadyMessages = (
         toolOptions,
         requestTokenUsage: m.requestTokenUsage,
         requestTokenUsageOut: m.requestTokenUsage,
+        durationMs: extractDurationMs(m.message),
         nodeId: m.nodeId,
         createdAt: m.createdAt,
         roleLabel: title || name || 'tool',

@@ -49,6 +49,22 @@ export const formatRequestUsdShort = (amount?: number | null): string => {
   return requestUsdFormatter.format(truncated);
 };
 
+/** Formats a duration in milliseconds to a human-readable string.
+ *  Examples: "2.6s", "45s", "1m 23s", "5m 2s" */
+export const formatDurationMs = (ms: number): string => {
+  if (!Number.isFinite(ms) || ms <= 0) return '—';
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const totalSeconds = ms / 1000;
+  // Use the minutes format once the rounded display would reach 60s.
+  const rounded = Math.round(totalSeconds * 10) / 10;
+  if (rounded < 60) {
+    return `${rounded}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.round(totalSeconds % 60);
+  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+};
+
 // ────────────────────────────────────────────
 // Message payload helpers
 // ────────────────────────────────────────────
@@ -79,6 +95,20 @@ export const getAdditionalKwargs = (
   return isPlainObject(additional)
     ? (additional as Record<string, unknown>)
     : undefined;
+};
+
+/** Extracts `durationMs` from `additionalKwargs.__requestUsage.durationMs`
+ *  of a message payload.  Returns `undefined` when not available. */
+export const extractDurationMs = (
+  payload?: MessagePayload,
+): number | undefined => {
+  const additional = getAdditionalKwargs(payload);
+  const reqUsage = additional?.__requestUsage;
+  if (reqUsage && typeof reqUsage === 'object' && !Array.isArray(reqUsage)) {
+    const dur = (reqUsage as Record<string, unknown>).durationMs;
+    if (typeof dur === 'number' && dur > 0) return dur;
+  }
+  return undefined;
 };
 
 export const getMessageValue = <T = unknown>(

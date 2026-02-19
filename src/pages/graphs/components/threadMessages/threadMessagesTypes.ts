@@ -41,6 +41,7 @@ export interface SubagentStatistics {
     outputTokens?: number;
     currentContext?: number;
     totalPrice?: number;
+    durationMs?: number;
   };
   toolCallsMade?: number;
   totalIterations?: number;
@@ -94,6 +95,8 @@ export type PreparedMessage =
       requestTokenUsage?: ThreadMessageDtoRequestTokenUsage | null;
       requestTokenUsageIn?: ThreadMessageDtoRequestTokenUsage | null;
       requestTokenUsageOut?: ThreadMessageDtoRequestTokenUsage | null;
+      /** LLM request duration in milliseconds (from additionalKwargs.__requestUsage). */
+      durationMs?: number;
       nodeId?: string;
       createdAt?: string;
       roleLabel?: string;

@@ -100,13 +100,27 @@ export const CommunicationBlock: React.FC<CommunicationBlockProps> = ({
     ? `Result from ${targetAgentName}`
     : 'Result';
 
+  // Count only non-reasoning messages for collapse threshold.
+  const nonReasoningCount = innerMessages.filter(
+    (m) => m.type !== 'reasoning',
+  ).length;
   const isCollapsible =
-    !isCalling && innerMessages.length > COLLAPSED_MESSAGE_COUNT;
-  const visibleMessages =
-    isCollapsible && !expanded
-      ? innerMessages.slice(0, COLLAPSED_MESSAGE_COUNT)
-      : innerMessages;
-  const hiddenCount = innerMessages.length - COLLAPSED_MESSAGE_COUNT;
+    !isCalling && nonReasoningCount > COLLAPSED_MESSAGE_COUNT;
+
+  // When collapsed, take items from the start until we have enough non-reasoning ones.
+  const visibleMessages = useMemo(() => {
+    if (!isCollapsible || expanded) return innerMessages;
+    const result: PreparedMessage[] = [];
+    let count = 0;
+    for (const m of innerMessages) {
+      result.push(m);
+      if (m.type !== 'reasoning') count++;
+      if (count >= COLLAPSED_MESSAGE_COUNT) break;
+    }
+    return result;
+  }, [innerMessages, isCollapsible, expanded]);
+
+  const hiddenCount = nonReasoningCount - COLLAPSED_MESSAGE_COUNT;
 
   const isClickable =
     (status === 'executed' || status === 'stopped') && !!popoverContent;
