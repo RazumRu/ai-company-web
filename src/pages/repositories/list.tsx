@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Empty, Input, message, Spin, Typography } from 'antd';
+import { App, Button, Empty, Input, Spin, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 
 import { gitRepositoriesApi } from '../../api';
@@ -16,6 +16,7 @@ interface RepoWithIndex extends GitRepositoryDto {
 }
 
 export const RepositoriesListPage = () => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [reindexing, setReindexing] = useState<string | null>(null);

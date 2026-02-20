@@ -1,4 +1,4 @@
-import { Button, Form, Input, message, Modal } from 'antd';
+import { App, Button, Form, Input, Modal } from 'antd';
 import { useState } from 'react';
 
 import { gitRepositoriesApi } from '../../../api';
@@ -16,6 +16,7 @@ export const CreateRepositoryModal = ({
   onClose,
   onSuccess,
 }: CreateRepositoryModalProps) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [creating, setCreating] = useState(false);
 

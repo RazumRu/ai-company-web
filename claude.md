@@ -132,8 +132,8 @@ Edit `src/config/development.ts` or `src/config/production.ts`:
 | -------------------- | -------------------------- | ----------------------- |
 | `API_URL`            | REST + WebSocket base URL  | `http://localhost:5000` |
 | `KEYCLOAK_URL`       | SSO endpoint               | `http://localhost:8082` |
-| `KEYCLOAK_REALM`     | Keycloak realm name        | `geniro`            |
-| `KEYCLOAK_CLIENT_ID` | OAuth client ID            | `geniro`            |
+| `KEYCLOAK_REALM`     | Keycloak realm name        | `geniro`                |
+| `KEYCLOAK_CLIENT_ID` | OAuth client ID            | `geniro`                |
 | `PROJECT_ID`         | Refine devtools identifier | `oA2Grn-tb5EdO-q4j17C`  |
 | `WEBSITE_URL`        | Client base URL            | `http://localhost:3004` |
 

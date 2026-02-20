@@ -146,7 +146,7 @@ function App() {
                           style={
                             collapsed
                               ? { width: 32, height: 32 }
-                              : { height: 28 }
+                              : { height: 32 }
                           }
                         />
                       </div>

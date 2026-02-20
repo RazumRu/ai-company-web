@@ -8,13 +8,13 @@ import {
 } from '@ant-design/icons';
 import type { Viewport } from '@xyflow/react';
 import {
+  App,
   Button,
   Card,
   Dropdown,
   Empty,
   Form,
   Input,
-  message,
   Modal,
   Spin,
   Tag,
@@ -46,6 +46,7 @@ const STATUS_META: Record<
 };
 
 export const GraphsListPage = () => {
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -606,44 +607,44 @@ export const GraphsListPage = () => {
                       </span>
                     </div>
                   </div>
-                  <Dropdown
-                    trigger={['click']}
-                    menu={{
-                      items: [
-                        {
-                          key: 'edit',
-                          icon: <EditOutlined />,
-                          label: 'Edit',
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: [
+                          {
+                            key: 'edit',
+                            icon: <EditOutlined />,
+                            label: 'Edit',
+                          },
+                          { type: 'divider' },
+                          {
+                            key: 'delete',
+                            icon: <DeleteOutlined />,
+                            danger: true,
+                            label: 'Delete',
+                            disabled: deleting === graph.id,
+                          },
+                        ],
+                        onClick: ({ key }) => {
+                          if (key === 'edit') {
+                            openEditModal(graph);
+                          } else if (key === 'delete') {
+                            confirmDeleteGraph(graph.id);
+                          }
                         },
-                        { type: 'divider' },
-                        {
-                          key: 'delete',
-                          icon: <DeleteOutlined />,
-                          danger: true,
-                          label: 'Delete',
-                          disabled: deleting === graph.id,
-                        },
-                      ],
-                      onClick: ({ key, domEvent }) => {
-                        domEvent.stopPropagation();
-                        if (key === 'edit') {
-                          openEditModal(graph);
-                        } else if (key === 'delete') {
-                          confirmDeleteGraph(graph.id);
-                        }
-                      },
-                    }}>
-                    <Button
-                      type="text"
-                      icon={<EllipsisOutlined />}
-                      onClick={(event) => event.stopPropagation()}
-                      style={{
-                        border: 'none',
-                        boxShadow: 'none',
-                        color: '#6b7280',
-                      }}
-                    />
-                  </Dropdown>
+                      }}>
+                      <Button
+                        type="text"
+                        icon={<EllipsisOutlined />}
+                        style={{
+                          border: 'none',
+                          boxShadow: 'none',
+                          color: '#6b7280',
+                        }}
+                      />
+                    </Dropdown>
+                  </div>
                 </div>
 
                 <Paragraph

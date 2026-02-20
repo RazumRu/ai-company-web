@@ -4,7 +4,7 @@ import {
   GithubOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { Button, Card, message, Modal, Progress, Tag, Typography } from 'antd';
+import { App, Button, Card, Progress, Tag, Typography } from 'antd';
 import { formatDistanceToNow } from 'date-fns';
 
 import { gitRepositoriesApi } from '../../../api';
@@ -36,6 +36,8 @@ export const RepositoryCard = ({
   onReindexEnd,
   onRefresh,
 }: RepositoryCardProps) => {
+  const { message, modal } = App.useApp();
+
   const handleTriggerReindex = async (repositoryId: string) => {
     onReindexStart(repositoryId);
     try {
@@ -55,7 +57,7 @@ export const RepositoryCard = ({
   };
 
   const confirmDeleteRepository = (repositoryId: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Delete repository',
       content:
         'Are you sure you want to delete this repository? This action cannot be undone.',
