@@ -73,14 +73,14 @@ A visual workspace for authoring and operating AI agent automations. Teams can s
 
 - **Node.js** >= 22
 - **pnpm** >= 10 (the repo enforces the version via `package.json`)
-- Running instances of the **AI Company API** and **Keycloak** realm (defaults assume `localhost:5000` and `localhost:8082`)
+- Running instances of the **Geniro API** and **Keycloak** realm (defaults assume `localhost:5000` and `localhost:8082`)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/ai-company-web.git
-cd ai-company-web
+git clone https://github.com/your-org/geniro-web.git
+cd geniro-web
 
 # Install dependencies
 pnpm install
@@ -99,8 +99,8 @@ App configuration is code-driven and lives in `src/config/`. The active file is 
 | -------------------- | ------------------------- | ----------------------- |
 | `API_URL`            | REST + WebSocket base URL | `http://localhost:5000` |
 | `KEYCLOAK_URL`       | SSO endpoint              | `http://localhost:8082` |
-| `KEYCLOAK_REALM`     | Keycloak realm name       | `ai-company`            |
-| `KEYCLOAK_CLIENT_ID` | OAuth client ID           | `ai-company`            |
+| `KEYCLOAK_REALM`     | Keycloak realm name       | `geniro`                |
+| `KEYCLOAK_CLIENT_ID` | OAuth client ID           | `geniro`                |
 | `WEBSITE_URL`        | Client base URL           | `http://localhost:3004` |
 
 Edit `src/config/development.ts` for local work or `src/config/production.ts` for production. You can also inject Vite environment variables at build time:
@@ -113,7 +113,7 @@ VITE_API_URL=https://api.example.com pnpm build
 
 ```bash
 # Build the production image
-docker build -t ai-company-web .
+docker build -t geniro-web .
 
 # Run on port 80
 docker run -p 80:4173 ai-company-web

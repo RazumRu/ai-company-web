@@ -11,7 +11,6 @@ import { useKeycloak } from '@react-keycloak/web';
 import {
   ErrorComponent,
   ThemedLayout,
-  ThemedTitle,
   useNotificationProvider,
 } from '@refinedev/antd';
 import { Authenticated, AuthProvider, Refine } from '@refinedev/core';
@@ -133,26 +132,24 @@ function App() {
                   <ThemedLayout
                     Header={Header}
                     Title={({ collapsed }: { collapsed: boolean }) => (
-                      <ThemedTitle
-                        collapsed={collapsed}
-                        wrapperStyles={{
-                          height: '32px',
-                          gap: '20px',
-                        }}
-                        icon={
-                          <img
-                            src="/logo.svg"
-                            alt="Logo"
-                            style={{
-                              width: 32,
-                              height: 32,
-                              position: 'relative',
-                              top: '-2px',
-                            }}
-                          />
-                        }
-                        text="AI Company"
-                      />
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '100%',
+                          padding: '16px 0',
+                        }}>
+                        <img
+                          src={collapsed ? '/logo.svg' : '/logo-full.svg'}
+                          alt="Geniro.io"
+                          style={
+                            collapsed
+                              ? { width: 32, height: 32 }
+                              : { height: 28 }
+                          }
+                        />
+                      </div>
                     )}
                     Sider={CustomSider}>
                     <Outlet />

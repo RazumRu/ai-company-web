@@ -1,4 +1,4 @@
-# AI Agent Graph Platform - Claude Code Guide
+# Geniro.io — AI Agent Graph Platform — Claude Code Guide
 
 ## Project Overview
 
@@ -218,8 +218,8 @@ Subscribe via hooks: `useWebSocket`, `useGraphWebSocket`, `useThreadWebSocket`
 ### Docker
 
 ```bash
-docker build -t ai-company-web .
-docker run -p 80:80 ai-company-web
+docker build -t geniro-web .
+docker run -p 80:80 geniro-web
 ```
 
 ### Environment Variables

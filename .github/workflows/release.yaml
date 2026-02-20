@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  APP_NAME: ai-company-web
+  APP_NAME: geniro-web
   NODE_VERSION: 22
   #ECR_REGISTRY_NAME: 471112772597.dkr.ecr.me-central-1.amazonaws.com/lusora-web-admin
 
@@ -55,8 +55,8 @@ jobs:
 
       - name: Prepare repository
         run: |
-          git config user.email "ci@company.ai"
-          git config user.name "AI Company Bot"
+          git config user.email "ci@geniro.io"
+          git config user.name "Geniro Bot"
 
       - name: up version
         id: semantic

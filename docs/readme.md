@@ -1,4 +1,4 @@
-AI Company Web — Development Guidelines
+Geniro.io Web — Development Guidelines
 
 This document captures project-specific knowledge to speed up onboarding and day‑to‑day work for advanced contributors. It focuses on details unique to this repository, not generic React/Vite advice.
 
@@ -21,7 +21,7 @@ Build and Configuration
     - `src/config/production.ts` is used in production
   - Keys of interest exported via `src/config/index.ts`:
     - `API_URL`: REST + WebSocket base URL (dev default `http://localhost:5000`).
-    - `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`: SSO integration (dev default `http://localhost:8082`, realm `ai-company`, client `ai-company`).
+    - `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`: SSO integration (dev default `http://localhost:8082`, realm `geniro`, client `geniro`).
     - `PROJECT_ID`, `WEBSITE_URL`: app metadata and base site URL.
   - Notes:
     - Vite dev server is network-exposed (host `0.0.0.0`). In containerized or remote dev, ensure the host/ports are reachable and align CORS accordingly on the API and Keycloak.
