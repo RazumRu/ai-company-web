@@ -446,6 +446,18 @@ export interface GraphDto {
    */
   'metadata'?: CreateGraphDtoMetadata | null;
   /**
+   * Number of threads currently in running state
+   * @type {number}
+   * @memberof GraphDto
+   */
+  'runningThreads'?: number;
+  /**
+   * Total number of threads for this graph
+   * @type {number}
+   * @memberof GraphDto
+   */
+  'totalThreads'?: number;
+  /**
    *
    * @type {string}
    * @memberof GraphDto
@@ -2448,6 +2460,18 @@ export interface UpdateGraphResponseDtoGraph {
    * @memberof UpdateGraphResponseDtoGraph
    */
   'metadata'?: CreateGraphDtoMetadata | null;
+  /**
+   * Number of threads currently in running state
+   * @type {number}
+   * @memberof UpdateGraphResponseDtoGraph
+   */
+  'runningThreads'?: number;
+  /**
+   * Total number of threads for this graph
+   * @type {number}
+   * @memberof UpdateGraphResponseDtoGraph
+   */
+  'totalThreads'?: number;
   /**
    *
    * @type {string}

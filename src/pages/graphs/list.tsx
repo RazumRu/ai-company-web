@@ -1,4 +1,7 @@
 import {
+  CommentOutlined,
+  DeleteOutlined,
+  EditOutlined,
   EllipsisOutlined,
   PlusOutlined,
   UploadOutlined,
@@ -9,6 +12,7 @@ import {
   Card,
   Dropdown,
   Empty,
+  Form,
   Input,
   message,
   Modal,
@@ -49,6 +53,10 @@ export const GraphsListPage = () => {
   const [graphs, setGraphs] = useState<GraphDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingGraph, setEditingGraph] = useState<GraphDto | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingGraphId, setDeletingGraphId] = useState<string | null>(null);
+  const [editForm] = Form.useForm<{ name: string; description: string }>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -110,6 +118,39 @@ export const GraphsListPage = () => {
 
   const handleEditGraph = (graphId: string) => {
     navigate(`/graphs/${graphId}`);
+  };
+
+  const openEditModal = (graph: GraphDto) => {
+    setEditingGraph(graph);
+    editForm.setFieldsValue({
+      name: graph.name || '',
+      description: graph.description || '',
+    });
+  };
+
+  const handleSaveGraphDetails = async () => {
+    if (!editingGraph) return;
+    try {
+      const values = await editForm.validateFields();
+      setEditSaving(true);
+      const res = await graphsApi.updateGraph(editingGraph.id, {
+        name: values.name,
+        description: values.description,
+        currentVersion: editingGraph.version || '',
+      });
+      const updated = res.data.graph;
+      setGraphs((prev) =>
+        prev.map((g) => (g.id === editingGraph.id ? { ...g, ...updated } : g)),
+      );
+      message.success('Graph updated');
+      setEditingGraph(null);
+    } catch (e: unknown) {
+      console.error('Error updating graph:', e);
+      const errorMessage = extractApiErrorMessage(e, 'Failed to update graph');
+      message.error(errorMessage);
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const parseImportedGraphFile = (
@@ -314,16 +355,13 @@ export const GraphsListPage = () => {
   };
 
   const confirmDeleteGraph = (graphId: string) => {
-    Modal.confirm({
-      title: 'Delete graph',
-      content:
-        'Are you sure you want to delete this graph? This action cannot be undone.',
-      okText: 'Delete',
-      okButtonProps: { danger: true, loading: deleting === graphId },
-      cancelText: 'Cancel',
-      centered: true,
-      onOk: () => handleDeleteGraph(graphId),
-    });
+    setDeletingGraphId(graphId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingGraphId) return;
+    await handleDeleteGraph(deletingGraphId);
+    setDeletingGraphId(null);
   };
 
   const getNodeCount = (graph: GraphDto) => {
@@ -573,7 +611,14 @@ export const GraphsListPage = () => {
                     menu={{
                       items: [
                         {
+                          key: 'edit',
+                          icon: <EditOutlined />,
+                          label: 'Edit',
+                        },
+                        { type: 'divider' },
+                        {
                           key: 'delete',
+                          icon: <DeleteOutlined />,
                           danger: true,
                           label: 'Delete',
                           disabled: deleting === graph.id,
@@ -581,7 +626,9 @@ export const GraphsListPage = () => {
                       ],
                       onClick: ({ key, domEvent }) => {
                         domEvent.stopPropagation();
-                        if (key === 'delete') {
+                        if (key === 'edit') {
+                          openEditModal(graph);
+                        } else if (key === 'delete') {
                           confirmDeleteGraph(graph.id);
                         }
                       },
@@ -603,6 +650,7 @@ export const GraphsListPage = () => {
                   style={{
                     color: '#374151',
                     fontSize: 14,
+                    marginBottom: 8,
                   }}>
                   {graph.description ||
                     'Automated workflow for your agent graphs.'}
@@ -611,13 +659,25 @@ export const GraphsListPage = () => {
                 <div
                   style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'center',
-                    gap: 5,
+                    gap: '2px 8px',
                     color: '#9ca3af',
                     fontSize: 13,
                   }}>
                   <span>{getNodeCount(graph)} nodes</span>
-                  <span>|</span>
+                  <span>·</span>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}>
+                    <CommentOutlined />
+                    {graph.runningThreads ?? 0} running of{' '}
+                    {graph.totalThreads ?? 0} threads
+                  </span>
+                  <span>·</span>
                   <span>
                     Modified{' '}
                     {formatDistanceToNow(updatedAt, { addSuffix: true })}
@@ -628,6 +688,40 @@ export const GraphsListPage = () => {
           })}
         </div>
       )}
+
+      <Modal
+        title="Edit Graph"
+        open={!!editingGraph}
+        onCancel={() => setEditingGraph(null)}
+        onOk={handleSaveGraphDetails}
+        confirmLoading={editSaving}
+        okText="Save"
+        destroyOnClose>
+        <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: 'Graph name is required' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Delete graph"
+        open={!!deletingGraphId}
+        onCancel={() => setDeletingGraphId(null)}
+        onOk={handleConfirmDelete}
+        confirmLoading={deleting === deletingGraphId}
+        okText="Delete"
+        okButtonProps={{ danger: true }}
+        centered>
+        Are you sure you want to delete this graph? This action cannot be
+        undone.
+      </Modal>
     </div>
   );
 };
