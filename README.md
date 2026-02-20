@@ -116,7 +116,7 @@ VITE_API_URL=https://api.example.com pnpm build
 docker build -t geniro-web .
 
 # Run on port 80
-docker run -p 80:4173 ai-company-web
+docker run -p 80:4173 geniro-web
 ```
 
 The multi-stage Dockerfile uses Node 22-alpine, builds with Vite, and serves the static `dist/` bundle.
