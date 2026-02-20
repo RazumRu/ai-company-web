@@ -16,7 +16,6 @@
 ---
 
 ![Graph Studio](assets/readme_1.png)
-
 ![Conversation Hub](assets/readme_2.png)
 
 ## Table of Contents
