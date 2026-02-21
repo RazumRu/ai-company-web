@@ -137,6 +137,7 @@ class WebSocketService {
       'graph.revision.applying',
       'graph.revision.applied',
       'graph.revision.failed',
+      'graph.revision.progress',
     ];
 
     revisionEvents.forEach((eventType) => {

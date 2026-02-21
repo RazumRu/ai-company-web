@@ -141,11 +141,28 @@ export type GraphRevisionEventType =
   | 'graph.revision.create'
   | 'graph.revision.applying'
   | 'graph.revision.applied'
-  | 'graph.revision.failed';
+  | 'graph.revision.failed'
+  | 'graph.revision.progress';
 
 export interface GraphRevisionNotification extends BaseNotification {
   type: GraphRevisionEventType;
   data: GraphRevisionDto;
+}
+
+// Graph revision progress notification data
+export interface GraphRevisionProgressData {
+  revisionId: string;
+  graphId: string;
+  toVersion: string;
+  currentNode: number;
+  totalNodes: number;
+  nodeId: string;
+  phase: 'rebuilding' | 'completed';
+}
+
+export interface GraphRevisionProgressNotification extends BaseNotification {
+  type: 'graph.revision.progress';
+  data: GraphRevisionProgressData;
 }
 
 // Server error notification
@@ -162,7 +179,8 @@ export type SocketNotification =
   | ThreadUpdateNotification
   | ThreadDeleteNotification
   | GraphNodeUpdateNotification
-  | GraphRevisionNotification;
+  | GraphRevisionNotification
+  | GraphRevisionProgressNotification;
 
 // Client to Server events payload types
 export interface SubscribeGraphPayload {

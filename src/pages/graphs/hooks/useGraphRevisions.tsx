@@ -141,6 +141,17 @@ export const useGraphRevisions = ({
     return revisions[0];
   }, [revisions, graph?.version]);
 
+  // The most recent failed revision (if it's newer than the active/applied one)
+  const lastFailedRevision = useMemo(() => {
+    if (!revisions.length) return null;
+    // revisions are sorted newest-first; check if the latest is failed
+    const latest = revisions[0];
+    if (latest.status !== GraphRevisionDtoStatusEnum.Failed) return null;
+    // Only show if it's different from the active revision (i.e. active is an older Applied one)
+    if (activeRevision && activeRevision.id === latest.id) return null;
+    return latest;
+  }, [revisions, activeRevision]);
+
   const isRevisionApplying = useMemo(
     () =>
       revisions.some(
@@ -489,6 +500,7 @@ export const useGraphRevisions = ({
     isRevisionApplying,
     displayedVersion,
     displayedRevisionMeta,
+    lastFailedRevision,
     localDiffPatch,
     handleCloseLocalDiff,
     unsavedChangesPopoverContent,

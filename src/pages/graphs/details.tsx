@@ -241,6 +241,7 @@ export const GraphPage = () => {
     isRevisionApplying,
     displayedVersion,
     displayedRevisionMeta,
+    lastFailedRevision,
     localDiffPatch,
     handleCloseLocalDiff,
     unsavedChangesPopoverContent,
@@ -684,6 +685,7 @@ export const GraphPage = () => {
         revisionPopoverContent={revisionPopoverContent}
         displayedVersion={displayedVersion}
         displayedRevisionMeta={displayedRevisionMeta}
+        lastFailedRevision={lastFailedRevision}
         graphError={graphError}
         saving={saving}
         isRevisionApplying={isRevisionApplying}
