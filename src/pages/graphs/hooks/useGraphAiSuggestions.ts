@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { App } from 'antd';
 import {
   type MutableRefObject,
   useCallback,
@@ -33,6 +33,7 @@ export const useGraphAiSuggestions = ({
   templatesById,
   draftStateRef,
 }: UseGraphAiSuggestionsOptions) => {
+  const { message } = App.useApp();
   const [graphAiModalOpen, setGraphAiModalOpen] = useState(false);
   const [graphAiUserRequest, setGraphAiUserRequest] = useState('');
   const [graphAiLoading, setGraphAiLoading] = useState(false);
@@ -118,7 +119,7 @@ export const useGraphAiSuggestions = ({
     setGraphAiUserRequest('');
     setGraphAiUpdatesByNodeId({});
     setGraphAiSelectedNodeId(agentNodes[0]?.id ?? null);
-  }, [agentNodes]);
+  }, [agentNodes, message]);
 
   const handleCloseGraphAiModal = useCallback(() => {
     setGraphAiModalOpen(false);
@@ -160,7 +161,7 @@ export const useGraphAiSuggestions = ({
     return () => {
       isActive = false;
     };
-  }, [graphAiModalOpen, graphAiModels.length]);
+  }, [graphAiModalOpen, graphAiModels.length, message]);
 
   const handleGraphAiSuggestionSubmit = useCallback(async () => {
     if (!graph?.id) {
@@ -223,6 +224,7 @@ export const useGraphAiSuggestions = ({
     graphAiModel,
     graphAiUserRequest,
     isGraphRunning,
+    message,
   ]);
 
   const handleApplyGraphAiSuggestions = useCallback(() => {
@@ -268,7 +270,12 @@ export const useGraphAiSuggestions = ({
     } else {
       message.success('Applied AI suggestions to agent nodes');
     }
-  }, [graphAiUpdatesByNodeId, resolveAiSuggestionFieldKey, draftStateRef]);
+  }, [
+    graphAiUpdatesByNodeId,
+    message,
+    resolveAiSuggestionFieldKey,
+    draftStateRef,
+  ]);
 
   return {
     graphAiModalOpen,

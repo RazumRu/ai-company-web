@@ -5,7 +5,7 @@ import {
   useNodesState,
   Viewport,
 } from '@xyflow/react';
-import { Button, Layout, message, Spin } from 'antd';
+import { App, Button, Layout, Spin } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
@@ -45,6 +45,7 @@ import {
 const { Sider, Content } = Layout;
 
 export const GraphPage = () => {
+  const { message } = App.useApp();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -377,9 +378,12 @@ export const GraphPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, selectedNodeId]);
 
-  const handleValidationError = useCallback((error: string) => {
-    message.error(`Connection validation failed: ${error}`);
-  }, []);
+  const handleValidationError = useCallback(
+    (error: string) => {
+      message.error(`Connection validation failed: ${error}`);
+    },
+    [message],
+  );
 
   const handleTemplateClick = useCallback((template: TemplateDto) => {
     setSelectedTemplate(template);
@@ -538,7 +542,7 @@ export const GraphPage = () => {
         setTriggerLoading(false);
       }
     },
-    [triggerNodeId, id, hasUnsavedChanges, handleSave],
+    [triggerNodeId, id, hasUnsavedChanges, handleSave, message],
   );
 
   // Track whether a drag is in progress so we can skip parent state updates

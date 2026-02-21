@@ -4,7 +4,7 @@ import {
   RobotOutlined,
 } from '@ant-design/icons';
 import type { Viewport } from '@xyflow/react';
-import { message } from 'antd';
+import { App } from 'antd';
 import {
   type Dispatch,
   type MutableRefObject,
@@ -96,6 +96,7 @@ export const useGraphActions = ({
   saving,
   setSaving,
 }: UseGraphActionsOptions) => {
+  const { message } = App.useApp();
   const [isSavingName, setIsSavingName] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -277,6 +278,7 @@ export const useGraphActions = ({
     graph,
     handleDraftStateChange,
     id,
+    message,
     nodes,
     rebuildStateFromGraph,
     setEdges,
@@ -363,6 +365,7 @@ export const useGraphActions = ({
     graph,
     id,
     isSavingName,
+    message,
     serverGraphState,
     setEditingName,
     setGraph,
@@ -423,7 +426,7 @@ export const useGraphActions = ({
     } finally {
       setActionLoading(false);
     }
-  }, [fetchCompiledNodes, graph, id, setGraph]);
+  }, [fetchCompiledNodes, graph, id, message, setGraph]);
 
   const graphMenuItems = useMemo(
     () => [

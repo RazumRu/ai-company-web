@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { App } from 'antd';
 import {
   type Dispatch,
   type MutableRefObject,
@@ -43,6 +43,7 @@ export const useGraphLoader = ({
   setEdges,
   setServerGraphState,
 }: UseGraphLoaderOptions) => {
+  const { message } = App.useApp();
   useEffect(() => {
     if (!graphId) return;
 
@@ -186,5 +187,5 @@ export const useGraphLoader = ({
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graphId, navigate, setNodes, setEdges]);
+  }, [graphId, message, navigate, setNodes, setEdges]);
 };

@@ -1,5 +1,5 @@
 import type { Viewport } from '@xyflow/react';
-import { message } from 'antd';
+import { App } from 'antd';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 
 import { graphsApi } from '../../../api';
@@ -70,6 +70,7 @@ export const useGraphWebSocketHandlers = ({
   revisionActions,
   refs,
 }: UseGraphWebSocketHandlersOptions): void => {
+  const { message } = App.useApp();
   const { id, nodes } = graphState;
 
   const { setGraph, setCompiledNodesMap, setServerGraphState } = setters;
