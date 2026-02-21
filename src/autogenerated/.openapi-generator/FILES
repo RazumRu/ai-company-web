@@ -4,6 +4,10 @@ api.ts
 base.ts
 common.ts
 configuration.ts
+docs/AnalyticsApi.md
+docs/AnalyticsByGraphResponseDto.md
+docs/AnalyticsByGraphResponseDtoGraphsInner.md
+docs/AnalyticsOverviewDto.md
 docs/CreateGraphDto.md
 docs/CreateGraphDtoMetadata.md
 docs/CreateGraphDtoMetadataNodesInner.md

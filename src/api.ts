@@ -1,4 +1,5 @@
 import {
+  AnalyticsApi,
   Configuration,
   GitRepositoriesApi,
   GraphRevisionsApi,
@@ -21,3 +22,4 @@ export const graphRevisionsApi = new GraphRevisionsApi(configuration);
 export const litellmApi = new LitellmApi(configuration);
 export const knowledgeApi = new KnowledgeApi(configuration);
 export const gitRepositoriesApi = new GitRepositoriesApi(configuration);
+export const analyticsApi = new AnalyticsApi(configuration);

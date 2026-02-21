@@ -73,7 +73,7 @@ export const KnowledgeListPage = () => {
       )
       .then((res) => {
         if (!mounted || requestId !== requestIdRef.current) return;
-        setDocs(res.data || []);
+        setDocs((res.data as KnowledgeDocDto[]) || []);
       })
       .catch((err) => {
         if (!mounted || requestId !== requestIdRef.current) return;

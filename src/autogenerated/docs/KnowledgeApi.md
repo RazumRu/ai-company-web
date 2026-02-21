@@ -197,7 +197,7 @@ const { status, data } = await apiInstance.getDoc(id);
 
 # **listDocs**
 
-> Array<KnowledgeDocDto> listDocs()
+> object listDocs()
 
 ### Example
 
@@ -231,7 +231,7 @@ const { status, data } = await apiInstance.listDocs(
 
 ### Return type
 
-**Array<KnowledgeDocDto>**
+**object**
 
 ### Authorization
 
